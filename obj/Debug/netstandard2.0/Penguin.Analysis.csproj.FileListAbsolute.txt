@@ -1,0 +1,8 @@
+C:\Users\anloffredo\Documents\GitHub\Penguin.Analysis\bin\Debug\netstandard2.0\Penguin.Analysis.deps.json
+C:\Users\anloffredo\Documents\GitHub\Penguin.Analysis\bin\Debug\netstandard2.0\Penguin.Analysis.dll
+C:\Users\anloffredo\Documents\GitHub\Penguin.Analysis\bin\Debug\netstandard2.0\Penguin.Analysis.pdb
+C:\Users\anloffredo\Documents\GitHub\Penguin.Analysis\obj\Debug\netstandard2.0\Penguin.Analysis.csprojAssemblyReference.cache
+C:\Users\anloffredo\Documents\GitHub\Penguin.Analysis\obj\Debug\netstandard2.0\Penguin.Analysis.AssemblyInfoInputs.cache
+C:\Users\anloffredo\Documents\GitHub\Penguin.Analysis\obj\Debug\netstandard2.0\Penguin.Analysis.AssemblyInfo.cs
+C:\Users\anloffredo\Documents\GitHub\Penguin.Analysis\obj\Debug\netstandard2.0\Penguin.Analysis.dll
+C:\Users\anloffredo\Documents\GitHub\Penguin.Analysis\obj\Debug\netstandard2.0\Penguin.Analysis.pdb

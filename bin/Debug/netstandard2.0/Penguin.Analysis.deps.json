@@ -1,0 +1,149 @@
+{
+  "runtimeTarget": {
+    "name": ".NETStandard,Version=v2.0/",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETStandard,Version=v2.0": {},
+    ".NETStandard,Version=v2.0/": {
+      "Penguin.Analysis/1.0.0": {
+        "dependencies": {
+          "NETStandard.Library": "2.0.3",
+          "Newtonsoft.Json": "12.0.2",
+          "Penguin.IO": "1.1.11-T9MJL4F"
+        },
+        "runtime": {
+          "Penguin.Analysis.dll": {}
+        }
+      },
+      "Microsoft.NETCore.Platforms/1.1.0": {},
+      "NETStandard.Library/2.0.3": {
+        "dependencies": {
+          "Microsoft.NETCore.Platforms": "1.1.0"
+        }
+      },
+      "Newtonsoft.Json/12.0.2": {
+        "runtime": {
+          "lib/netstandard2.0/Newtonsoft.Json.dll": {
+            "assemblyVersion": "12.0.0.0",
+            "fileVersion": "12.0.2.23222"
+          }
+        }
+      },
+      "Penguin.Extensions.Collections/2.0.4-T9MJL4F": {
+        "dependencies": {
+          "Penguin.Reflection.Extensions": "3.0.5-T9MJL4F"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Penguin.Extensions.Collections.dll": {
+            "assemblyVersion": "2.0.4.0",
+            "fileVersion": "2.0.4.0"
+          }
+        }
+      },
+      "Penguin.Extensions.String/3.0.3-T9MJL4F": {
+        "runtime": {
+          "lib/netstandard2.0/Penguin.Extensions.String.dll": {
+            "assemblyVersion": "3.0.3.0",
+            "fileVersion": "3.0.3.0"
+          }
+        }
+      },
+      "Penguin.IO/1.1.11-T9MJL4F": {
+        "dependencies": {
+          "Penguin.Extensions.Collections": "2.0.4-T9MJL4F"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Penguin.IO.dll": {
+            "assemblyVersion": "1.1.11.0",
+            "fileVersion": "1.1.11.0"
+          }
+        }
+      },
+      "Penguin.Reflection.Abstractions/3.0.1-T9MJL4F": {
+        "runtime": {
+          "lib/netstandard2.0/Penguin.Reflection.Abstractions.dll": {
+            "assemblyVersion": "3.0.1.0",
+            "fileVersion": "3.0.1.0"
+          }
+        }
+      },
+      "Penguin.Reflection.Extensions/3.0.5-T9MJL4F": {
+        "dependencies": {
+          "Penguin.Extensions.String": "3.0.3-T9MJL4F",
+          "Penguin.Reflection.Abstractions": "3.0.1-T9MJL4F"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Penguin.Reflection.Extensions.dll": {
+            "assemblyVersion": "3.0.5.0",
+            "fileVersion": "3.0.5.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Penguin.Analysis/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.NETCore.Platforms/1.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-kz0PEW2lhqygehI/d6XsPCQzD7ff7gUJaVGPVETX611eadGsA3A877GdSlU0LRVMCTH/+P3o2iDTak+S08V2+A==",
+      "path": "microsoft.netcore.platforms/1.1.0",
+      "hashPath": "microsoft.netcore.platforms.1.1.0.nupkg.sha512"
+    },
+    "NETStandard.Library/2.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-st47PosZSHrjECdjeIzZQbzivYBJFv6P2nv4cj2ypdI204DO+vZ7l5raGMiX4eXMJ53RfOIg+/s4DHVZ54Nu2A==",
+      "path": "netstandard.library/2.0.3",
+      "hashPath": "netstandard.library.2.0.3.nupkg.sha512"
+    },
+    "Newtonsoft.Json/12.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-rTK0s2EKlfHsQsH6Yx2smvcTCeyoDNgCW7FEYyV01drPlh2T243PR2DiDXqtC5N4GDm4Ma/lkxfW5a/4793vbA==",
+      "path": "newtonsoft.json/12.0.2",
+      "hashPath": "newtonsoft.json.12.0.2.nupkg.sha512"
+    },
+    "Penguin.Extensions.Collections/2.0.4-T9MJL4F": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-/v4CCrmd9SDmgXOFWMqYDiRcOLuTf6dnJX2TMa7Z0V//kbmkqoOkW0XNcHqiW9ZBFFkAMApADicxZ6TT9cXlLQ==",
+      "path": "penguin.extensions.collections/2.0.4-t9mjl4f",
+      "hashPath": "penguin.extensions.collections.2.0.4-t9mjl4f.nupkg.sha512"
+    },
+    "Penguin.Extensions.String/3.0.3-T9MJL4F": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cIQuWlr6E303Fpw0lzDfT3GF7CGBGmW7NmFXQTpN64u7oL3x/GRrF3+PQGFIvb4DXkeL99oEWLOS/azJ7z8CYQ==",
+      "path": "penguin.extensions.string/3.0.3-t9mjl4f",
+      "hashPath": "penguin.extensions.string.3.0.3-t9mjl4f.nupkg.sha512"
+    },
+    "Penguin.IO/1.1.11-T9MJL4F": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-tnrBXLWEHoG48E8mNLGsBUu9Qwi/R9zfrqJBk7hiVFTRXtnlZSo+tYlAPTILFW3pDh/mycsUoqlo02DxI6SUzA==",
+      "path": "penguin.io/1.1.11-t9mjl4f",
+      "hashPath": "penguin.io.1.1.11-t9mjl4f.nupkg.sha512"
+    },
+    "Penguin.Reflection.Abstractions/3.0.1-T9MJL4F": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-p1EI+8j0tBN3xqn+J6G0l6LdXIsSC6CpXzB2RmkPggiIfgDLXIWcwW6QIRqzUVdvKFvv9cQWko4zof4wWFUKtg==",
+      "path": "penguin.reflection.abstractions/3.0.1-t9mjl4f",
+      "hashPath": "penguin.reflection.abstractions.3.0.1-t9mjl4f.nupkg.sha512"
+    },
+    "Penguin.Reflection.Extensions/3.0.5-T9MJL4F": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-CA4ZhhkQirhN4lNTQ5nNDp7G37ArDxV3Q1TpZ2n0e3FZs2TxLva+Js0Xc5CDcu5S6AHaNxpYYNOHeZrU/xMHCQ==",
+      "path": "penguin.reflection.extensions/3.0.5-t9mjl4f",
+      "hashPath": "penguin.reflection.extensions.3.0.5-t9mjl4f.nupkg.sha512"
+    }
+  }
+}

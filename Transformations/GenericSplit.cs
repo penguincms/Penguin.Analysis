@@ -1,0 +1,87 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+
+namespace Penguin.Analysis.Transformations
+{
+    [Serializable]
+    public class GenericSplit : ITransform
+    {
+        #region Properties
+
+        public List<string> ResultColumns { get; internal set; }
+
+        public string TargetColumn { get; internal set; }
+
+        private readonly Func<string, IEnumerable<string>> Process;
+
+        #endregion Properties
+
+        #region Constructors
+
+        /// <summary>
+        /// Generic column transformation for converting/adding additional data columns
+        /// does NOT keep original column so original must be returned if required
+        /// </summary>
+        /// <param name="ColumnName"></param>
+        /// <param name="transformer"></param>
+        public GenericSplit(string ColumnName, List<string> NewColumnNames, Func<string, IEnumerable<string>> transformer)
+        {
+            this.TargetColumn = ColumnName;
+            this.Process = transformer;
+            this.ResultColumns = NewColumnNames;
+        }
+
+        #endregion Constructors
+
+        #region Methods
+
+        public void Cleanup(DataTable table)
+        {
+            if (!this.ResultColumns.Contains(this.TargetColumn))
+            {
+                table.Columns.Remove(this.TargetColumn);
+            }
+        }
+
+        public void TransformRow(DataRow source)
+        {
+            string Value = source[this.TargetColumn]?.ToString();
+
+            List<string> postTransform = this.Process.Invoke(Value).ToList();
+
+            if (postTransform.Count != this.ResultColumns.Count)
+            {
+                throw new Exception("Result count returned from transform does not match target column count");
+            }
+
+            int i = 0;
+            foreach (string column in this.ResultColumns)
+            {
+                source[column] = postTransform[i++];
+            }
+        }
+
+        /// <summary>
+        /// Adds new columns that may be required to hold values from row transformation
+        /// </summary>
+        /// <param name="table"></param>
+        /// <returns></returns>
+        public DataTable TransformTable(DataTable table)
+        {
+            foreach (string newColumn in this.ResultColumns)
+            {
+                //Dont add target column again if one target is ALSO source
+                if (!table.Columns.Cast<DataColumn>().Any(c => c.ColumnName == newColumn))
+                {
+                    table.Columns.Add(newColumn);
+                }
+            }
+
+            return table;
+        }
+
+        #endregion Methods
+    }
+}
