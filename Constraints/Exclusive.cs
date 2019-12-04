@@ -27,7 +27,10 @@ namespace Penguin.Analysis.Constraints
 
         #region Methods
 
-        public bool Evaluate(params string[] headers) => !(this.Headers.Count() >= headers.Count() && headers.All(h => headers.Contains(h)));
+        public bool Evaluate(params string[] headers)
+        {
+            return !(this.Headers.Count() >= headers.Count() && headers.All(h => headers.Contains(h)));
+        }
 
         #endregion Methods
     }

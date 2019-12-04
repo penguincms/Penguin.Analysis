@@ -8,14 +8,20 @@ namespace Penguin.Analysis.DataColumns
     {
         #region Methods
 
-        public override string Display(int Value) => ((NBool)Value).ToString();
+        public override string Display(int Value)
+        {
+            return ((NBool)Value).ToString();
+        }
 
-        public override IEnumerable<int> GetOptions() => new List<int>
+        public override IEnumerable<int> GetOptions()
+        {
+            return new List<int>
             {
                 0,
                 1,
                 2
             };
+        }
 
         public override int Transform(string input, bool PositiveIndicator)
         {

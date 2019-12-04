@@ -8,7 +8,10 @@ namespace Penguin.Analysis.DataColumns
     {
         #region Methods
 
-        public virtual string Display(int Value) => Value.ToString();
+        public virtual string Display(int Value)
+        {
+            return Value.ToString();
+        }
 
         public abstract IEnumerable<int> GetOptions();
 

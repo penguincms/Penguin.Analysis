@@ -7,7 +7,10 @@ namespace Penguin.Analysis.DataColumns
     {
         #region Methods
 
-        public override int Transform(string input, bool PositiveIndicator) => string.IsNullOrWhiteSpace(input) ? 0 : 1;
+        public override int Transform(string input, bool PositiveIndicator)
+        {
+            return string.IsNullOrWhiteSpace(input) ? 0 : 1;
+        }
 
         #endregion Methods
     }

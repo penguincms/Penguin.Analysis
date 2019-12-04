@@ -53,7 +53,10 @@ namespace Penguin.Analysis.Transformations
         /// </summary>
         /// <param name="table"></param>
         /// <returns></returns>
-        public DataTable TransformTable(DataTable table) => table;
+        public DataTable TransformTable(DataTable table)
+        {
+            return table;
+        }
 
         #endregion Methods
     }

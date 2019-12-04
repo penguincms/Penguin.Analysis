@@ -24,7 +24,6 @@ namespace Penguin.Analysis
         private static object ScreenBufferLock { get; set; } = new object();
         private static int Width { get; set; } = Console.WindowWidth;
 
-
         #endregion Properties
 
         #region Methods

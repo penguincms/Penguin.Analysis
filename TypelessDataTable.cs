@@ -39,7 +39,10 @@ namespace Penguin.Analysis
         #region Methods
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Equals(int index, int Value) => this._Items[index] == Value;
+        public bool Equals(int index, int Value)
+        {
+            return this._Items[index] == Value;
+        }
 
         #endregion Methods
     }

@@ -1,5 +1,4 @@
-﻿using Penguin.Analysis;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace Penguin.Analysis.Extensions

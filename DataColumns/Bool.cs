@@ -20,15 +20,24 @@ namespace Penguin.Analysis.DataColumns
             }
         }
 
-        public override string Display(int Value) => Value == 1 ? "true" : "false";
+        public override string Display(int Value)
+        {
+            return Value == 1 ? "true" : "false";
+        }
 
-        public override IEnumerable<int> GetOptions() => new List<int>
+        public override IEnumerable<int> GetOptions()
+        {
+            return new List<int>
             {
                 1,
                 0
             };
+        }
 
-        public override int Transform(string input, bool PositiveIndicator) => GetValue(input);
+        public override int Transform(string input, bool PositiveIndicator)
+        {
+            return GetValue(input);
+        }
 
         #endregion Methods
     }

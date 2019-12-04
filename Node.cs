@@ -5,14 +5,15 @@ using System.Collections.Generic;
 namespace Penguin.Analysis
 {
     [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
     public class Node
     {
         #region Fields
 
-        [JsonIgnore]
-        public IList<TypelessDataRow> MatchingRows;
+        public IList<TypelessDataRow> MatchingRows { get; set; }
 
-        public int[] Results = new int[4];
+        [JsonProperty("R")]
+        public int[] Results { get; set; } = new int[4];
 
         #endregion Fields
 
@@ -33,7 +34,6 @@ namespace Penguin.Analysis
             }
         }
 
-        [JsonIgnore]
         public int Depth
         {
             get
@@ -52,8 +52,10 @@ namespace Penguin.Analysis
             }
         }
 
+        [JsonProperty("H")]
         public sbyte Header { get; set; }
 
+        [JsonProperty("L")]
         public bool LastNode { get; set; }
 
         /// <summary>
@@ -61,14 +63,15 @@ namespace Penguin.Analysis
         /// </summary>
         public int Matched => this.Results[(int)MatchResult.Route] + this.Results[(int)MatchResult.Both];
 
+        [JsonProperty("N")]
         public Node[] Next { get; set; }
 
-        //public List<string> Paths { get; set; } = new List<string>();
+        [JsonProperty("P")]
         public Node ParentNode { get; set; }
 
-        [JsonIgnore]
         public float Score => (this.Results[(int)MatchResult.Both] + 1) / (this.Results[(int)MatchResult.Route] + this.Results[(int)MatchResult.Both]) - (float)(this.Results[(int)MatchResult.Route] + 1) / (this.Results[(int)MatchResult.Route] + this.Results[(int)MatchResult.Both]);
 
+        [JsonProperty("V")]
         public int Value { get; set; }
 
         #endregion Properties

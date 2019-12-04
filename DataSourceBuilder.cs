@@ -1,7 +1,7 @@
 ﻿using Penguin.Analysis.Constraints;
 using Penguin.Analysis.DataColumns;
 using Penguin.Analysis.Extensions;
-using Penguin.Analysis;
+using Penguin.Analysis.Interfaces;
 using Penguin.Analysis.Transformations;
 using Penguin.IO.Extensions;
 using System;
@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 namespace Penguin.Analysis
 {
     [Serializable]
-    public class DataSourceBuilder
+    public class DataSourceBuilder : IColumnRegistrar
     {
         #region Fields
 
@@ -113,7 +113,10 @@ namespace Penguin.Analysis
 
         #region Methods
 
-        public void AddRouteConstraint(IRouteConstraint constraint) => this.RouteConstraints.Add(constraint);
+        public void AddRouteConstraint(IRouteConstraint constraint)
+        {
+            this.RouteConstraints.Add(constraint);
+        }
 
         public void BuildOptions()
         {
@@ -315,6 +318,18 @@ namespace Penguin.Analysis
             this.Result.RootNode.Trim();
         }
 
+        public Evaluation Evaluate(DataRow dr)
+        {
+            Dictionary<string, string> toEvaluate = new Dictionary<string, string>();
+
+            foreach (DataColumn dc in dr.Table.Columns)
+            {
+                toEvaluate.Add(dc.ColumnName, dr[dc].ToString());
+            }
+
+            return this.Evaluate(toEvaluate);
+        }
+
         public Evaluation Evaluate(Dictionary<string, string> dataRow)
         {
             Evaluation evaluation = new Evaluation(this.Transform(dataRow))
@@ -339,7 +354,7 @@ namespace Penguin.Analysis
             {
                 string next = $"{this.Registrations[toCheck.Header].Header}:{ this.Registrations[toCheck.Header].Column.Display(toCheck.Value)}";
 
-                if (toReturn != string.Empty)
+                if (!string.IsNullOrEmpty(toReturn))
                 {
                     toReturn = $"{next} => {toReturn}";
                 }
@@ -361,7 +376,10 @@ namespace Penguin.Analysis
             this.BuildOptions();
         }
 
-        public void RegisterColumn(string ColumnName, IDataColumn registration) => this.Registrations.Add(new ColumnRegistration() { Header = ColumnName, Column = registration });
+        public void RegisterColumn(string ColumnName, IDataColumn registration)
+        {
+            this.Registrations.Add(new ColumnRegistration() { Header = ColumnName, Column = registration });
+        }
 
         public void RegisterColumn<T>(params string[] ColumnNames) where T : IDataColumn
         {
@@ -371,7 +389,10 @@ namespace Penguin.Analysis
             }
         }
 
-        public void RegisterTransformation(ITransform transform) => this.Transformations.Add(transform);
+        public void RegisterTransformation(ITransform transform)
+        {
+            this.Transformations.Add(transform);
+        }
 
         /// <summary>
         /// Runs registered table transformations to create the final analysis table
