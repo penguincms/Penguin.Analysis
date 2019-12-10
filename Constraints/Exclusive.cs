@@ -5,7 +5,7 @@ using System.Linq;
 namespace Penguin.Analysis.Constraints
 {
     /// <summary>
-    /// Do not allow this exact combination to appear as a route. Useful if one property is derivative of another
+    /// Do not allow this exact combination to appear as a route. Useful if one property is derivative of another. Also, if only one parameter then force the property to be evaluated alone
     /// </summary>
     [Serializable]
     public class Exclusive : IRouteConstraint
@@ -19,8 +19,13 @@ namespace Penguin.Analysis.Constraints
         #region Constructors
 
         public Exclusive(params string[] headers)
-        {
+        { 
+            if(headers.Length > 0){
             this.Headers = headers.ToList();
+            } else
+            {
+                throw new ArgumentException("At least one header must be specified");
+            }
         }
 
         #endregion Constructors
@@ -29,9 +34,16 @@ namespace Penguin.Analysis.Constraints
 
         public bool Evaluate(params string[] headers)
         {
-            return !(this.Headers.Count() >= headers.Count() && headers.All(h => headers.Contains(h)));
-        }
+            if (Headers.Count > 1)
+            {
+                return !(this.Headers.Count >= headers.Length && Headers.All(h => headers.Contains(h)));
+            }
+            else
+            {
+                return headers.Length == 1 || !headers.Contains(Headers.First());
+            }
 
+        }
         #endregion Methods
     }
 }
