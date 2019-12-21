@@ -1,77 +1,51 @@
 ﻿using Newtonsoft.Json;
+using Penguin.Analysis.Extensions;
+using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Penguin.Analysis
 {
     [Serializable]
     [JsonObject(MemberSerialization.OptIn)]
-    public class Node
+    public class Node : INode<Node>
     {
         #region Fields
 
         public IList<TypelessDataRow> MatchingRows { get; set; }
 
-        [JsonProperty("R")]
+        [JsonProperty("R", Order = 1)]
         public int[] Results { get; set; } = new int[4];
 
         #endregion Fields
 
         #region Properties
 
-        public float Accuracy
-        {
-            get
-            {
-                if (this.Results[(int)MatchResult.Route] == 0 && this.Results[(int)MatchResult.Both] > 0)
-                {
-                    return 1;
-                }
+        public float Accuracy => this.GetAccuracy();
 
-                float d = (this.Results[(int)MatchResult.Route] + this.Results[(int)MatchResult.Both]);
+        public int Depth => this.GetDepth();
 
-                return d == 0 ? 0 : this.Results[(int)MatchResult.Both] / d;
-            }
-        }
-
-        public int Depth
-        {
-            get
-            {
-                Node toCheck = this;
-                int depth = 0;
-
-                while (toCheck != null && toCheck.Header != -1)
-                {
-                    depth++;
-
-                    toCheck = toCheck.ParentNode;
-                }
-
-                return depth;
-            }
-        }
-
-        [JsonProperty("H")]
+        [JsonProperty("H", Order = 2)]
         public sbyte Header { get; set; }
 
-        [JsonProperty("L")]
+        [JsonProperty("L", Order = 4)]
         public bool LastNode { get; set; }
 
         /// <summary>
         /// The number of times this route has been matched against
         /// </summary>
-        public int Matched => this.Results[(int)MatchResult.Route] + this.Results[(int)MatchResult.Both];
+        public int Matched => this.GetMatched();
 
-        [JsonProperty("N")]
+        [JsonProperty("N", Order = 5)]
         public Node[] Next { get; set; }
 
-        [JsonProperty("P")]
+        [JsonProperty("P", Order = 0)]
         public Node ParentNode { get; set; }
 
-        public float Score => (this.Results[(int)MatchResult.Both] + 1) / (this.Results[(int)MatchResult.Route] + this.Results[(int)MatchResult.Both]) - (float)(this.Results[(int)MatchResult.Route] + 1) / (this.Results[(int)MatchResult.Route] + this.Results[(int)MatchResult.Both]);
+        public float Score => this.GetScore();
 
-        [JsonProperty("V")]
+        [JsonProperty("V", Order = 3)]
         public int Value { get; set; }
 
         #endregion Properties
@@ -120,6 +94,17 @@ namespace Penguin.Analysis
             {
                 return $"{this.ParentNode} => {this.Header}: {this.Value}";
             }
+        }
+
+        INode INode.ParentNode => this.ParentNode;
+
+        IEnumerable<INode> INode.Next => this.Next?.Cast<INode>()?.ToArray();
+
+        IEnumerable<Node> INode<Node>.Next
+        {
+            get => this.Next;
+
+            set => this.Next = value.ToArray();
         }
 
         #endregion Methods

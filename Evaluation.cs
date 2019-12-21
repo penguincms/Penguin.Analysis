@@ -1,4 +1,5 @@
 ﻿using Penguin.Analysis.Extensions;
+using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace Penguin.Analysis
 
         public TypelessDataRow DataRow { get; set; }
 
-        public Dictionary<int, Node> MatchedRoutes { get; set; } = new Dictionary<int, Node>();
+        public Dictionary<int, INode> MatchedRoutes { get; set; } = new Dictionary<int, INode>();
 
         public int MatchingRoutes { get; set; }
 
@@ -35,7 +36,7 @@ namespace Penguin.Analysis
 
         #region Methods
 
-        public void MatchRoute(Node n)
+        public void MatchRoute(INode n)
         {
             int Key = n.GetKey();
 
@@ -49,7 +50,7 @@ namespace Penguin.Analysis
             }
         }
 
-        public float Weight(Node n)
+        public float Weight(INode n)
         {
             float thisAccuracy = n.Accuracy;
 

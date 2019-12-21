@@ -1,4 +1,5 @@
-﻿using Penguin.Analysis.Constraints;
+﻿using Newtonsoft.Json;
+using Penguin.Analysis.Constraints;
 using Penguin.Analysis.DataColumns;
 using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
@@ -10,6 +11,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -94,17 +96,56 @@ namespace Penguin.Analysis
 
         #endregion Classes
 
+        public static JsonSerializer DefaultJsonSerializer
+        {
+            get
+            {
+                return new JsonSerializer
+                {
+                    DefaultValueHandling = DefaultValueHandling.Ignore,
+                    Formatting = Formatting.None,
+                    NullValueHandling = NullValueHandling.Ignore,
+                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                    TypeNameHandling = TypeNameHandling.Auto
+                };
+            }
+        }
+
+        [JsonIgnore]
+        public JsonSerializerSettings JsonSerializerSettings { get; set; } = DefaultSerializerSettings;
+
+        public static JsonSerializerSettings DefaultSerializerSettings
+        {
+            get {
+                return new JsonSerializerSettings()
+                {
+                    DefaultValueHandling = DefaultValueHandling.Ignore,
+                    Formatting = Formatting.None,
+                    NullValueHandling = NullValueHandling.Ignore,
+                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                    TypeNameHandling = TypeNameHandling.Auto
+                };
+            }
+        }
+
+        [JsonIgnore]
+        public JsonSerializer JsonSerializer { get; set; } 
+
         #region Constructors
 
         public DataSourceBuilder(string FileName) : this(new FileInfo(FileName).ReadToDataTable())
         {
+            
         }
 
-        public DataSourceBuilder()
+        public DataSourceBuilder() 
         {
+            JsonSerializer = JsonSerializer.Create(JsonSerializerSettings);
         }
 
-        public DataSourceBuilder(DataTable dt)
+        public DataSourceBuilder(DataTable dt) : this()
         {
             this.TempTable = dt;
         }
@@ -116,6 +157,67 @@ namespace Penguin.Analysis
         public void AddRouteConstraint(IRouteConstraint constraint)
         {
             this.RouteConstraints.Add(constraint);
+        }
+
+        public void Serialize(string FilePath)
+        {
+            if (File.Exists(FilePath))
+            {
+                File.Delete(FilePath);
+            }
+
+            using (FileStream fstream = new FileStream(FilePath,FileMode.CreateNew)) {
+                using (LockedNodeFileStream stream = new LockedNodeFileStream(fstream))
+                {
+                    stream.Write((long)0);
+
+                    Result.BuilderRootNote.Serialize(stream);
+
+                    fstream.Seek(0, SeekOrigin.End);
+
+                    long JsonOffset = stream.Offset;
+
+                    string Json = JsonConvert.SerializeObject(this, JsonSerializerSettings);
+
+                    stream.Write(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(Json)));
+
+                    stream.Seek(0);
+
+                    stream.Write(JsonOffset);
+                }
+            }
+        }
+
+        public static DataSourceBuilder Deserialize(string FilePath, JsonSerializerSettings jsonSerializerSettings = null)
+        {
+            FileStream fstream = new FileStream(FilePath, FileMode.Open);
+            LockedNodeFileStream stream = new LockedNodeFileStream(fstream);
+
+            long JsonOffset;
+            byte[] jbytes = new byte[8];
+
+            fstream.Read(jbytes, 0, 8);
+
+            JsonOffset = BitConverter.ToInt64(jbytes, 0);
+
+            fstream.Seek(JsonOffset, SeekOrigin.Begin);
+
+            byte[] b64Bytes = new byte[fstream.Length - JsonOffset];
+            int b64P = 0;
+            int tbyte;
+            
+            while((tbyte = fstream.ReadByte()) != -1)
+            {
+                b64Bytes[b64P++] = (byte)tbyte;    
+            }
+
+            string Json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(System.Text.Encoding.UTF8.GetString(b64Bytes)));
+
+            DataSourceBuilder toReturn = JsonConvert.DeserializeObject<DataSourceBuilder>(Json, jsonSerializerSettings ?? DefaultSerializerSettings);
+
+            toReturn.Result.RootNode = new DiskNode(stream, 8);
+
+            return toReturn;
         }
 
         public void BuildOptions()
@@ -296,13 +398,13 @@ namespace Penguin.Analysis
 
             for (int i = 0; i < ComplexTree.Count; i++)
             {
-                this.Result.RootNode.AddNext(ComplexTree[i], i, false);
+                this.Result.BuilderRootNote.AddNext(ComplexTree[i], i, false);
             }
 
             ScreenBuffer.ReplaceLine("Flattening Tree", 0);
             ScreenBuffer.Flush();
 
-            foreach (Node n in this.Result.RootNode.FullTree())
+            foreach (Node n in this.Result.BuilderRootNote.FullTree())
             {
                 if (n.Header == -1)
                 { continue; }
@@ -315,7 +417,7 @@ namespace Penguin.Analysis
                 n.Results[(int)MatchResult.Output] = (int)MissingMatches;
             }
 
-            this.Result.RootNode.Trim();
+            this.Result.BuilderRootNote.Trim();
         }
 
         public Evaluation Evaluate(DataRow dr)
@@ -432,7 +534,7 @@ namespace Penguin.Analysis
             {
                 altered = 0;
 
-                foreach (Node N in this.Result.RootNode.FullTree())
+                foreach (Node N in this.Result.BuilderRootNote.FullTree())
                 {
                     if (N.Next is null || !N.Next.Any())
                     {
