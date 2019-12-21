@@ -184,6 +184,8 @@ namespace Penguin.Analysis
                     stream.Seek(0);
 
                     stream.Write(JsonOffset);
+
+                    stream.Flush();
                 }
             }
         }

@@ -81,8 +81,6 @@ namespace Penguin.Analysis.Extensions
 
             lockedNodeFileStream.Write(toWrite);
 
-            lockedNodeFileStream.Flush();
-
             if (!(tnode.Next is null))
             {
                 long ChildrenStartOffset = lockedNodeFileStream.Offset + (tnode.Next.Length * 8) + 8;
