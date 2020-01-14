@@ -6,6 +6,9 @@ namespace Penguin.Analysis.DataColumns
     [Serializable]
     public class NullableBool : BaseColumn
     {
+        public NullableBool(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        {
+        }
         #region Methods
 
         public override string Display(int Value)

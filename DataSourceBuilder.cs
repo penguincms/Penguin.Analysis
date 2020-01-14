@@ -6,14 +6,16 @@ using Penguin.Analysis.Interfaces;
 using Penguin.Analysis.Transformations;
 using Penguin.IO.Extensions;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static Penguin.Analysis.SystemInterop.Memory;
 
 namespace Penguin.Analysis
 {
@@ -40,33 +42,205 @@ namespace Penguin.Analysis
 
         #region Classes
 
-        public static class Settings
+        public DataSourceSettings Settings = new DataSourceSettings();
+
+        public class DataSourceSettings
         {
+            public ulong MinFreeMemory { get; set; } = 1_000_000_000;
+            public ulong RangeFreeMemory { get; set; } = 500_000_000;
+            
+            [JsonIgnore]
+            public Action<List<string>, bool> CheckedConstraint = null;
+
+            [JsonIgnore]
+            public Action<INode> TrimmedNode = null;
+
+            public int NodeFlushDepth { get; set; } = 0;
             #region Classes
 
-            public static class Results
+            public ResultSettings Results = new ResultSettings();
+
+            public class ResultSettings
             {
                 #region Properties
 
                 /// <summary>
                 /// Only build trees that contain positive output matches
                 /// </summary>
-                public static bool MatchOnly { get; set; } = false;
+                public bool MatchOnly { get; set; } = false;
 
                 /// <summary>
                 /// The minimum total times a route must be matched to be considered
                 /// </summary>
-                public static int MinimumHits { get; set; } = 5;
+                public int MinimumHits { get; set; } = 5;
 
                 /// <summary>
                 /// Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
                 /// </summary>
-                public static float MinimumWeight { get; set; } = .01f;
+                public float MinimumAccuracy { get; set; } = .4f;
 
                 #endregion Properties
             }
 
             #endregion Classes
+        }
+
+        class NodeSetCollection : IList<NodeSet>
+        {
+            private List<NodeSet> nodeSets;
+
+            public int Count => ((IList<NodeSet>)this.nodeSets).Count;
+
+            public bool IsReadOnly => ((IList<NodeSet>)this.nodeSets).IsReadOnly;
+
+            public NodeSet this[int index] { get => ((IList<NodeSet>)this.nodeSets)[index]; set => ((IList<NodeSet>)this.nodeSets)[index] = value; }
+
+            public NodeSetCollection(IEnumerable<NodeSet> set)
+            {
+                nodeSets = set.ToList();
+            }
+
+            private static ConcurrentDictionary<sbyte, NodeSet> DefinedSets = new ConcurrentDictionary<sbyte, NodeSet>();
+
+            public NodeSetCollection(IEnumerable<(sbyte columnIndex, int[] values)> set)
+            {
+                nodeSets = new List<NodeSet>();
+
+                foreach((sbyte columnIndex, int[] values) x in set)
+                {
+                    if(!DefinedSets.TryGetValue(x.columnIndex, out NodeSet n))
+                    {
+                        n = new NodeSet(x);
+                        DefinedSets.TryAdd(x.columnIndex, n);
+                    }
+
+                    nodeSets.Add(n);
+                }
+            }
+
+            public NodeSetCollection()
+            {
+                nodeSets = new List<NodeSet>();
+            }
+
+            public int IndexOf(NodeSet item)
+            {
+                return ((IList<NodeSet>)this.nodeSets).IndexOf(item);
+            }
+
+            public void Insert(int index, NodeSet item)
+            {
+                ((IList<NodeSet>)this.nodeSets).Insert(index, item);
+            }
+
+            public void RemoveAt(int index)
+            {
+                ((IList<NodeSet>)this.nodeSets).RemoveAt(index);
+            }
+
+            public void Add(NodeSet item)
+            {
+                ((IList<NodeSet>)this.nodeSets).Add(item);
+            }
+
+            public void Clear()
+            {
+                ((IList<NodeSet>)this.nodeSets).Clear();
+            }
+
+            public bool Contains(NodeSet item)
+            {
+                return ((IList<NodeSet>)this.nodeSets).Contains(item);
+            }
+
+            public void CopyTo(NodeSet[] array, int arrayIndex)
+            {
+                ((IList<NodeSet>)this.nodeSets).CopyTo(array, arrayIndex);
+            }
+
+            public bool Remove(NodeSet item)
+            {
+                return ((IList<NodeSet>)this.nodeSets).Remove(item);
+            }
+
+            public IEnumerator<NodeSet> GetEnumerator()
+            {
+                return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
+            }
+
+            public static implicit operator NodeSetCollection(List<NodeSet> n) => new NodeSetCollection(n);
+
+            public static bool operator ==(NodeSetCollection obj1, NodeSetCollection obj2)
+            {
+                if (ReferenceEquals(obj1, obj2))
+                {
+                    return true;
+                }
+
+                if (obj1 is null || obj2 is null)
+                {
+                    return false;
+                }
+
+                if(obj1.Count != obj2.Count)
+                {
+                    return false;
+                }
+
+                for(int i = 0; i < obj1.Count; i++)
+                {
+                    if (!obj2.Contains(obj1.ElementAt(i)))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            // this is second one '!='
+            public static bool operator !=(NodeSetCollection obj1, NodeSetCollection obj2)
+            {
+                return !(obj1 == obj2);
+            }
+
+            public bool Equals(NodeSetCollection other)
+            {
+                if (other is null)
+                {
+                    return false;
+                }
+                if (ReferenceEquals(this, other))
+                {
+                    return true;
+                }
+
+                return this == other;
+            }
+
+            public override int GetHashCode()
+            {
+                return nodeSets.Sum(n => n.ColumnIndex);
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj is null)
+                {
+                    return false;
+                }
+                if (ReferenceEquals(this, obj))
+                {
+                    return true;
+                }
+
+                return obj.GetType() == GetType() && Equals((NodeSetCollection)obj);
+            }
         }
 
         private class NodeSet
@@ -85,64 +259,106 @@ namespace Penguin.Analysis
             {
             }
 
+            public override int GetHashCode()
+            {
+                return ColumnIndex;
+            }
+
             public NodeSet(sbyte columnIndex, int[] values)
             {
                 this.ColumnIndex = columnIndex;
                 this.Values = values.ToArray();
             }
+            public static bool operator ==(NodeSet obj1, NodeSet obj2)
+            {
+                if (ReferenceEquals(obj1, obj2))
+                {
+                    return true;
+                }
+
+                if (obj1 is null || obj2 is null)
+                {
+                    return false;
+                }
+
+                return obj1.ColumnIndex == obj2.ColumnIndex;
+            }
+
+            // this is second one '!='
+            public static bool operator !=(NodeSet obj1, NodeSet obj2)
+            {
+                return !(obj1 == obj2);
+            }
+
+            public bool Equals(NodeSet other)
+            {
+                if (other is null)
+                {
+                    return false;
+                }
+                if (ReferenceEquals(this, other))
+                {
+                    return true;
+                }
+
+                return this.ColumnIndex == other.ColumnIndex;
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj is null)
+                {
+                    return false;
+                }
+                if (ReferenceEquals(this, obj))
+                {
+                    return true;
+                }
+
+                return obj.GetType() == GetType() && Equals((NodeSet)obj);
+            }
+
 
             #endregion Constructors
         }
 
         #endregion Classes
 
-        public static JsonSerializer DefaultJsonSerializer
+        public static JsonSerializer DefaultJsonSerializer => new JsonSerializer
         {
-            get
-            {
-                return new JsonSerializer
-                {
-                    DefaultValueHandling = DefaultValueHandling.Ignore,
-                    Formatting = Formatting.None,
-                    NullValueHandling = NullValueHandling.Ignore,
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                    TypeNameHandling = TypeNameHandling.Auto
-                };
-            }
-        }
+            DefaultValueHandling = DefaultValueHandling.Ignore,
+            Formatting = Formatting.None,
+            NullValueHandling = NullValueHandling.Ignore,
+            PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+            ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+            TypeNameHandling = TypeNameHandling.Auto
+        };
 
         [JsonIgnore]
         public JsonSerializerSettings JsonSerializerSettings { get; set; } = DefaultSerializerSettings;
 
-        public static JsonSerializerSettings DefaultSerializerSettings
+        public static JsonSerializerSettings DefaultSerializerSettings => new JsonSerializerSettings()
         {
-            get {
-                return new JsonSerializerSettings()
-                {
-                    DefaultValueHandling = DefaultValueHandling.Ignore,
-                    Formatting = Formatting.None,
-                    NullValueHandling = NullValueHandling.Ignore,
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                    TypeNameHandling = TypeNameHandling.Auto
-                };
-            }
-        }
+            DefaultValueHandling = DefaultValueHandling.Ignore,
+            Formatting = Formatting.None,
+            NullValueHandling = NullValueHandling.Ignore,
+            PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+            ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+            TypeNameHandling = TypeNameHandling.Auto
+        };
 
         [JsonIgnore]
-        public JsonSerializer JsonSerializer { get; set; } 
+        public JsonSerializer JsonSerializer { get; set; }
 
         #region Constructors
 
         public DataSourceBuilder(string FileName) : this(new FileInfo(FileName).ReadToDataTable())
         {
-            
         }
 
-        public DataSourceBuilder() 
+        public DataSourceBuilder()
         {
-            JsonSerializer = JsonSerializer.Create(JsonSerializerSettings);
+            this.JsonSerializer = JsonSerializer.Create(this.JsonSerializerSettings);
         }
 
         public DataSourceBuilder(DataTable dt) : this()
@@ -159,40 +375,29 @@ namespace Penguin.Analysis
             this.RouteConstraints.Add(constraint);
         }
 
-        public void Serialize(string FilePath)
+        [JsonIgnore]
+        public Task PreloadTask { get; private set; }
+
+        [JsonIgnore]
+        public Task MemoryManagementTask { get; private set; }
+
+        [JsonIgnore]
+        public bool IsPreloaded { get; private set; }
+
+        [Flags]
+        public enum MemoryManagementStyle
         {
-            if (File.Exists(FilePath))
-            {
-                File.Delete(FilePath);
-            }
-
-            using (FileStream fstream = new FileStream(FilePath,FileMode.CreateNew)) {
-                using (LockedNodeFileStream stream = new LockedNodeFileStream(fstream))
-                {
-                    stream.Write((long)0);
-
-                    Result.BuilderRootNote.Serialize(stream);
-
-                    fstream.Seek(0, SeekOrigin.End);
-
-                    long JsonOffset = stream.Offset;
-
-                    string Json = JsonConvert.SerializeObject(this, JsonSerializerSettings);
-
-                    stream.Write(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(Json)));
-
-                    stream.Seek(0);
-
-                    stream.Write(JsonOffset);
-
-                    stream.Flush();
-                }
-            }
+            None = 0,
+            Preload = 1,
+            MemoryFlush = 2,
+            PreloadAndFlush = 3
         }
 
-        public static DataSourceBuilder Deserialize(string FilePath, JsonSerializerSettings jsonSerializerSettings = null)
+        public static DataSourceBuilder Deserialize(string FilePath, MemoryManagementStyle memoryManagementStyle = MemoryManagementStyle.MemoryFlush, JsonSerializerSettings jsonSerializerSettings = null)
         {
-            FileStream fstream = new FileStream(FilePath, FileMode.Open);
+            DiskNode._backingStream = null;
+
+            FileStream fstream = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             LockedNodeFileStream stream = new LockedNodeFileStream(fstream);
 
             long JsonOffset;
@@ -207,64 +412,289 @@ namespace Penguin.Analysis
             byte[] b64Bytes = new byte[fstream.Length - JsonOffset];
             int b64P = 0;
             int tbyte;
-            
-            while((tbyte = fstream.ReadByte()) != -1)
+
+            while ((tbyte = fstream.ReadByte()) != -1)
             {
-                b64Bytes[b64P++] = (byte)tbyte;    
+                b64Bytes[b64P++] = (byte)tbyte;
             }
 
             string Json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(System.Text.Encoding.UTF8.GetString(b64Bytes)));
 
             DataSourceBuilder toReturn = JsonConvert.DeserializeObject<DataSourceBuilder>(Json, jsonSerializerSettings ?? DefaultSerializerSettings);
 
-            toReturn.Result.RootNode = new DiskNode(stream, 8);
+            DiskNode virtualRoot = new DiskNode(stream, DiskNode.HeaderBytes);
+            
+            OptimizedRootNode gNode = new OptimizedRootNode(virtualRoot);
+
+            toReturn.Result.RootNode = gNode;
+
+
+
+            if (memoryManagementStyle != MemoryManagementStyle.None)
+            {
+                toReturn.Preload(FilePath, memoryManagementStyle);
+            }
 
             return toReturn;
         }
 
-        public void BuildOptions()
+        static string MemLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
+        public async void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
         {
+            const int Chunks = 15000;
+
+            static void Log(string toLog)
+            {
+                string toWrite = $"[{DateTime.Now.ToString("yyyy MM dd HH:mm:ss")}]: {toLog}";
+                Debug.WriteLine(toWrite);
+                Console.WriteLine(toWrite);
+                File.AppendAllLines(MemLog, new List<string>() { toWrite});
+
+            }
+
+            try
+            {
+                Log("Running Preload...");
+
+                ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                Log($"{freeMem} available");
+
+                Log($"{Settings.MinFreeMemory} Min Free Memory");
+
+                Log($"{Settings.RangeFreeMemory} Range Free Memory");
+
+
+
+                Log($"Memory management mode {memoryManagementStyle}");
+
+                if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+                {
+                    while (freeMem > Settings.MinFreeMemory + Settings.RangeFreeMemory)
+                    {
+                        Log($"Found Free Memory. Filling...");
+
+                        for (int i = 0; i < Chunks / 2; i++)
+                        {
+
+                            if (stream.Position >= JsonOffset)
+                            {
+                                return;
+                            }
+
+                            byte[] thisNodeBytes = new byte[8];
+
+                            stream.Read(thisNodeBytes, 0, thisNodeBytes.Length);
+
+                            DiskNode _ = DiskNode.LoadNode(DiskNode._backingStream, thisNodeBytes.GetLong(0), true);
+                        }
+
+                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+                    }
+                }
+
+                if (freeMem < Settings.MinFreeMemory)
+                {
+
+                    
+
+                    int chunkBytes = Chunks * 8;
+
+                    while (freeMem < Settings.MinFreeMemory + Settings.RangeFreeMemory)
+                    {
+
+                        Log($"Need more memory... Clearing cache.");
+                        DiskNode.ClearCache(memoryManagementStyle);
+
+                        Log($"Collecting Garbage...");
+                        GC.Collect();
+
+                        Log($"Waiting...");
+                        Task.Delay(5000).Wait();
+
+                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                        Log($"{freeMem} Free memory");
+
+                        if (freeMem > Settings.MinFreeMemory || stream.Position == SortOffset || !memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+                        {
+                            Log($"Nothing left to do.");
+                            return;
+                        }
+
+
+                        Log($"Reducing managed nodes...");
+
+                        long oldPost = stream.Position;
+
+                        long newPos = Math.Max(SortOffset, stream.Position - chunkBytes);
+
+                        stream.Seek(newPos, SeekOrigin.Begin);
+
+                        for (int i = 0; i < Chunks; i++)
+                        {
+                            byte[] thisBlock = new byte[8];
+
+                            stream.Read(thisBlock, 0, thisBlock.Length);
+
+                            long offset = thisBlock.GetLong(0);
+
+                            if (DiskNode.MemoryManaged.TryGetValue(offset, out DiskNode dn))
+                            {
+                                DiskNode.MemoryManaged.Remove(offset);
+                            }
+
+                            if (stream.Position >= stream.Length || stream.Position >= oldPost)
+                            {
+                                break;
+                            }
+                        }
+
+                        Log(DiskNode.MemoryManaged.Count + " Memory Managed nodes remaining.");
+                        GC.Collect();
+
+                        Task.Delay(5000).Wait();
+
+                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                        stream.Seek(newPos, SeekOrigin.Begin);
+                    }
+
+
+                }
+
+                this.IsPreloaded = true;
+            } catch(Exception ex)
+            {
+                Log(ex.Message);
+                Log(ex.StackTrace);
+                Debugger.Break();
+            }
+        }
+
+        public async void Preload(string Engine, MemoryManagementStyle memoryManagementStyle)
+        {
+            FileStream stream = new FileStream(Engine, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+
+            byte[] offsetBytes = new byte[DiskNode.HeaderBytes];
+
+            stream.Read(offsetBytes, 0, offsetBytes.Length);
+
+            long jsonOffset = offsetBytes.GetLong(0);
+            long SortOffset = offsetBytes.GetLong(8);
+
+            stream.Seek(SortOffset, SeekOrigin.Begin);
+
+            if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+            {
+                if (PreloadTask is null)
+                {
+                    PreloadTask = Task.Run(() => PreloadFunc(stream, SortOffset, jsonOffset, memoryManagementStyle));
+                }
+
+                await PreloadTask;
+            }
+
+            if (MemoryManagementTask is null)
+            {
+                MemoryManagementTask = new Task(() =>
+                {
+                    do
+                    {
+                        try
+                        {
+                            PreloadFunc(stream, SortOffset, jsonOffset, memoryManagementStyle);
+                        } catch(Exception ex)
+                        {
+                            Console.WriteLine("Prelod function failed to execute...");
+                            Console.WriteLine(ex.Message);
+                        }
+
+                        Task.Delay(5000).Wait();
+                    } while (true);
+                });
+
+                MemoryManagementTask.Start();
+            }
+
+        }
+
+        public bool IfValid(List<string> Headers, Action<List<string>> HeaderAction = null)
+        {
+            while(!this.ValidateRouteConstraints(Headers) && Headers.Count > 0)
+            {
+                Headers = Headers.Take(Headers.Count - 1).ToList();
+
+                if(Headers.Count == 0)
+                {
+                    return false;
+                }
+            }
+
+            HeaderAction?.Invoke(Headers);
+
+            return true;
+        }
+
+        public void Generate(LockedNodeFileStream outputStream)
+        {
+
+
             ScreenBuffer.Clear();
 
             ScreenBuffer.ReplaceLine($"Building complex tree", 0);
 
+            
+
             int KeyIndex = this.Registrations.IndexOf(this.Registrations.Single(r => r.Column.GetType() == typeof(Key)));
 
-            ConcurrentBag<Node> root = new ConcurrentBag<Node>() { };
             object rootLock = new object();
 
             this.Result.ExpectedMatches = Math.Pow(2, (this.Registrations.Count - 1));
 
-            foreach (List<string> headerCombo in Combinations.Get(this.Registrations.Select(r => r.Header).ToList()))
-            {
-                if (this.ValidateRouteConstraints(headerCombo))
-                {
-                    this.Result.ExpectedMatches--;
-                }
-            }
-
-            IList<(sbyte ColumnIndex, int[] Values)>[] rawGraph = this.BuildComplexTree(
-                                                                this.Registrations
-                                                                    .Where(r => r.Column.GetType() != typeof(Key))
-                                                                    .Select(r =>
+            NodeSetCollection[] rawGraph = this.BuildComplexTree(this.Registrations
+                                                                     //.OrderByDescending(r => r.Column.GetOptions().Count())
+                                                                     .Where(r => r.Column.GetType() != typeof(Key))
+                                                                     .Select(r =>
                                                                         ((sbyte)this.Registrations.IndexOf(r),
                                                                          r.Column.GetOptions()
                                                                                  .ToArray())
-                                                                        )
-                                                                                                                                        .ToArray());
+                                                                        ).ToArray()).Select(n => new NodeSetCollection(n)).ToArray();
 
-            List<IList<NodeSet>> graph = new List<IList<NodeSet>>(rawGraph.Length);
+            HashSet<NodeSetCollection> graph = new HashSet<NodeSetCollection>();
 
             ScreenBuffer.ReplaceLine($"Applying Constraints", 0);
-            foreach (IList<(sbyte ColumnIndex, int[] Values)> nodeSet in rawGraph)
-            {
-                List<string> Headers = nodeSet.Select(n => this.Registrations[n.ColumnIndex].Header).ToList();
 
-                if (this.ValidateRouteConstraints(Headers))
+            foreach (NodeSetCollection nodeSetCollection in rawGraph)
+            {
+                List<string> Headers = nodeSetCollection.Select(n => this.Registrations[n.ColumnIndex].Header).ToList();
+
+                if(!IfValid(Headers, (headers) =>
                 {
-                    graph.Add(nodeSet.Select(ns => new NodeSet(ns)).ToList());
-                    this.Result.TotalRoutes++;
+                    NodeSetCollection nSet = nodeSetCollection.Take(headers.Count).ToList();
+
+                    if (graph.Add(nSet))
+                    {
+                        this.Result.GraphInstances++;
+
+                        foreach (NodeSet ns in nSet) {
+                            this.Result.ColumnInstances[ns.ColumnIndex]++;
+                        }
+
+                        Settings.CheckedConstraint?.Invoke(headers, true);
+                        this.Result.TotalRoutes++;
+                    } else
+                    {
+                        this.Result.ExpectedMatches--;
+                    }
+                }))
+                {
+                    this.Result.ExpectedMatches--;
                 }
+
+                bool Valid = this.ValidateRouteConstraints(Headers);
+                
             }
 
             rawGraph = null;
@@ -272,8 +702,26 @@ namespace Penguin.Analysis
             ScreenBuffer.ReplaceLine($"Building decision tree", 0);
             ScreenBuffer.AutoFlush = false;
 
-            double graphi = 0;
-            double graphc = graph.Count;
+            long graphi = 0;
+
+            long graphc = graph.Count;
+
+            long RootChildListOffset = DiskNode.HeaderBytes + DiskNode.NodeSize;
+
+            outputStream.Seek(DiskNode.HeaderBytes + 24);
+
+            outputStream.Write((sbyte)-1);
+            outputStream.Write((long)-1);
+
+            outputStream.Seek(RootChildListOffset - 4);
+
+            outputStream.Write((int)graphc);
+
+            long CurrentNodeOffset = (graphc * DiskNode.NextSize) + RootChildListOffset;
+
+            object offsetLock = new object();
+
+            outputStream.Seek(CurrentNodeOffset);
 
             int DisplayLines = 2;
             int threads = Environment.ProcessorCount * 1;
@@ -287,6 +735,33 @@ namespace Penguin.Analysis
             {
                 screenLocks[i] = new object();
             }
+
+            bool generatingNodes = true;
+
+            ConcurrentQueue<MemoryNodeFileStream> flushCommands = new ConcurrentQueue<MemoryNodeFileStream>();
+            Task flushToDisk = Task.Run(() =>
+            {
+                do
+                {
+                    while (flushCommands.Any())
+                    {
+                        MemoryNodeFileStream command;
+
+                        while (!flushCommands.TryDequeue(out command))
+                        { }
+                        while (!command.Ready)
+                        {
+                            System.Threading.Thread.Sleep(50);
+                        }
+
+                        outputStream.Write(command.ToArray());
+                    }
+
+                    System.Threading.Thread.Sleep(50);
+                } while (generatingNodes || flushCommands.Any());
+            });
+
+            SerializationResults results = new SerializationResults();
 
             Parallel.ForEach(graph, new ParallelOptions()
             {
@@ -310,20 +785,18 @@ namespace Penguin.Analysis
 
                 Node thisRoot = new Node(-1, -1, nodeSetData[0].Values.Length, this.Result.RawData.RowCount);
 
-                root.Add(thisRoot);
-
                 IEnumerable<Node> thisRootList = new List<Node> { thisRoot };
 
                 nodesetc = nodeSetData.Count;
 
-                ScreenBuffer.ReplaceLine($"--------Graph: [{graphi + 1}/{graphc}] NodeSet: [0/{nodesetc}] Step: Evaluating --------", RootLine);
+                ScreenBuffer.ReplaceLine($"--------Graph: [{graphi + 1}/{graphc}]", RootLine);
 
                 double dataRowi = 0;
                 double dataRowc = this.Result.RawData.RowCount;
                 double thisProgress = 0;
                 double lastProgress = 0;
 
-                ScreenBuffer.ReplaceLine($"Seeding...", RootLine + 1);
+                //ScreenBuffer.ReplaceLine($"Seeding...", RootLine + 1);
                 ScreenBuffer.Flush();
 
                 thisRoot.MatchingRows = this.Result.RawData.Rows.ToList();
@@ -339,7 +812,7 @@ namespace Penguin.Analysis
                     lastProgress = 0;
                     double pruned = 0;
 
-                    ScreenBuffer.ReplaceLine($"--------Graph: [{graphi + 1}/{graphc}] NodeSet: [{nodeseti + 1}/{nodesetc}] Step: Branching  --------", RootLine);
+                    //ScreenBuffer.ReplaceLine($"--------Graph: [{graphi + 1}/{graphc}] NodeSet: [{nodeseti + 1}/{nodesetc}] Step: Branching  --------", RootLine);
 
                     if (nodeseti < nodesetc - 1)
                     {
@@ -354,15 +827,16 @@ namespace Penguin.Analysis
 
                             if (thisProgress != lastProgress)
                             {
-                                string output = $"{string.Format("{0:00.00}", thisProgress)}%; Pruned: {string.Format("{0:00.00}", Math.Round(pruned / dataRowc * 100, 2))}%";
+                                //string output = $"{string.Format("{0:00.00}", thisProgress)}%; Pruned: {string.Format("{0:00.00}", Math.Round(pruned / dataRowc * 100, 2))}%";
 
-                                ScreenBuffer.ReplaceLine(output, RootLine + 1);
+                                //ScreenBuffer.ReplaceLine(output, RootLine + 1);
 
-                                ScreenBuffer.Flush();
+                                //ScreenBuffer.Flush();
                                 lastProgress = thisProgress;
                             }
 
                             if (!node.AddNext(
+                                this,
                                 new Node(ColumnIndex,
                                 Values[i],
                                 childCount,
@@ -387,40 +861,75 @@ namespace Penguin.Analysis
                     n.Trim();
                 }
 
-                graphi++;
+                
+                //thisRoot.Header = -1;
+
+                thisRoot.FillNodeData(this.Result.PositiveIndicators, this.Result.RawData.RowCount);
+
+                thisRoot.TrimNodesWithNoBearing(this);
+
+                thisRoot.Trim();
+
+                long thisNodeIndex = graphi++;
+                MemoryNodeFileStream memCache;
+
+                lock (offsetLock)
+                {
+                    memCache = new MemoryNodeFileStream(CurrentNodeOffset);
+                    CurrentNodeOffset += thisRoot.GetLength();
+                    flushCommands.Enqueue(memCache);
+                }
+
+                results.AddRange(thisRoot.Serialize(memCache, DiskNode.HeaderBytes));
+
+                memCache.Ready = true;
 
                 Monitor.Exit(screenLocks[displaySlot]);
+
+                thisRoot = null;
+
+                thisRootList = null;
+
+                ScreenBuffer.Flush();
             });
 
-            List<Node> ComplexTree = root.ToList();
+            generatingNodes = false;
 
-            this.Result.RootNode = new Node(-1, -1, ComplexTree.Count, this.Result.RawData.RowCount);
+            flushToDisk.Wait();
 
-            this.TrimNodesWithNoBearing();
+            IEnumerable<NodeMeta> PreloadResults = results.OrderByDescending(n => n.Matches);
+            IEnumerable<NodeMeta> RootOffsets = results.Where(n => n.Root).OrderBy(n => n.Header).ThenByDescending(n => n.Matches);
 
-            for (int i = 0; i < ComplexTree.Count; i++)
+           
+
+            long sortPos = outputStream.Offset;
+
+            outputStream.Seek(RootChildListOffset);
+
+            byte[] v = new byte[] { 0, 0, 0, 0 };
+
+            foreach (long l in RootOffsets.Select(n => n.Offset))
             {
-                this.Result.BuilderRootNote.AddNext(ComplexTree[i], i, false);
+                outputStream.Write(l);
+                outputStream.Write(v);
             }
 
-            ScreenBuffer.ReplaceLine("Flattening Tree", 0);
-            ScreenBuffer.Flush();
+            outputStream.Seek(8);
+            outputStream.Write(sortPos);
 
-            foreach (Node n in this.Result.BuilderRootNote.FullTree())
+            outputStream.Seek(sortPos);
+
+
+
+            foreach (NodeMeta nm in PreloadResults)
             {
-                if (n.Header == -1)
-                { continue; }
-
-                float MissingMatches = this.Result.PositiveIndicators - n.Results[(int)MatchResult.Both];
-
-                float MissingMisses = this.Result.RawData.RowCount - (MissingMatches + n.Results[(int)MatchResult.Route] + n.Results[(int)MatchResult.Both]);
-
-                n.Results[(int)MatchResult.None] = (int)MissingMisses;
-                n.Results[(int)MatchResult.Output] = (int)MissingMatches;
+                outputStream.Write(nm.Offset);
             }
 
-            this.Result.BuilderRootNote.Trim();
+
+            this.Result.RootNode = new DiskNode(outputStream, DiskNode.HeaderBytes);
         }
+
 
         public Evaluation Evaluate(DataRow dr)
         {
@@ -432,25 +941,27 @@ namespace Penguin.Analysis
             }
 
             return this.Evaluate(toEvaluate);
+
+            
         }
 
         public Evaluation Evaluate(Dictionary<string, string> dataRow)
         {
-            Evaluation evaluation = new Evaluation(this.Transform(dataRow))
+            Evaluation evaluation = new Evaluation(this.Transform(dataRow), this.Result)
             {
                 //evaluation.Score = this.Result.BaseRate;
 
                 Result = this.Result
             };
 
-            this.Result.RootNode.Evaluate(evaluation);
+            INode rootNode = this.Result.RootNode;
 
-            //evaluation.Score = (float)((evaluation.Score + ((this.Result.ExpectedMatches - evaluation.Score) / 2)) / this.Result.ExpectedMatches);
+            rootNode.Evaluate(evaluation);
 
             return evaluation;
         }
 
-        public string GetNodeName(Node toCheck)
+        public string GetNodeName(INode toCheck)
         {
             string toReturn = string.Empty;
 
@@ -473,11 +984,43 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        public void Go()
+        public void Build(string outputFilePath)
         {
+
             this.Transform();
 
-            this.BuildOptions();
+            using (FileStream fstream = new FileStream(outputFilePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read, 1_000_000_00))
+            {
+                using (LockedNodeFileStream stream = new LockedNodeFileStream(fstream))
+                {
+                    stream.Write((long)0);
+
+                    this.Generate(stream);
+
+                    fstream.Seek(0, SeekOrigin.End);
+
+                    long JsonOffset = stream.Offset;
+
+                    try
+                    {
+
+                        string Json = JsonConvert.SerializeObject(this, this.JsonSerializerSettings);
+
+                        stream.Write(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(Json)));
+
+                        stream.Seek(0);
+
+                        stream.Write(JsonOffset);
+
+                        stream.Flush();
+                    } catch(Exception ex)
+                    {
+                        throw;
+                    }
+                }
+            }
+
+            
         }
 
         public void RegisterColumn(string ColumnName, IDataColumn registration)
@@ -489,7 +1032,7 @@ namespace Penguin.Analysis
         {
             foreach (string ColumnName in ColumnNames)
             {
-                this.Registrations.Add(new ColumnRegistration() { Header = ColumnName, Column = Activator.CreateInstance<T>() });
+                this.Registrations.Add(new ColumnRegistration() { Header = ColumnName, Column = (T)Activator.CreateInstance(typeof(T), this) });
             }
         }
 
@@ -525,32 +1068,6 @@ namespace Penguin.Analysis
             dt.Rows.Add(values.ToArray());
 
             return this.Transform(dt).Rows.First();
-        }
-
-        public int TrimNodesWithNoBearing()
-        {
-            int total = 0;
-            //Going to attempt to trim any nodes with no bearing on the final result here.
-            int altered;
-            do
-            {
-                altered = 0;
-
-                foreach (Node N in this.Result.BuilderRootNote.FullTree())
-                {
-                    if (N.Next is null || !N.Next.Any())
-                    {
-                        if (Math.Abs(N.Accuracy - this.Result.BaseRate) < Settings.Results.MinimumWeight)
-                        {
-                            N.ParentNode.RemoveNode(N);
-                            altered++;
-                            total++;
-                        }
-                    }
-                }
-            } while (altered != 0);
-
-            return total;
         }
 
         private IList<(sbyte ColumnIndex, T[] Values)>[] BuildComplexTree<T>((sbyte ColumnIndex, T[] Values)[] ColumnData)

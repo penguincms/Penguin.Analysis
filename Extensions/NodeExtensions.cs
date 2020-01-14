@@ -1,6 +1,7 @@
 ﻿using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -11,25 +12,93 @@ namespace Penguin.Analysis.Extensions
         #region Methods
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetScore(this INode tnode)
+        public static float CalculateScore(this INode tnode, float BaseRate)
         {
-            int RB = (tnode.Results[(int)MatchResult.Route] + tnode.Results[(int)MatchResult.Both]);
-
-            if(RB == 0)
+            if (tnode is null)
             {
-                return 0;
+                throw new ArgumentNullException(nameof(tnode));
             }
 
-            return (tnode.Results[(int)MatchResult.Both] + 1) / RB - (float)(tnode.Results[(int)MatchResult.Route] + 1) / RB;
+            float Accuracy = tnode.GetAccuracy();
+
+            if(Accuracy < BaseRate)
+            {
+                return (1 - 1 / (BaseRate / Accuracy)) * -1;
+            } else
+            {
+                return 1 - (1 / (BaseRate * 2 / BaseRate)) + BaseRate;
+            }
         }
 
+        internal static bool StandardEvaluate(this INode node, Evaluation e)
+        {
+
+            if (node is null)
+            {
+                throw new ArgumentNullException(nameof(node));
+            }
+            if (e is null)
+            {
+                throw new ArgumentNullException(nameof(e));
+            }
+
+            if (node.Header == -1)
+            {
+                foreach (INode child in node.Next)
+                {
+                    if (child.Evaluate(e) && child.Header != -1)
+                    {
+                        break;
+                    }
+                }
+
+                return true;
+            }
+
+
+            bool MatchesRoute = e.DataRow.Equals(node.Header, node.Value);
+
+            if (MatchesRoute)
+            {
+                if (node.ChildCount > 0)
+                {
+                    INode Next = node.GetNextByValue(e.DataRow[node.ChildHeader]);
+
+                    if (Next != null)
+                    {
+                        Next.Evaluate(e);
+                    }
+                }
+
+                e.MatchRoute(node);
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetMatched(this INode tnode)
         {
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
             return tnode.Results[(int)MatchResult.Route] + tnode.Results[(int)MatchResult.Both];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float GetAccuracy(this INode tnode)
         {
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
             if (tnode.Results[(int)MatchResult.Route] == 0 && tnode.Results[(int)MatchResult.Both] > 0)
             {
                 return 1;
@@ -40,10 +109,11 @@ namespace Penguin.Analysis.Extensions
             return d == 0 ? 0 : tnode.Results[(int)MatchResult.Both] / d;
         }
 
-        public static int GetDepth(this INode tnode)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static byte GetDepth(this INode tnode)
         {
             INode toCheck = tnode;
-            int depth = 0;
+            byte depth = 0;
 
             while (toCheck != null && toCheck.Header != -1)
             {
@@ -55,17 +125,92 @@ namespace Penguin.Analysis.Extensions
             return depth;
         }
 
-        public static long Serialize(this Node tnode, LockedNodeFileStream lockedNodeFileStream, long ParentOffset = 0)
+        public static void FillNodeData(this Node n, float PositiveIndicators, int RawRowCount)
         {
-            long thisNodeOffset = lockedNodeFileStream.Offset;
+            if (n is null)
+            {
+                throw new ArgumentNullException(nameof(n));
+            }
 
+            if (n.Header == -1)
+            { return; }
+
+            float MissingMatches = PositiveIndicators - n.Results[(int)MatchResult.Both];
+
+            float MissingMisses = RawRowCount - (MissingMatches + n.Results[(int)MatchResult.Route] + n.Results[(int)MatchResult.Both]);
+
+            n.Results[(int)MatchResult.None] = (int)MissingMisses;
+            n.Results[(int)MatchResult.Output] = (int)MissingMatches;
+        }
+
+        public static void TrimNodesWithNoBearing(this Node target, DataSourceBuilder sourceBuilder)
+        {
+            float MinimumAccuracy = sourceBuilder.Settings.Results.MinimumAccuracy;
+            float BaseRate = sourceBuilder.Result.BaseRate;
+
+            if (target is null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            if (target.Next != null)
+            {
+                foreach (Node next in target.Next)
+                {
+                    next.TrimNodesWithNoBearing(sourceBuilder);
+                }
+            }
+
+            if (target.Header != -1 && (target.Next is null || !target.Next.Where(n => n != null).Any()))
+            {
+                if((target.Accuracy > BaseRate - (BaseRate * MinimumAccuracy) && target.Accuracy < ((1 - BaseRate) * MinimumAccuracy) + BaseRate) && target.ParentNode != null)
+                {
+                    sourceBuilder.Settings.TrimmedNode?.Invoke(target);
+
+                    target.ParentNode.RemoveNode(target);
+                }
+#if DEBUG
+                else
+                {
+
+                }
+#endif
+                target.LastNode = true;
+            }
+        }
+
+        public static long GetLength(this Node tnode)
+        {
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
+            long length = DiskNode.NodeSize;
+
+            if (!(tnode.Next is null))
+            {
+                foreach (Node cnode in tnode.Next)
+                {
+                    length += DiskNode.NextSize;
+                    length += cnode.GetLength();
+                }
+            }
+
+            return length;
+        }
+
+        internal static SerializationResults Serialize(this Node tnode, INodeFileStream lockedNodeFileStream, long ParentOffset = 0)
+        {
+            SerializationResults results = new SerializationResults(lockedNodeFileStream, tnode, ParentOffset);
+            long thisOffset = results.Single().Offset;
             //parent 0 - 8
-            
+
             byte[] toWrite = new byte[DiskNode.NodeSize];
 
             BitConverter.GetBytes(ParentOffset).CopyTo(toWrite, 0);
 
-            for(int i = 0; i < 4; i++)
+            for (int i = 0; i < 4; i++)
             {
                 BitConverter.GetBytes(tnode.Results[i]).CopyTo(toWrite, 8 + i * 4);
             }
@@ -79,40 +224,62 @@ namespace Penguin.Analysis.Extensions
 
             toWrite[29] = tnode.LastNode ? (byte)1 : (byte)0;
 
+            toWrite[30] = (byte)tnode.ChildHeader;
+
+            int nCount = tnode.ChildCount;
+
+            BitConverter.GetBytes(nCount).CopyTo(toWrite, toWrite.Length - 4);
+
             lockedNodeFileStream.Write(toWrite);
 
-            if (!(tnode.Next is null))
+            if (nCount > 0)
             {
-                long ChildrenStartOffset = lockedNodeFileStream.Offset + (tnode.Next.Length * 8) + 8;
+                List<Node> orderedList = tnode.Next.OrderBy(tn => tn.Header).ThenByDescending(tn => tn.GetMatched()).ToList();
+
+                int skip = (nCount * DiskNode.NextSize);
+
                 long ChildListOffset = lockedNodeFileStream.Offset;
-                long CurrentChildOffset = ChildrenStartOffset;
 
+                byte[] skipBytes = new byte[skip];
 
+                lockedNodeFileStream.Write(skipBytes);
 
-                for (int i = 0; i < tnode.Next.Length; i++)
+                byte[] nextOffsets = new byte[nCount * DiskNode.NextSize];
+
+                int i;
+
+                for (i = 0; i < nCount; i++)
                 {
+                    BitConverter.GetBytes(lockedNodeFileStream.Offset).CopyTo(nextOffsets, i * DiskNode.NextSize);
+                    BitConverter.GetBytes(orderedList.ElementAt(i).Value).CopyTo(nextOffsets, i * DiskNode.NextSize + 8);
 
-                    lockedNodeFileStream.Seek(ChildListOffset + (i * 8));
-
-                    lockedNodeFileStream.Write(CurrentChildOffset);
-
-                    lockedNodeFileStream.Seek(CurrentChildOffset);
-
-                    tnode.Next[i].Serialize(lockedNodeFileStream, thisNodeOffset);
-
-                    CurrentChildOffset = lockedNodeFileStream.Offset;
-
-                    
+                    results.AddRange(orderedList.ElementAt(i).Serialize(lockedNodeFileStream, thisOffset));
                 }
+
+                long lastOffset = lockedNodeFileStream.Offset;
+
+                lockedNodeFileStream.Seek(ChildListOffset);
+
+                lockedNodeFileStream.Write(nextOffsets);
+
+                lockedNodeFileStream.Seek(lastOffset);
             }
 
-            lockedNodeFileStream.Write(0);
-
-            return thisNodeOffset;
+            return results;
         }
 
-        public static bool AddNext(this Node tnode, Node next, int i, bool trim = true)
+        public static bool AddNext(this Node tnode, DataSourceBuilder sourceBuilder, Node next, int i, bool trim = true)
         {
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
+            if (next is null)
+            {
+                throw new ArgumentNullException(nameof(next));
+            }
+
             if (trim)
             {
                 foreach (TypelessDataRow row in tnode.MatchingRows)
@@ -124,12 +291,12 @@ namespace Penguin.Analysis.Extensions
 
                 int hits = next.Matched;
 
-                if (DataSourceBuilder.Settings.Results.MatchOnly && next.Results[(int)MatchResult.Both] == 0)
+                if (sourceBuilder.Settings.Results.MatchOnly && next.Results[(int)MatchResult.Both] == 0)
                 {
                     hits = 0;
                 }
 
-                if (hits >= DataSourceBuilder.Settings.Results.MinimumHits)
+                if (hits >= sourceBuilder.Settings.Results.MinimumHits)
                 {
                     tnode.Next[i] = next;
                     next.ParentNode = tnode;
@@ -148,7 +315,12 @@ namespace Penguin.Analysis.Extensions
 
         public static void CheckValidity(this Node tnode)
         {
-            if (!tnode.LastNode && tnode.Next.Where(n => n != null).Count() == 0)
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
+            if (!tnode.LastNode && !tnode.Next.Where(n => n != null).Any())
             {
                 tnode.ParentNode?.RemoveNode(tnode);
             }
@@ -175,48 +347,19 @@ namespace Penguin.Analysis.Extensions
             return Depth;
         }
 
-        public static bool Evaluate(this INode tnode, Evaluation e)
-        {
-            if (tnode.Header == -1)
-            {
-                foreach (Node child in tnode.Next)
-                {
-                    if (child.Evaluate(e) && child.Header != -1)
-                    {
-                        break;
-                    }
-                }
-
-                return true;
-            }
-
-            bool MatchesRoute = e.DataRow.Equals(tnode.Header, tnode.Value);
-
-            if (MatchesRoute)
-            {
-                if (tnode.Next != null)
-                {
-                    foreach (Node child in tnode.Next)
-                    {
-                        if (child.Evaluate(e) && child.Header != -1)
-                        {
-                            break;
-                        }
-                    }
-                }
-
-                e.MatchRoute(tnode);
-
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
 
         public static bool Evaluate(this Node tnode, TypelessDataRow dataRow)
         {
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
+            if (dataRow is null)
+            {
+                throw new ArgumentNullException(nameof(dataRow));
+            }
+
             if (tnode.Header == -1)
             {
                 tnode.MatchingRows.Add(dataRow);
@@ -244,8 +387,13 @@ namespace Penguin.Analysis.Extensions
             return MatchesRoute;
         }
 
-        public static IEnumerable<Node> FullTree(this Node tnode)
+        public static IEnumerable<INode> FullTree(this INode tnode)
         {
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
             if (tnode.Header != -1)
             {
                 yield return tnode;
@@ -253,14 +401,14 @@ namespace Penguin.Analysis.Extensions
 
             if (tnode.Next != null)
             {
-                foreach (Node child in tnode.Next)
+                foreach (INode child in tnode.Next)
                 {
                     if (child is null)
                     {
                         continue;
                     }
 
-                    foreach (Node n in child.FullTree())
+                    foreach (INode n in child.FullTree())
                     {
                         yield return n;
                     }
@@ -273,15 +421,19 @@ namespace Penguin.Analysis.Extensions
             int Key = 0;
 
             INode n = tnode;
-            List<INode> tree = new List<INode>();
-
-            while (n != null)
+            
+            static IEnumerable<INode> GetTree(INode np)
             {
-                tree.Add(n);
-                n = n.ParentNode;
+                INode n = np;
+                while (n != null)
+                {
+                    yield return n;
+
+                    n = n.ParentNode;
+                }
             }
 
-            foreach (INode tn in tree.Where(tnn => tnn.Header != -1))
+            foreach (INode tn in GetTree(n).Where(tnn => tnn.Header != -1))
             {
                 Key |= (1 << tn.Header);
             }
@@ -291,6 +443,16 @@ namespace Penguin.Analysis.Extensions
 
         public static float GetWeight(this Node n, AnalysisResults r)
         {
+            if (n is null)
+            {
+                throw new ArgumentNullException(nameof(n));
+            }
+
+            if (r is null)
+            {
+                throw new ArgumentNullException(nameof(r));
+            }
+
             float Weight;
             if (n.Accuracy > r.BaseRate)
             {
@@ -306,13 +468,26 @@ namespace Penguin.Analysis.Extensions
 
         public static void RemoveNode(this Node tnode, Node n)
         {
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
             tnode.Next = tnode.Next.Where(ni => ni != n).ToArray();
 
             tnode.CheckValidity();
         }
 
+
         public static void Trim(this Node tnode)
         {
+            if (tnode is null)
+            {
+                throw new ArgumentNullException(nameof(tnode));
+            }
+
+
+
             if (tnode.Next != null)
             {
                 tnode.Next = tnode.Next.Where(n => n != null).ToArray();

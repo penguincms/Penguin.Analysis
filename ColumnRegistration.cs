@@ -12,5 +12,10 @@ namespace Penguin.Analysis
         public string Header { get; set; }
 
         #endregion Properties
+
+        public override string ToString()
+        {
+            return $"{this.Header}: {this.GetType()}";
+        }
     }
 }

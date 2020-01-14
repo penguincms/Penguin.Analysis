@@ -18,13 +18,32 @@ namespace Penguin.Analysis
         [JsonProperty("R", Order = 1)]
         public int[] Results { get; set; } = new int[4];
 
+        public int Key
+        {
+            get
+            {
+                if (key is null)
+                {
+                    key = this.GetKey();
+                }
+                return key.Value;
+            }
+        }
+
+        private int? key;
+
         #endregion Fields
 
         #region Properties
-
+        INode INode.GetNextByValue(int Value) => this.GetNextByValue(Value);
         public float Accuracy => this.GetAccuracy();
 
-        public int Depth => this.GetDepth();
+        public byte Depth => this.GetDepth();
+
+        public float GetScore(float BaseRate)
+        {
+            return this.CalculateScore(BaseRate);
+        }
 
         [JsonProperty("H", Order = 2)]
         public sbyte Header { get; set; }
@@ -42,8 +61,6 @@ namespace Penguin.Analysis
 
         [JsonProperty("P", Order = 0)]
         public Node ParentNode { get; set; }
-
-        public float Score => this.GetScore();
 
         [JsonProperty("V", Order = 3)]
         public int Value { get; set; }
@@ -96,6 +113,37 @@ namespace Penguin.Analysis
             }
         }
 
+        public void Preload(int depth)
+        {
+
+        }
+
+        public void Flush(int depth)
+        {
+
+        }
+
+        public bool Evaluate(Evaluation e) => this.StandardEvaluate(e);
+
+        public Node GetNextByValue(int Value)
+        {
+            if(ChildCount == 0)
+            {
+                return null;
+            } else
+            {
+                foreach(Node n in Next)
+                {
+                    if(n.Value == Value)
+                    {
+                        return n;
+                    }
+                }
+            }
+
+            return null;
+        }
+
         INode INode.ParentNode => this.ParentNode;
 
         IEnumerable<INode> INode.Next => this.Next?.Cast<INode>()?.ToArray();
@@ -103,9 +151,11 @@ namespace Penguin.Analysis
         IEnumerable<Node> INode<Node>.Next
         {
             get => this.Next;
-
-            set => this.Next = value.ToArray();
         }
+
+        public int ChildCount => this.Next?.Length ?? 0;
+
+        public sbyte ChildHeader => (sbyte)(ChildCount > 0 ? this.Next.Select(n => n.Header).Distinct().Single() : -1);
 
         #endregion Methods
     }

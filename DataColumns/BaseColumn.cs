@@ -8,6 +8,13 @@ namespace Penguin.Analysis.DataColumns
     {
         #region Methods
 
+        public BaseColumn(DataSourceBuilder sourceBuilder)
+        {
+            SourceBuilder = sourceBuilder;
+        }
+
+        public DataSourceBuilder SourceBuilder { get; set; }
+
         public virtual string Display(int Value)
         {
             return Value.ToString();

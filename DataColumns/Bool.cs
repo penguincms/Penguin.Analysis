@@ -6,6 +6,9 @@ namespace Penguin.Analysis.DataColumns
     [Serializable]
     public class Bool : BaseColumn
     {
+        public Bool(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        {
+        }
         #region Methods
 
         public static int GetValue(string input)

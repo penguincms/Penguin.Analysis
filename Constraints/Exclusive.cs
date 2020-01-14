@@ -19,10 +19,12 @@ namespace Penguin.Analysis.Constraints
         #region Constructors
 
         public Exclusive(params string[] headers)
-        { 
-            if(headers.Length > 0){
-            this.Headers = headers.ToList();
-            } else
+        {
+            if (headers.Length > 0)
+            {
+                this.Headers = headers.ToList();
+            }
+            else
             {
                 throw new ArgumentException("At least one header must be specified");
             }
@@ -34,16 +36,16 @@ namespace Penguin.Analysis.Constraints
 
         public bool Evaluate(params string[] headers)
         {
-            if (Headers.Count > 1)
+            if (this.Headers.Count > 1)
             {
-                return !(this.Headers.Count >= headers.Length && Headers.All(h => headers.Contains(h)));
+                return !(this.Headers.Count >= headers.Length && this.Headers.All(h => headers.Contains(h)));
             }
             else
             {
-                return headers.Length == 1 || !headers.Contains(Headers.First());
+                return headers.Length == 1 || !headers.Contains(this.Headers.First());
             }
-
         }
+
         #endregion Methods
     }
 }

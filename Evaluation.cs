@@ -1,6 +1,7 @@
 ﻿using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -12,23 +13,25 @@ namespace Penguin.Analysis
 
         public TypelessDataRow DataRow { get; set; }
 
-        public Dictionary<int, INode> MatchedRoutes { get; set; } = new Dictionary<int, INode>();
+        public ConcurrentDictionary<int, INode> MatchedRoutes { get; } = new ConcurrentDictionary<int, INode>();
 
         public int MatchingRoutes { get; set; }
 
         public AnalysisResults Result { get; set; }
 
-        public float Score => this.Scores.Average();
+        public float Score => !this.MatchedRoutes.Any() ? 0 : this.Scores.Average();
 
-        public List<float> Scores { get; set; }
+        protected AnalysisResults AnalysisResults { get; set; }
+        public ConcurrentBag<float> Scores { get; }
 
         #endregion Properties
 
         #region Constructors
 
-        public Evaluation(TypelessDataRow dataRow)
+        public Evaluation(TypelessDataRow dataRow, AnalysisResults BuilderResults)
         {
-            this.Scores = new List<float>();
+            AnalysisResults = BuilderResults;
+            this.Scores = new ConcurrentBag<float>();
             this.DataRow = dataRow;
         }
 
@@ -38,35 +41,26 @@ namespace Penguin.Analysis
 
         public void MatchRoute(INode n)
         {
-            int Key = n.GetKey();
+            if (n is null)
+            {
+                throw new ArgumentNullException(nameof(n));
+            }
+
+            int Key = n.Key;
 
             if (!this.MatchedRoutes.ContainsKey(Key))
             {
-                this.MatchedRoutes.Add(Key, n);
+                this.MatchedRoutes.TryAdd(Key, n);
 
                 int sign = n.Accuracy < this.Result.BaseRate ? -1 : 1;
 
-                this.Scores.Add(sign * this.Weight(n));
+                int counts = AnalysisResults.GraphInstances / AnalysisResults.ColumnInstances[n.Header];
+
+                for (int i = 0; i < counts; i++)
+                {
+                    this.Scores.Add(n.GetScore(Result.BaseRate));
+                }
             }
-        }
-
-        public float Weight(INode n)
-        {
-            float thisAccuracy = n.Accuracy;
-
-            float weight;
-            if (thisAccuracy < this.Result.BaseRate)
-            {
-                weight = (1 - (thisAccuracy / this.Result.BaseRate));
-            }
-            else
-            {
-                weight = ((thisAccuracy - this.Result.BaseRate) / (1 - this.Result.BaseRate));
-            }
-
-            weight = (float)Math.Pow(weight, 1f);
-
-            return weight;
         }
 
         #endregion Methods

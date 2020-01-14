@@ -45,6 +45,11 @@ namespace Penguin.Analysis
         }
 
         #endregion Methods
+
+        public override string ToString()
+        {
+            return string.Join(", ", _Items);
+        }
     }
 
     [Serializable]

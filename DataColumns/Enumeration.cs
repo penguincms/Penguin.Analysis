@@ -11,6 +11,10 @@ namespace Penguin.Analysis.DataColumns
 
         public Dictionary<string, EnumOption> valuesDict = new Dictionary<string, EnumOption>();
 
+        public Enumeration(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        {
+        }
+
         #endregion Fields
 
         #region Classes
@@ -85,7 +89,7 @@ namespace Penguin.Analysis.DataColumns
 
                 show = show && thisOption.Instances >= GlobalSettings.MinimumInstances;
 
-                show = show && (!DataSourceBuilder.Settings.Results.MatchOnly || thisOption.Indicators > 0);
+                show = show && (!SourceBuilder.Settings.Results.MatchOnly || thisOption.Indicators > 0);
 
                 if (show)
                 {

@@ -15,11 +15,11 @@ namespace Penguin.Analysis.DataColumns
 
         #region Constructors
 
-        public RangedFloat()
+        public RangedFloat(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
         {
         }
 
-        public RangedFloat(params int[] rangeStarts)
+        public RangedFloat(DataSourceBuilder sourceBuilder, params int[] rangeStarts) : base(sourceBuilder)
         {
             foreach (int i in rangeStarts)
             {
@@ -27,7 +27,7 @@ namespace Penguin.Analysis.DataColumns
             }
         }
 
-        public RangedFloat(params float[] rangeStarts)
+        public RangedFloat(DataSourceBuilder sourceBuilder, params float[] rangeStarts) : base(sourceBuilder)
         {
             foreach (float i in rangeStarts)
             {

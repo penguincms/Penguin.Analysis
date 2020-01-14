@@ -4,27 +4,30 @@ namespace Penguin.Analysis.Interfaces
 {
     public interface INode<TChild> : INode where TChild : INode
     {
-
-        new IEnumerable<TChild> Next { get; set; }
-        new TChild ParentNode { get; set; }
-
+        new IEnumerable<TChild> Next { get; }
+        new TChild ParentNode { get; }
+        new TChild GetNextByValue(int Value);
     }
 
     public interface INode
     {
-        int[] Results { get; set; }
-        float Score { get; }
-        int Value { get; set; }
+        bool Evaluate(Evaluation e);
+        void Preload(int depth);
+        void Flush(int depth);
+        int[] Results { get; }
+        float GetScore(float BaseRate);
+        int Value { get; }
         float Accuracy { get; }
-        int Depth { get; }
-        sbyte Header { get; set; }
-        bool LastNode { get; set; }
+        byte Depth { get; }
+        sbyte Header { get; }
+        bool LastNode { get; }
         int Matched { get; }
-        IList<TypelessDataRow> MatchingRows { get; set; }
+        int Key { get; }
         string ToString();
-
+        int ChildCount { get; }
         IEnumerable<INode> Next { get; }
-
         INode ParentNode { get; }
+        INode GetNextByValue(int Value);
+        sbyte ChildHeader { get; }
     }
 }

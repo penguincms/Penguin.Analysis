@@ -5,6 +5,9 @@ namespace Penguin.Analysis.DataColumns
     [Serializable]
     public class Exists : Bool
     {
+        public Exists(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        {
+        }
         #region Methods
 
         public override int Transform(string input, bool PositiveIndicator)
