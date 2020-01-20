@@ -42,6 +42,11 @@ namespace Penguin.Analysis.DataColumns
             return GetValue(input);
         }
 
+        protected override void OnDispose()
+        {
+
+        }
+
         #endregion Methods
     }
 }

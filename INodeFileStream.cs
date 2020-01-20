@@ -1,6 +1,8 @@
-﻿namespace Penguin.Analysis
+﻿using System;
+
+namespace Penguin.Analysis
 {
-    internal interface INodeFileStream
+    internal interface INodeFileStream : IDisposable
     {
         long Offset { get; }
 

@@ -57,6 +57,34 @@ namespace Penguin.Analysis
             return CacheSize;
         }
 
+        internal static void DisposeAll()
+        {
+            try
+            {
+                MemoryManaged.Clear();
+            } catch(Exception)
+            {
+
+            }
+
+            try
+            {
+                Cache.Clear();
+            } catch(Exception) { 
+            
+            }
+
+            try
+            {
+                _backingStream.Dispose();              
+            } catch(Exception)
+            {
+
+            }
+            
+            _backingStream = null;
+        }
+
         public void Preload(int depth)
         {
             if (this.Header == -1 || depth > 0)
@@ -222,5 +250,56 @@ namespace Penguin.Analysis
         }
 
         public sbyte ChildHeader => unchecked((sbyte)BackingData[30]);
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    try
+                    {
+                        Cache.TryRemove(this.Offset, out DiskNode _);
+                    }catch(Exception)
+                    {
+
+                    }
+
+                    try
+                    {
+                        MemoryManaged.Remove(this.Offset);
+                    } catch(Exception)
+                    {
+
+                    }
+
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // TODO: set large fields to null.
+
+                disposedValue = true;
+            }
+        }
+
+        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~DiskNode()
+        // {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }

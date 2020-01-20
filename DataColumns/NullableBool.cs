@@ -42,6 +42,11 @@ namespace Penguin.Analysis.DataColumns
             }
         }
 
+        protected override void OnDispose()
+        {
+
+        }
+
         #endregion Methods
     }
 }

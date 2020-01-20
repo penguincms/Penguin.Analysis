@@ -1,6 +1,8 @@
-﻿namespace Penguin.Analysis.Constraints
+﻿using System;
+
+namespace Penguin.Analysis.Constraints
 {
-    public interface IRouteConstraint
+    public interface IRouteConstraint : IDisposable
     {
         #region Methods
 

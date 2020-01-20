@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 
 namespace Penguin.Analysis.Transformations
 {
-    public interface ITransform
+    public interface ITransform : IDisposable
     {
         #region Properties
 

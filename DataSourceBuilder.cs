@@ -15,12 +15,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static Penguin.Analysis.SystemInterop.Memory;
 
 namespace Penguin.Analysis
 {
     [Serializable]
-    public class DataSourceBuilder : IColumnRegistrar
+    public class DataSourceBuilder : IColumnRegistrar, IDisposable
     {
         #region Fields
 
@@ -48,7 +47,7 @@ namespace Penguin.Analysis
         {
             public ulong MinFreeMemory { get; set; } = 1_000_000_000;
             public ulong RangeFreeMemory { get; set; } = 500_000_000;
-            
+
             [JsonIgnore]
             public Action<List<string>, bool> CheckedConstraint = null;
 
@@ -85,7 +84,7 @@ namespace Penguin.Analysis
             #endregion Classes
         }
 
-        class NodeSetCollection : IList<NodeSet>
+        private class NodeSetCollection : IList<NodeSet>
         {
             private List<NodeSet> nodeSets;
 
@@ -97,30 +96,30 @@ namespace Penguin.Analysis
 
             public NodeSetCollection(IEnumerable<NodeSet> set)
             {
-                nodeSets = set.ToList();
+                this.nodeSets = set.ToList();
             }
 
             private static ConcurrentDictionary<sbyte, NodeSet> DefinedSets = new ConcurrentDictionary<sbyte, NodeSet>();
 
             public NodeSetCollection(IEnumerable<(sbyte columnIndex, int[] values)> set)
             {
-                nodeSets = new List<NodeSet>();
+                this.nodeSets = new List<NodeSet>();
 
-                foreach((sbyte columnIndex, int[] values) x in set)
+                foreach ((sbyte columnIndex, int[] values) x in set)
                 {
-                    if(!DefinedSets.TryGetValue(x.columnIndex, out NodeSet n))
+                    if (!DefinedSets.TryGetValue(x.columnIndex, out NodeSet n))
                     {
                         n = new NodeSet(x);
                         DefinedSets.TryAdd(x.columnIndex, n);
                     }
 
-                    nodeSets.Add(n);
+                    this.nodeSets.Add(n);
                 }
             }
 
             public NodeSetCollection()
             {
-                nodeSets = new List<NodeSet>();
+                this.nodeSets = new List<NodeSet>();
             }
 
             public int IndexOf(NodeSet item)
@@ -173,7 +172,10 @@ namespace Penguin.Analysis
                 return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
             }
 
-            public static implicit operator NodeSetCollection(List<NodeSet> n) => new NodeSetCollection(n);
+            public static implicit operator NodeSetCollection(List<NodeSet> n)
+            {
+                return new NodeSetCollection(n);
+            }
 
             public static bool operator ==(NodeSetCollection obj1, NodeSetCollection obj2)
             {
@@ -187,12 +189,12 @@ namespace Penguin.Analysis
                     return false;
                 }
 
-                if(obj1.Count != obj2.Count)
+                if (obj1.Count != obj2.Count)
                 {
                     return false;
                 }
 
-                for(int i = 0; i < obj1.Count; i++)
+                for (int i = 0; i < obj1.Count; i++)
                 {
                     if (!obj2.Contains(obj1.ElementAt(i)))
                     {
@@ -225,7 +227,7 @@ namespace Penguin.Analysis
 
             public override int GetHashCode()
             {
-                return nodeSets.Sum(n => n.ColumnIndex);
+                return this.nodeSets.Sum(n => n.ColumnIndex);
             }
 
             public override bool Equals(object obj)
@@ -239,7 +241,7 @@ namespace Penguin.Analysis
                     return true;
                 }
 
-                return obj.GetType() == GetType() && Equals((NodeSetCollection)obj);
+                return obj.GetType() == this.GetType() && this.Equals((NodeSetCollection)obj);
             }
         }
 
@@ -261,7 +263,7 @@ namespace Penguin.Analysis
 
             public override int GetHashCode()
             {
-                return ColumnIndex;
+                return this.ColumnIndex;
             }
 
             public NodeSet(sbyte columnIndex, int[] values)
@@ -315,7 +317,7 @@ namespace Penguin.Analysis
                     return true;
                 }
 
-                return obj.GetType() == GetType() && Equals((NodeSet)obj);
+                return obj.GetType() == this.GetType() && this.Equals((NodeSet)obj);
             }
 
 
@@ -423,7 +425,7 @@ namespace Penguin.Analysis
             DataSourceBuilder toReturn = JsonConvert.DeserializeObject<DataSourceBuilder>(Json, jsonSerializerSettings ?? DefaultSerializerSettings);
 
             DiskNode virtualRoot = new DiskNode(stream, DiskNode.HeaderBytes);
-            
+
             OptimizedRootNode gNode = new OptimizedRootNode(virtualRoot);
 
             toReturn.Result.RootNode = gNode;
@@ -438,9 +440,14 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        static string MemLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
+        private static string MemLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
         public async void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
         {
+            if (Disposing)
+            {
+                return;
+            }
+
             const int Chunks = 15000;
 
             static void Log(string toLog)
@@ -448,7 +455,7 @@ namespace Penguin.Analysis
                 string toWrite = $"[{DateTime.Now.ToString("yyyy MM dd HH:mm:ss")}]: {toLog}";
                 Debug.WriteLine(toWrite);
                 Console.WriteLine(toWrite);
-                File.AppendAllLines(MemLog, new List<string>() { toWrite});
+                File.AppendAllLines(MemLog, new List<string>() { toWrite });
 
             }
 
@@ -460,9 +467,9 @@ namespace Penguin.Analysis
 
                 Log($"{freeMem} available");
 
-                Log($"{Settings.MinFreeMemory} Min Free Memory");
+                Log($"{this.Settings.MinFreeMemory} Min Free Memory");
 
-                Log($"{Settings.RangeFreeMemory} Range Free Memory");
+                Log($"{this.Settings.RangeFreeMemory} Range Free Memory");
 
 
 
@@ -470,12 +477,17 @@ namespace Penguin.Analysis
 
                 if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
                 {
-                    while (freeMem > Settings.MinFreeMemory + Settings.RangeFreeMemory)
+                    while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
                     {
                         Log($"Found Free Memory. Filling...");
 
                         for (int i = 0; i < Chunks / 2; i++)
                         {
+
+                            if (Disposing)
+                            {
+                                return;
+                            }
 
                             if (stream.Position >= JsonOffset)
                             {
@@ -493,15 +505,19 @@ namespace Penguin.Analysis
                     }
                 }
 
-                if (freeMem < Settings.MinFreeMemory)
+                if (freeMem < this.Settings.MinFreeMemory)
                 {
 
-                    
+
 
                     int chunkBytes = Chunks * 8;
 
-                    while (freeMem < Settings.MinFreeMemory + Settings.RangeFreeMemory)
+                    while (freeMem < this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
                     {
+                        if (Disposing)
+                        {
+                            return;
+                        }
 
                         Log($"Need more memory... Clearing cache.");
                         DiskNode.ClearCache(memoryManagementStyle);
@@ -516,7 +532,7 @@ namespace Penguin.Analysis
 
                         Log($"{freeMem} Free memory");
 
-                        if (freeMem > Settings.MinFreeMemory || stream.Position == SortOffset || !memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+                        if (freeMem > this.Settings.MinFreeMemory || stream.Position == SortOffset || !memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
                         {
                             Log($"Nothing left to do.");
                             return;
@@ -533,6 +549,11 @@ namespace Penguin.Analysis
 
                         for (int i = 0; i < Chunks; i++)
                         {
+                            if (Disposing)
+                            {
+                                return;
+                            }
+
                             byte[] thisBlock = new byte[8];
 
                             stream.Read(thisBlock, 0, thisBlock.Length);
@@ -564,7 +585,8 @@ namespace Penguin.Analysis
                 }
 
                 this.IsPreloaded = true;
-            } catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 Log(ex.Message);
                 Log(ex.StackTrace);
@@ -572,40 +594,49 @@ namespace Penguin.Analysis
             }
         }
 
+        FileStream ManagedMemoryStream;
+
         public async void Preload(string Engine, MemoryManagementStyle memoryManagementStyle)
         {
-            FileStream stream = new FileStream(Engine, FileMode.Open, FileAccess.Read, FileShare.Read);
+            ManagedMemoryStream = new FileStream(Engine, FileMode.Open, FileAccess.Read, FileShare.Read);
 
 
             byte[] offsetBytes = new byte[DiskNode.HeaderBytes];
 
-            stream.Read(offsetBytes, 0, offsetBytes.Length);
+            ManagedMemoryStream.Read(offsetBytes, 0, offsetBytes.Length);
 
             long jsonOffset = offsetBytes.GetLong(0);
             long SortOffset = offsetBytes.GetLong(8);
 
-            stream.Seek(SortOffset, SeekOrigin.Begin);
+            ManagedMemoryStream.Seek(SortOffset, SeekOrigin.Begin);
 
             if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
             {
-                if (PreloadTask is null)
+                if (this.PreloadTask is null)
                 {
-                    PreloadTask = Task.Run(() => PreloadFunc(stream, SortOffset, jsonOffset, memoryManagementStyle));
+                    this.PreloadTask = Task.Run(() => this.PreloadFunc(ManagedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle));
                 }
 
-                await PreloadTask;
+                await this.PreloadTask;
             }
 
-            if (MemoryManagementTask is null)
+            if (this.MemoryManagementTask is null)
             {
-                MemoryManagementTask = new Task(() =>
+                this.MemoryManagementTask = new Task(() =>
                 {
+
+
                     do
                     {
+                    if(Disposing)
+                    {
+                        return;
+                    }
                         try
                         {
-                            PreloadFunc(stream, SortOffset, jsonOffset, memoryManagementStyle);
-                        } catch(Exception ex)
+                            this.PreloadFunc(ManagedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle);
+                        }
+                        catch (Exception ex)
                         {
                             Console.WriteLine("Prelod function failed to execute...");
                             Console.WriteLine(ex.Message);
@@ -615,18 +646,18 @@ namespace Penguin.Analysis
                     } while (true);
                 });
 
-                MemoryManagementTask.Start();
+                this.MemoryManagementTask.Start();
             }
 
         }
 
         public bool IfValid(List<string> Headers, Action<List<string>> HeaderAction = null)
         {
-            while(!this.ValidateRouteConstraints(Headers) && Headers.Count > 0)
+            while (!this.ValidateRouteConstraints(Headers) && Headers.Count > 0)
             {
                 Headers = Headers.Take(Headers.Count - 1).ToList();
 
-                if(Headers.Count == 0)
+                if (Headers.Count == 0)
                 {
                     return false;
                 }
@@ -645,7 +676,7 @@ namespace Penguin.Analysis
 
             ScreenBuffer.ReplaceLine($"Building complex tree", 0);
 
-            
+
 
             int KeyIndex = this.Registrations.IndexOf(this.Registrations.Single(r => r.Column.GetType() == typeof(Key)));
 
@@ -670,31 +701,33 @@ namespace Penguin.Analysis
             {
                 List<string> Headers = nodeSetCollection.Select(n => this.Registrations[n.ColumnIndex].Header).ToList();
 
-                if(!IfValid(Headers, (headers) =>
-                {
-                    NodeSetCollection nSet = nodeSetCollection.Take(headers.Count).ToList();
+                if (!this.IfValid(Headers, (headers) =>
+                 {
+                     NodeSetCollection nSet = nodeSetCollection.Take(headers.Count).ToList();
 
-                    if (graph.Add(nSet))
-                    {
-                        this.Result.GraphInstances++;
+                     if (graph.Add(nSet))
+                     {
+                         this.Result.GraphInstances++;
 
-                        foreach (NodeSet ns in nSet) {
-                            this.Result.ColumnInstances[ns.ColumnIndex]++;
-                        }
+                         foreach (NodeSet ns in nSet)
+                         {
+                             this.Result.ColumnInstances[ns.ColumnIndex]++;
+                         }
 
-                        Settings.CheckedConstraint?.Invoke(headers, true);
-                        this.Result.TotalRoutes++;
-                    } else
-                    {
-                        this.Result.ExpectedMatches--;
-                    }
-                }))
+                         this.Settings.CheckedConstraint?.Invoke(headers, true);
+                         this.Result.TotalRoutes++;
+                     }
+                     else
+                     {
+                         this.Result.ExpectedMatches--;
+                     }
+                 }))
                 {
                     this.Result.ExpectedMatches--;
                 }
 
                 bool Valid = this.ValidateRouteConstraints(Headers);
-                
+
             }
 
             rawGraph = null;
@@ -861,7 +894,7 @@ namespace Penguin.Analysis
                     n.Trim();
                 }
 
-                
+
                 //thisRoot.Header = -1;
 
                 thisRoot.FillNodeData(this.Result.PositiveIndicators, this.Result.RawData.RowCount);
@@ -900,7 +933,7 @@ namespace Penguin.Analysis
             IEnumerable<NodeMeta> PreloadResults = results.OrderByDescending(n => n.Matches);
             IEnumerable<NodeMeta> RootOffsets = results.Where(n => n.Root).OrderBy(n => n.Header).ThenByDescending(n => n.Matches);
 
-           
+
 
             long sortPos = outputStream.Offset;
 
@@ -942,7 +975,7 @@ namespace Penguin.Analysis
 
             return this.Evaluate(toEvaluate);
 
-            
+
         }
 
         public Evaluation Evaluate(Dictionary<string, string> dataRow)
@@ -1013,14 +1046,15 @@ namespace Penguin.Analysis
                         stream.Write(JsonOffset);
 
                         stream.Flush();
-                    } catch(Exception ex)
+                    }
+                    catch (Exception ex)
                     {
                         throw;
                     }
                 }
             }
 
-            
+
         }
 
         public void RegisterColumn(string ColumnName, IDataColumn registration)
@@ -1161,6 +1195,107 @@ namespace Penguin.Analysis
 
             return true;
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        private bool Disposing = true;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!this.disposedValue)
+            {
+                if (disposing)
+                {
+                    Disposing = true;
+
+                    try
+                    {
+                        this.MemoryManagementTask?.Dispose();
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+
+                    try
+                    {
+                        this.PreloadTask?.Dispose();
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+
+                    try
+                    {
+                        ManagedMemoryStream.Dispose();
+                    } catch(Exception)
+                    {
+
+                    }
+
+                    ManagedMemoryStream = null;
+
+                    foreach (ColumnRegistration x in this.Registrations)
+                    {
+                        x.Dispose();
+                    }
+
+                    this.Registrations.Clear();
+
+                    foreach (ITransform x in this.Transformations)
+                    {
+                        x.Dispose();
+                    }
+
+                    this.Transformations.Clear();
+
+                    foreach (IRouteConstraint x in this.RouteConstraints)
+                    {
+                        x.Dispose();
+                    }
+
+                    this.RouteConstraints.Clear();
+
+                    try
+                    {
+                        this.Result.Dispose();
+                    } catch(Exception)
+                    {
+
+                    }
+
+                    this.Result = null;
+
+                    this.IsPreloaded = false;
+                    this.MemoryManagementTask = null;
+                    this.PreloadTask = null;
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // TODO: set large fields to null.
+
+                this.disposedValue = true;
+            }
+        }
+
+        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~DataSourceBuilder()
+        // {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            this.Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
+        #endregion
 
         #endregion Methods
     }

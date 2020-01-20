@@ -18,7 +18,7 @@ namespace Penguin.Analysis
         private static StreamLock[] StreamPool;
         private static int StreamPointer = 0;
 
-        private struct StreamLock
+        private struct StreamLock : IDisposable
         {
             public StreamLock(FileStream source)
             {
@@ -27,6 +27,12 @@ namespace Penguin.Analysis
             }
             public object LockObject;
             public FileStream Stream;
+
+            public void Dispose()
+            {
+                Stream.Dispose();
+                Stream = null;
+            }
         }
 
         static LockedNodeFileStream()
@@ -105,10 +111,6 @@ namespace Penguin.Analysis
             this._backingStream.Write(v, 0, v.Length);
         }
 
-        public void Dispose()
-        {
-            ((IDisposable)this._backingStream).Dispose();
-        }
 
         public int ReadInt()
         {
@@ -178,5 +180,57 @@ namespace Penguin.Analysis
         {
             this._backingStream.Flush();
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    
+
+                    foreach(StreamLock sLock in StreamPool)
+                    {
+                        try
+                        {
+                            sLock.Dispose();
+                        } catch(Exception)
+                        {
+                            
+                        }
+                    }
+                    _backingStream.Dispose();
+
+                    StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
+
+                    _backingStream = null;
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // TODO: set large fields to null.
+
+                disposedValue = true;
+            }
+        }
+
+        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~LockedNodeFileStream()
+        // {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }

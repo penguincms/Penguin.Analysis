@@ -15,7 +15,11 @@
     <None Remove=".meta" />
     <None Remove=".metaOne" />
     <None Remove="README.md" />
-    <PackageReference Include="Penguin.IO" Version="1.1.11-T9QC72V" />
+    <ProjectReference Include="..\Penguin.Extensions.Collections\Penguin.Extensions.Collections.Local.csproj" />
+    <ProjectReference Include="..\Penguin.Extensions.String\Penguin.Extensions.String.Local.csproj" />
+    <ProjectReference Include="..\Penguin.IO\Penguin.IO.Local.csproj" />
+    <ProjectReference Include="..\Penguin.Reflection.Abstractions\Penguin.Reflection.Abstractions.Local.csproj" />
+    <ProjectReference Include="..\Penguin.Reflection.Extensions\Penguin.Reflection.Extensions.Local.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />

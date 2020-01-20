@@ -132,6 +132,11 @@ namespace Penguin.Analysis.DataColumns
             }
         }
 
+        protected override void OnDispose()
+        {
+            valuesDict.Clear();
+        }
+
         #endregion Methods
     }
 }

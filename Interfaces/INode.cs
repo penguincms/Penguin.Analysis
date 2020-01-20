@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Penguin.Analysis.Interfaces
 {
@@ -9,7 +10,7 @@ namespace Penguin.Analysis.Interfaces
         new TChild GetNextByValue(int Value);
     }
 
-    public interface INode
+    public interface INode : IDisposable
     {
         bool Evaluate(Evaluation e);
         void Preload(int depth);

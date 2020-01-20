@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Penguin.Analysis.DataColumns
 {
-    public interface IDataColumn
+    public interface IDataColumn : IDisposable
     {
         #region Methods
 
