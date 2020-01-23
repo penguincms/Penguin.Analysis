@@ -1020,7 +1020,7 @@ namespace Penguin.Analysis
 
             using (FileStream fstream = new FileStream(outputFilePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read, 1_000_000_00))
             {
-                using (LockedNodeFileStream stream = new LockedNodeFileStream(fstream))
+                using (LockedNodeFileStream stream = new LockedNodeFileStream(fstream, false))
                 {
                     stream.Write((long)0);
 

@@ -40,14 +40,17 @@ namespace Penguin.Analysis
             StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
         }
 
-        public LockedNodeFileStream(FileStream backingStream)
+        public LockedNodeFileStream(FileStream backingStream, bool poolStreams = true)
         {
             if (this._backingStream is null) {
                 this._backingStream = backingStream;
 
-                for (int i = 0; i < StreamPool.Length; i++)
+                if (poolStreams)
                 {
-                    StreamPool[i] = new StreamLock(backingStream);
+                    for (int i = 0; i < StreamPool.Length; i++)
+                    {
+                        StreamPool[i] = new StreamLock(backingStream);
+                    }
                 }
             }
         }
