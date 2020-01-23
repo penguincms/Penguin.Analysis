@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace Penguin.Analysis
         public double ExpectedMatches { get; set; }
         public float PositiveIndicators { get; set; }
 
-        public int[] ColumnInstances = new int[256];
+        public int[] ColumnInstances { get; set; } = new int[256];
 
         public int GraphInstances { get; set; } = 0;
 
@@ -54,7 +55,7 @@ namespace Penguin.Analysis
                 if (disposing)
                 {
                     RawData = null;
-                    
+
                     DiskNode.DisposeAll();
                     RootNode.Dispose();
                 }
@@ -81,6 +82,34 @@ namespace Penguin.Analysis
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
+
+        private HashSet<int> RegisteredKeys = new HashSet<int>();
+        static object RegustrationLock = new object();
+
+        internal void RegisterTree(Node thisRoot)
+        {
+            lock (RegustrationLock)
+            {
+                foreach (Node n in thisRoot.FullTree())
+                {
+                    int Key = n.GetKey();
+
+                    if (this.RegisteredKeys.Add(Key))
+                    {
+                        GraphInstances++;
+
+                        for (int i = 0; i < 32; i++)
+                        {
+                            if (((Key >> i) & 1) == 1)
+                            {
+                                ColumnInstances[i]++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #endregion Properties

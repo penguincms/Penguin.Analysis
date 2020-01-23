@@ -707,13 +707,6 @@ namespace Penguin.Analysis
 
                      if (graph.Add(nSet))
                      {
-                         this.Result.GraphInstances++;
-
-                         foreach (NodeSet ns in nSet)
-                         {
-                             this.Result.ColumnInstances[ns.ColumnIndex]++;
-                         }
-
                          this.Settings.CheckedConstraint?.Invoke(headers, true);
                          this.Result.TotalRoutes++;
                      }
@@ -902,6 +895,9 @@ namespace Penguin.Analysis
                 thisRoot.TrimNodesWithNoBearing(this);
 
                 thisRoot.Trim();
+
+                
+                this.Result.RegisterTree(thisRoot);
 
                 long thisNodeIndex = graphi++;
                 MemoryNodeFileStream memCache;

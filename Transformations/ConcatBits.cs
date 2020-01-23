@@ -6,7 +6,7 @@ using System.Data;
 namespace Penguin.Analysis.Transformations
 {
     [Serializable]
-    public class ConcatBytes
+    public class ConcatBits
     {
         #region Properties
 
@@ -24,7 +24,7 @@ namespace Penguin.Analysis.Transformations
         /// </summary>
         /// <param name="ColumnName"></param>
         /// <param name="transformer"></param>
-        public ConcatBytes(List<string> columnNames)
+        public ConcatBits(List<string> columnNames)
         {
             this.ColumnNames = columnNames;
         }

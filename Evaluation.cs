@@ -52,8 +52,6 @@ namespace Penguin.Analysis
             {
                 this.MatchedRoutes.TryAdd(Key, n);
 
-                int sign = n.Accuracy < this.Result.BaseRate ? -1 : 1;
-
                 int counts = AnalysisResults.GraphInstances / AnalysisResults.ColumnInstances[n.Header];
 
                 for (int i = 0; i < counts; i++)
