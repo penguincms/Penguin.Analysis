@@ -10,7 +10,7 @@ namespace Penguin.Analysis
     public class LockedNodeFileStream : INodeFileStream, IDisposable
     {
 
-        
+        private bool PoolStreams;
         private FileStream _backingStream;
 
         private static object NodeFileLock = new object();
@@ -30,7 +30,7 @@ namespace Penguin.Analysis
 
             public void Dispose()
             {
-                Stream.Dispose();
+                Stream?.Dispose();
                 Stream = null;
             }
         }
@@ -53,6 +53,8 @@ namespace Penguin.Analysis
                     }
                 }
             }
+
+            PoolStreams = poolStreams;
         }
 
         public LockedNodeFileStream(string FilePath) : this(new FileStream(FilePath, FileMode.CreateNew))
@@ -144,31 +146,50 @@ namespace Penguin.Analysis
 
             byte[] bByte = new byte[DiskNode.NodeSize];
 
-            StreamLock sl;
-            while(!Monitor.TryEnter((sl = StreamPool[StreamPointer++ % StreamPool.Length]).LockObject)){
-                if(StreamPointer >= StreamPool.Length)
+            FileStream sourceStream;
+            StreamLock sl = default;
+
+            if (PoolStreams)
+            {
+                
+                while (!Monitor.TryEnter((sl = StreamPool[StreamPointer++ % StreamPool.Length]).LockObject))
                 {
-                    StreamPointer = 0;
+                    if (StreamPointer >= StreamPool.Length)
+                    {
+                        StreamPointer = 0;
+                    }
                 }
+
+                sourceStream = sl.Stream;
+            } else
+            {
+                sourceStream = _backingStream;
             }
 
-            sl.Stream.Seek(offset, SeekOrigin.Begin);
+            sourceStream.Seek(offset, SeekOrigin.Begin);
 
-            sl.Stream.Read(bByte, 0, DiskNode.NodeSize);
+            sourceStream.Read(bByte, 0, DiskNode.NodeSize);
 
             int childCount = bByte.GetInt(DiskNode.NodeSize - 4);
 
             if(childCount == 0)
             {
-                Monitor.Exit(sl.LockObject);
+                if (PoolStreams)
+                {
+                    Monitor.Exit(sl.LockObject);
+                }
+
                 return bByte;
             }
 
             byte[] cByte = new byte[childCount * DiskNode.NextSize];
 
-            sl.Stream.Read(cByte, 0, cByte.Length);
+            sourceStream.Read(cByte, 0, cByte.Length);
 
-            Monitor.Exit(sl.LockObject);
+            if (PoolStreams)
+            {
+                Monitor.Exit(sl.LockObject);
+            }
 
             byte[] toReturn = new byte[bByte.Length + cByte.Length];
 
