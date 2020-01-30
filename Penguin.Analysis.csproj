@@ -7,6 +7,7 @@
     <AssemblyName>Penguin.Analysis</AssemblyName>
     <RootNamespace>Penguin.Analysis</RootNamespace>
     <Description>Not Available</Description>
+    <DocumentationFile>Penguin.Analysis.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <None Remove=".gitattributes" />

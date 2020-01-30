@@ -861,14 +861,21 @@ namespace Penguin.Analysis
                                 lastProgress = thisProgress;
                             }
 
-                            if (!node.AddNext(
-                                this,
-                                new Node(ColumnIndex,
+                            Node n = new Node(ColumnIndex,
                                 Values[i],
                                 childCount,
-                                node.MatchingRows.Count),
+                                node.MatchingRows.Count);
+
+                            if (!node.AddNext(
+                                this,
+                                n,
                                 i))
                             {
+                                if (this.Settings.TrimmedNode != null)
+                                {
+                                    n.ParentNode = node;
+                                    this.Settings.TrimmedNode.Invoke(n);
+                                }
                                 pruned++;
                             }
                         }
@@ -1195,7 +1202,7 @@ namespace Penguin.Analysis
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
-        private bool Disposing = true;
+        private bool Disposing = false;
 
         protected virtual void Dispose(bool disposing)
         {

@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Penguin.Analysis</name>
+    </assembly>
+    <members>
+        <member name="T:Penguin.Analysis.Constraints.Exclusive">
+            <summary>
+            Do not allow this exact combination to appear as a route. Useful if one property is derivative of another. Also, if only one parameter then force the property to be evaluated alone
+            </summary>
+        </member>
+        <member name="T:Penguin.Analysis.Constraints.ExclusiveAny">
+            <summary>
+            Do not allow any possible combination to appear as a route. Useful if one property is derivative of another
+            </summary>
+        </member>
+        <member name="M:Penguin.Analysis.Constraints.IRouteConstraint.Evaluate(System.String[])">
+            <summary>
+            Checks to make sure the headers pass this constraint
+            </summary>
+            <param name="headers"></param>
+            <returns></returns>
+        </member>
+        <member name="P:Penguin.Analysis.DataColumns.Enumeration.GlobalSettings.MinimumInstances">
+            <summary>
+            The minimum number of times an instance has to be seen to be analyzed
+            </summary>
+        </member>
+        <member name="M:Penguin.Analysis.DataColumns.IDataColumn.Display(System.Int32)">
+            <summary>
+            Allows for converting the value back to a human understandable type
+            </summary>
+            <param name="Value"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Penguin.Analysis.DataColumns.IDataColumn.GetOptions">
+            <summary>
+            Returns all possible matching and nonmatching values based on this columns logic.
+            </summary>
+            <param name="tableValues"></param>
+            <param name="Result"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Penguin.Analysis.DataColumns.IDataColumn.Transform(System.String,System.Boolean)">
+            <summary>
+            Optional method to "prewarm" all the values in the row so that they match the expected format
+            </summary>
+            <param name="input"></param>
+            <returns></returns>
+        </member>
+        <member name="P:Penguin.Analysis.DataSourceBuilder.DataSourceSettings.ResultSettings.MatchOnly">
+            <summary>
+            Only build trees that contain positive output matches
+            </summary>
+        </member>
+        <member name="P:Penguin.Analysis.DataSourceBuilder.DataSourceSettings.ResultSettings.MinimumHits">
+            <summary>
+            The minimum total times a route must be matched to be considered
+            </summary>
+        </member>
+        <member name="P:Penguin.Analysis.DataSourceBuilder.DataSourceSettings.ResultSettings.MinimumAccuracy">
+            <summary>
+            Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
+            </summary>
+        </member>
+        <member name="M:Penguin.Analysis.DataSourceBuilder.Transform">
+            <summary>
+            Runs registered table transformations to create the final analysis table
+            </summary>
+        </member>
+        <member name="F:Penguin.Analysis.MatchResult.None">
+            <summary>
+            The record matches neither the nodes path, nor is a positive indicator of outcome
+            </summary>
+        </member>
+        <member name="F:Penguin.Analysis.MatchResult.Route">
+            <summary>
+            The record matches the node path, but is not a positive indicator of outcome
+            </summary>
+        </member>
+        <member name="F:Penguin.Analysis.MatchResult.Output">
+            <summary>
+            The record is a positive indicator of outcome, but does not match the node path
+            </summary>
+        </member>
+        <member name="F:Penguin.Analysis.MatchResult.Both">
+            <summary>
+            The record matches the node path, and is a positive indicator of outcome
+            </summary>
+        </member>
+        <member name="P:Penguin.Analysis.Node.Matched">
+            <summary>
+            The number of times this route has been matched against
+            </summary>
+        </member>
+        <member name="M:Penguin.Analysis.Node.#ctor">
+            <summary>
+            Deserialization only. Dont use this unless you're a deserializer
+            </summary>
+        </member>
+        <member name="P:Penguin.Analysis.ScreenBuffer.FlushDelayMs">
+            <summary>
+            Caps the frequency with which the screen can be flushed to help
+            prevent multithread performance degredation
+            </summary>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.ConcatBits.#ctor(System.Collections.Generic.List{System.String})">
+            <summary>
+            Generic column transformation for converting/adding additional data columns
+            does NOT keep original column so original must be returned if required
+            </summary>
+            <param name="ColumnName"></param>
+            <param name="transformer"></param>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.ConcatBits.TransformTable(System.Data.DataTable)">
+            <summary>
+            Adds new columns that may be required to hold values from row transformation
+            </summary>
+            <param name="table"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.GenericSplit.#ctor(System.String,System.Collections.Generic.List{System.String},System.Func{System.String,System.Collections.Generic.IEnumerable{System.String}})">
+            <summary>
+            Generic column transformation for converting/adding additional data columns
+            does NOT keep original column so original must be returned if required
+            </summary>
+            <param name="ColumnName"></param>
+            <param name="transformer"></param>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.GenericSplit.TransformTable(System.Data.DataTable)">
+            <summary>
+            Adds new columns that may be required to hold values from row transformation
+            </summary>
+            <param name="table"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.ITransform.Cleanup(System.Data.DataTable)">
+            <summary>
+            Run any post row alteration cleanup, like removing unneeded columns
+            </summary>
+            <param name="table"></param>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.ITransform.TransformRow(System.Data.DataRow)">
+            <summary>
+            Make the necessary run-time transformations on the data row
+            </summary>
+            <param name="source"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.ITransform.TransformTable(System.Data.DataTable)">
+            <summary>
+            Make the post transform header changes to the datatable
+            </summary>
+            <param name="table"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.Replace.#ctor(System.String,System.Func{System.String,System.String})">
+            <summary>
+            Generic column transformation for converting/adding additional data columns
+            does NOT keep original column so original must be returned if required
+            </summary>
+            <param name="ColumnName"></param>
+            <param name="transformer"></param>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.Replace.TransformTable(System.Data.DataTable)">
+            <summary>
+            Adds new columns that may be required to hold values from row transformation
+            </summary>
+            <param name="table"></param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>
