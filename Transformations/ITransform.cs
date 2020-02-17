@@ -1,19 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
 
 namespace Penguin.Analysis.Transformations
 {
     public interface ITransform : IDisposable
     {
-        #region Properties
-
-        List<string> ResultColumns { get; }
-
-        string TargetColumn { get; }
-
-        #endregion Properties
-
         #region Methods
 
         /// <summary>

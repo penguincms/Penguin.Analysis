@@ -14,23 +14,120 @@ namespace Penguin.Analysis
     [JsonObject(MemberSerialization.OptIn)]
     public class DiskNode : INode
     {
+        public const int HeaderBytes = 16;
+        public const int NextSize = 12;
+        public const int NodeSize = 35;
+        internal static LockedNodeFileStream _backingStream;
         internal static ConcurrentDictionary<long, DiskNode> Cache = new ConcurrentDictionary<long, DiskNode>();
 
         internal static Dictionary<long, DiskNode> MemoryManaged = new Dictionary<long, DiskNode>();
 
+        internal long Offset;
         private static object clearCacheLock = new object();
 
-        public DiskNode GetNextByValue(int Value)
+        private byte? depth;
+
+        private int? key;
+
+        private int[] results;
+
+        public float Accuracy => this.GetAccuracy();
+
+        public int ChildCount => this.BackingData.GetInt(DiskNode.NodeSize - 4);
+
+        public sbyte ChildHeader => unchecked((sbyte)this.BackingData[30]);
+
+        public OffsetValue[] ChildOffsets { get; set; }
+
+        public byte Depth
         {
-            foreach (OffsetValue ov in ChildOffsets)
+            get
             {
-                if (ov.Value == Value)
+                if (this.depth is null)
                 {
-                    return LoadNode(_backingStream, ov.Offset);
+                    this.depth = this.GetDepth();
+                }
+                return this.depth.Value;
+            }
+        }
+
+        [JsonProperty("H", Order = 2)]
+        public sbyte Header => unchecked((sbyte)this.BackingData[24]);
+
+        public int Key
+        {
+            get
+            {
+                if (this.key is null)
+                {
+                    this.key = this.GetKey();
+                }
+                return this.key.Value;
+            }
+        }
+
+        [JsonProperty("L", Order = 4)]
+        public bool LastNode => this.BackingData[29] == 1;
+
+        public int Matched => this.GetMatched();
+
+        public IEnumerable<INode> Next
+        {
+            get
+            {
+                foreach (OffsetValue childOffset in this.ChildOffsets)
+                {
+                    yield return LoadNode(_backingStream, childOffset.Offset);
                 }
             }
+        }
 
-            return null;
+        [JsonProperty("P", Order = 0)]
+        public DiskNode ParentNode => LoadNode(_backingStream, this.ParentOffset);
+
+        INode INode.ParentNode => this.ParentNode;
+
+        [JsonProperty("R", Order = 1)]
+        public int[] Results
+        {
+            get
+            {
+                if (this.results is null)
+                {
+                    this.results = this.BackingData.GetInts(8, 4).ToArray();
+                }
+
+                return this.results;
+            }
+        }
+
+        [JsonProperty("V", Order = 3)]
+        public int Value => this.BackingData.GetInt(25);
+
+        private byte[] BackingData { get; set; }
+
+        private long ParentOffset => this.BackingData.GetLong(0);
+
+        public DiskNode(LockedNodeFileStream fileStream, long offset)
+        {
+            this.Offset = offset;
+
+            this.BackingData = fileStream.ReadBlock(offset);
+
+            this.ChildOffsets = new OffsetValue[this.ChildCount];
+
+            for (int i = 0; i < this.ChildOffsets.Length; i++)
+            {
+                int oset = NodeSize + (i * NextSize);
+
+                this.ChildOffsets[i] = new OffsetValue()
+                {
+                    Offset = this.BackingData.GetLong(oset),
+                    Value = this.BackingData.GetInt(oset + 8)
+                };
+            }
+
+            _backingStream = _backingStream ?? fileStream ?? throw new ArgumentNullException(nameof(fileStream));
         }
 
         public static int ClearCache(MemoryManagementStyle memoryManagementStyle)
@@ -56,66 +153,6 @@ namespace Penguin.Analysis
 
             return CacheSize;
         }
-
-        internal static void DisposeAll()
-        {
-            try
-            {
-                MemoryManaged.Clear();
-            } catch(Exception)
-            {
-
-            }
-
-            try
-            {
-                Cache.Clear();
-            } catch(Exception) { 
-            
-            }
-
-            try
-            {
-                _backingStream.Dispose();              
-            } catch(Exception)
-            {
-
-            }
-            
-            _backingStream = null;
-        }
-
-        public void Preload(int depth)
-        {
-            if (this.Header == -1 || depth > 0)
-            {
-                foreach (DiskNode n in this.Next)
-                {
-                    n.Preload(depth - 1);
-                }
-            }
-        }
-
-        public void Flush(int depth)
-        {
-
-        }
-
-        public int Key
-        {
-            get
-            {
-                if (key is null)
-                {
-                    key = this.GetKey();
-                }
-                return key.Value;
-            }
-        }
-
-        private int? key;
-
-        internal long Offset;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static DiskNode LoadNode(LockedNodeFileStream backingStream, long offset, bool memoryManaged = false)
@@ -145,143 +182,118 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        public bool Evaluate(Evaluation e) => this.StandardEvaluate(e);
-
-        public int ChildCount => this.BackingData.GetInt(DiskNode.NodeSize - 4);
-
-        public const int NodeSize = 35;
-        public const int NextSize = 12;
-        public const int HeaderBytes = 16;
-
-        internal static LockedNodeFileStream _backingStream;
-
-        private long ParentOffset => this.BackingData.GetLong(0);
-
-        private byte[] BackingData { get; set; }
-
-        public DiskNode(LockedNodeFileStream fileStream, long offset)
+        public bool Evaluate(Evaluation e)
         {
-            Offset = offset;
-
-            this.BackingData = fileStream.ReadBlock(offset);
-
-            ChildOffsets = new OffsetValue[ChildCount];
-
-            for (int i = 0; i < ChildOffsets.Length; i++)
-            {
-                int oset = NodeSize + (i * NextSize);
-
-                ChildOffsets[i] = new OffsetValue()
-                {
-                    Offset = BackingData.GetLong(oset),
-                    Value = BackingData.GetInt(oset + 8)
-                };
-            }
-
-            _backingStream = _backingStream ?? fileStream ?? throw new ArgumentNullException(nameof(fileStream));
+            return this.StandardEvaluate(e);
         }
 
-        public float Accuracy => this.GetAccuracy();
-        public byte Depth
+        public void Flush(int depth)
         {
-            get
+        }
+
+        public DiskNode GetNextByValue(int Value)
+        {
+            foreach (OffsetValue ov in this.ChildOffsets)
             {
-                if (depth is null)
+                if (ov.Value == Value)
                 {
-                    depth = this.GetDepth();
+                    return LoadNode(_backingStream, ov.Offset);
                 }
-                return depth.Value;
             }
+
+            return null;
         }
 
-        private byte? depth;
-
-        [JsonProperty("H", Order = 2)]
-        public sbyte Header => unchecked((sbyte)this.BackingData[24]);
-
-        [JsonProperty("L", Order = 4)]
-        public bool LastNode => this.BackingData[29] == 1;
-
-        public int Matched => this.GetMatched();
-
-        [JsonProperty("R", Order = 1)]
-        public int[] Results
+        INode INode.GetNextByValue(int Value)
         {
-            get
-            {
-                if (this.results is null)
-                {
-                    this.results = this.BackingData.GetInts(8, 4).ToArray();
-                }
-
-                return this.results;
-            }
+            return this.GetNextByValue(Value);
         }
-
-        private int[] results;
 
         public float GetScore(float BaseRate)
         {
             return this.CalculateScore(BaseRate);
         }
 
-        INode INode.GetNextByValue(int Value) => this.GetNextByValue(Value);
-
-        [JsonProperty("V", Order = 3)]
-        public int Value => this.BackingData.GetInt(25);
-
-        [JsonProperty("P", Order = 0)]
-        public DiskNode ParentNode => LoadNode(_backingStream, this.ParentOffset);
-
-        INode INode.ParentNode => this.ParentNode;
-
-        public OffsetValue[] ChildOffsets { get; set; }
-        public IEnumerable<INode> Next
+        public void Preload(int depth)
         {
-            get
+            if (this.Header == -1 || depth > 0)
             {
-
-                foreach (OffsetValue childOffset in ChildOffsets)
+                foreach (DiskNode n in this.Next)
                 {
-                    yield return LoadNode(_backingStream, childOffset.Offset);
+                    n.Preload(depth - 1);
                 }
-
             }
         }
 
-        public sbyte ChildHeader => unchecked((sbyte)BackingData[30]);
+        internal static void DisposeAll()
+        {
+            try
+            {
+                MemoryManaged.Clear();
+            }
+            catch (Exception)
+            {
+            }
+
+            try
+            {
+                Cache.Clear();
+            }
+            catch (Exception)
+            {
+            }
+
+            try
+            {
+                _backingStream.Dispose();
+            }
+            catch (Exception)
+            {
+            }
+
+            _backingStream = null;
+        }
 
         #region IDisposable Support
+
         private bool disposedValue = false; // To detect redundant calls
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            this.Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!this.disposedValue)
             {
                 if (disposing)
                 {
                     try
                     {
                         Cache.TryRemove(this.Offset, out DiskNode _);
-                    }catch(Exception)
+                    }
+                    catch (Exception)
                     {
-
                     }
 
                     try
                     {
                         MemoryManaged.Remove(this.Offset);
-                    } catch(Exception)
-                    {
-
                     }
-
+                    catch (Exception)
+                    {
+                    }
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                disposedValue = true;
+                this.disposedValue = true;
             }
         }
 
@@ -292,14 +304,6 @@ namespace Penguin.Analysis
         //   Dispose(false);
         // }
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
+        #endregion IDisposable Support
     }
 }

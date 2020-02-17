@@ -9,6 +9,7 @@ namespace Penguin.Analysis.DataColumns
         public Bool(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
         {
         }
+
         #region Methods
 
         public static int GetValue(string input)
@@ -44,7 +45,6 @@ namespace Penguin.Analysis.DataColumns
 
         protected override void OnDispose()
         {
-
         }
 
         #endregion Methods

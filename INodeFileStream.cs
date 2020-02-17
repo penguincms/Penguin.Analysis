@@ -6,10 +6,10 @@ namespace Penguin.Analysis
     {
         long Offset { get; }
 
+        long Seek(long lastOffset);
+
         void Write(byte[] toWrite);
 
         void Write(long v);
-
-        long Seek(long lastOffset);
     }
 }

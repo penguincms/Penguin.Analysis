@@ -89,7 +89,7 @@ namespace Penguin.Analysis.DataColumns
 
                 show = show && thisOption.Instances >= GlobalSettings.MinimumInstances;
 
-                show = show && (!SourceBuilder.Settings.Results.MatchOnly || thisOption.Indicators > 0);
+                show = show && (!this.SourceBuilder.Settings.Results.MatchOnly || thisOption.Indicators > 0);
 
                 if (show)
                 {
@@ -134,7 +134,7 @@ namespace Penguin.Analysis.DataColumns
 
         protected override void OnDispose()
         {
-            valuesDict.Clear();
+            this.valuesDict.Clear();
         }
 
         #endregion Methods

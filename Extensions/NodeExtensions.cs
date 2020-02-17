@@ -1,7 +1,6 @@
 ﻿using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -21,10 +20,11 @@ namespace Penguin.Analysis.Extensions
 
             float Accuracy = tnode.GetAccuracy();
 
-            if(Accuracy < BaseRate)
+            if (Accuracy < BaseRate)
             {
                 return (1 - 1 / (BaseRate / Accuracy)) * -1;
-            } else
+            }
+            else
             {
                 return 1 - (1 / (BaseRate * 2 / BaseRate)) + BaseRate;
             }
@@ -32,7 +32,6 @@ namespace Penguin.Analysis.Extensions
 
         internal static bool StandardEvaluate(this INode node, Evaluation e)
         {
-
             if (node is null)
             {
                 throw new ArgumentNullException(nameof(node));
@@ -54,7 +53,6 @@ namespace Penguin.Analysis.Extensions
 
                 return true;
             }
-
 
             bool MatchesRoute = e.DataRow.Equals(node.Header, node.Value);
 
@@ -163,7 +161,7 @@ namespace Penguin.Analysis.Extensions
 
             if (target.Header != -1 && (target.Next is null || !target.Next.Where(n => n != null).Any()))
             {
-                if((target.Accuracy > BaseRate - (BaseRate * MinimumAccuracy) && target.Accuracy < ((1 - BaseRate) * MinimumAccuracy) + BaseRate) && target.ParentNode != null)
+                if ((target.Accuracy > BaseRate - (BaseRate * MinimumAccuracy) && target.Accuracy < ((1 - BaseRate) * MinimumAccuracy) + BaseRate) && target.ParentNode != null)
                 {
                     sourceBuilder.Settings.TrimmedNode?.Invoke(target);
 
@@ -172,7 +170,6 @@ namespace Penguin.Analysis.Extensions
 #if DEBUG
                 else
                 {
-
                 }
 #endif
                 target.LastNode = true;
@@ -347,7 +344,6 @@ namespace Penguin.Analysis.Extensions
             return Depth;
         }
 
-
         public static bool Evaluate(this Node tnode, TypelessDataRow dataRow)
         {
             if (tnode is null)
@@ -421,7 +417,7 @@ namespace Penguin.Analysis.Extensions
             int Key = 0;
 
             INode n = tnode;
-            
+
             static IEnumerable<INode> GetTree(INode np)
             {
                 INode n = np;
@@ -478,15 +474,12 @@ namespace Penguin.Analysis.Extensions
             tnode.CheckValidity();
         }
 
-
         public static void Trim(this Node tnode)
         {
             if (tnode is null)
             {
                 throw new ArgumentNullException(nameof(tnode));
             }
-
-
 
             if (tnode.Next != null)
             {

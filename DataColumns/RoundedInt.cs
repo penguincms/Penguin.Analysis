@@ -8,6 +8,7 @@ namespace Penguin.Analysis.DataColumns
         public RoundedInt(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
         {
         }
+
         #region Methods
 
         public override int Transform(string input, bool PositiveIndicator)

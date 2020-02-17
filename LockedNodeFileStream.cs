@@ -1,37 +1,35 @@
 ﻿using Penguin.Analysis.Extensions;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 
 namespace Penguin.Analysis
 {
     public class LockedNodeFileStream : INodeFileStream, IDisposable
     {
-
-        private bool PoolStreams;
-        private FileStream _backingStream;
-
         private static object NodeFileLock = new object();
-
-        private static StreamLock[] StreamPool;
         private static int StreamPointer = 0;
+        private static StreamLock[] StreamPool;
+        private FileStream _backingStream;
+        private bool PoolStreams;
+        public long Offset => this._backingStream.Position;
 
         private struct StreamLock : IDisposable
         {
+            public object LockObject;
+
+            public FileStream Stream;
+
             public StreamLock(FileStream source)
             {
-                LockObject = new object();
-                Stream = new FileStream(source.Name, FileMode.Open, FileAccess.Read, FileShare.Read);
+                this.LockObject = new object();
+                this.Stream = new FileStream(source.Name, FileMode.Open, FileAccess.Read, FileShare.Read);
             }
-            public object LockObject;
-            public FileStream Stream;
 
             public void Dispose()
             {
-                Stream?.Dispose();
-                Stream = null;
+                this.Stream?.Dispose();
+                this.Stream = null;
             }
         }
 
@@ -42,7 +40,8 @@ namespace Penguin.Analysis
 
         public LockedNodeFileStream(FileStream backingStream, bool poolStreams = true)
         {
-            if (this._backingStream is null) {
+            if (this._backingStream is null)
+            {
                 this._backingStream = backingStream;
 
                 if (poolStreams)
@@ -54,16 +53,11 @@ namespace Penguin.Analysis
                 }
             }
 
-            PoolStreams = poolStreams;
+            this.PoolStreams = poolStreams;
         }
 
         public LockedNodeFileStream(string FilePath) : this(new FileStream(FilePath, FileMode.CreateNew))
         {
-        }
-
-        public long Seek(long offset)
-        {
-            return this._backingStream.Seek(offset, SeekOrigin.Begin);
         }
 
         public void Lock()
@@ -71,12 +65,98 @@ namespace Penguin.Analysis
             Monitor.Enter(NodeFileLock);
         }
 
+        public byte[] ReadBlock(long offset)
+        {
+            int p = 0;
+
+            byte[] bByte = new byte[DiskNode.NodeSize];
+
+            FileStream sourceStream;
+            StreamLock sl = default;
+
+            if (this.PoolStreams)
+            {
+                while (!Monitor.TryEnter((sl = StreamPool[StreamPointer++ % StreamPool.Length]).LockObject))
+                {
+                    if (StreamPointer >= StreamPool.Length)
+                    {
+                        StreamPointer = 0;
+                    }
+                }
+
+                sourceStream = sl.Stream;
+            }
+            else
+            {
+                sourceStream = this._backingStream;
+            }
+
+            sourceStream.Seek(offset, SeekOrigin.Begin);
+
+            sourceStream.Read(bByte, 0, DiskNode.NodeSize);
+
+            int childCount = bByte.GetInt(DiskNode.NodeSize - 4);
+
+            if (childCount == 0)
+            {
+                if (this.PoolStreams)
+                {
+                    Monitor.Exit(sl.LockObject);
+                }
+
+                return bByte;
+            }
+
+            byte[] cByte = new byte[childCount * DiskNode.NextSize];
+
+            sourceStream.Read(cByte, 0, cByte.Length);
+
+            if (this.PoolStreams)
+            {
+                Monitor.Exit(sl.LockObject);
+            }
+
+            byte[] toReturn = new byte[bByte.Length + cByte.Length];
+
+            bByte.CopyTo(toReturn, 0);
+
+            cByte.CopyTo(toReturn, DiskNode.NodeSize);
+
+            return toReturn;
+        }
+
+        public int ReadInt()
+        {
+            byte[] intBytes = new byte[4];
+
+            this._backingStream.Read(intBytes, 0, intBytes.Length);
+
+            return BitConverter.ToInt32(intBytes, 0);
+        }
+
+        public long ReadLong()
+        {
+            byte[] intBytes = new byte[8];
+
+            this._backingStream.Read(intBytes, 0, intBytes.Length);
+
+            return BitConverter.ToInt32(intBytes, 0);
+        }
+
+        public sbyte ReadSbyte()
+        {
+            return unchecked((sbyte)this._backingStream.ReadByte());
+        }
+
+        public long Seek(long offset)
+        {
+            return this._backingStream.Seek(offset, SeekOrigin.Begin);
+        }
+
         public void Unlock()
         {
             Monitor.Exit(NodeFileLock);
         }
-
-        public long Offset => this._backingStream.Position;
 
         public void Write(string v)
         {
@@ -116,127 +196,51 @@ namespace Penguin.Analysis
             this._backingStream.Write(v, 0, v.Length);
         }
 
-
-        public int ReadInt()
-        {
-            byte[] intBytes = new byte[4];
-
-            _backingStream.Read(intBytes, 0, intBytes.Length);
-
-            return BitConverter.ToInt32(intBytes, 0);
-        }
-
-        public sbyte ReadSbyte()
-        {
-            return unchecked((sbyte)_backingStream.ReadByte());
-        }
-
-        public long ReadLong()
-        {
-            byte[] intBytes = new byte[8];
-
-            _backingStream.Read(intBytes, 0, intBytes.Length);
-
-            return BitConverter.ToInt32(intBytes, 0);
-        }
-        public byte[] ReadBlock(long offset)
-        {
-
-            int p = 0;
-
-            byte[] bByte = new byte[DiskNode.NodeSize];
-
-            FileStream sourceStream;
-            StreamLock sl = default;
-
-            if (PoolStreams)
-            {
-                
-                while (!Monitor.TryEnter((sl = StreamPool[StreamPointer++ % StreamPool.Length]).LockObject))
-                {
-                    if (StreamPointer >= StreamPool.Length)
-                    {
-                        StreamPointer = 0;
-                    }
-                }
-
-                sourceStream = sl.Stream;
-            } else
-            {
-                sourceStream = _backingStream;
-            }
-
-            sourceStream.Seek(offset, SeekOrigin.Begin);
-
-            sourceStream.Read(bByte, 0, DiskNode.NodeSize);
-
-            int childCount = bByte.GetInt(DiskNode.NodeSize - 4);
-
-            if(childCount == 0)
-            {
-                if (PoolStreams)
-                {
-                    Monitor.Exit(sl.LockObject);
-                }
-
-                return bByte;
-            }
-
-            byte[] cByte = new byte[childCount * DiskNode.NextSize];
-
-            sourceStream.Read(cByte, 0, cByte.Length);
-
-            if (PoolStreams)
-            {
-                Monitor.Exit(sl.LockObject);
-            }
-
-            byte[] toReturn = new byte[bByte.Length + cByte.Length];
-
-            bByte.CopyTo(toReturn, 0);
-
-            cByte.CopyTo(toReturn, DiskNode.NodeSize);
-
-            return toReturn;
-        }
-
         internal void Flush()
         {
             this._backingStream.Flush();
         }
 
         #region IDisposable Support
+
         private bool disposedValue = false; // To detect redundant calls
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            this.Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!this.disposedValue)
             {
                 if (disposing)
                 {
-                    
-
-                    foreach(StreamLock sLock in StreamPool)
+                    foreach (StreamLock sLock in StreamPool)
                     {
                         try
                         {
                             sLock.Dispose();
-                        } catch(Exception)
+                        }
+                        catch (Exception)
                         {
-                            
                         }
                     }
-                    _backingStream.Dispose();
+                    this._backingStream.Dispose();
 
                     StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
 
-                    _backingStream = null;
+                    this._backingStream = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                disposedValue = true;
+                this.disposedValue = true;
             }
         }
 
@@ -247,14 +251,6 @@ namespace Penguin.Analysis
         //   Dispose(false);
         // }
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
+        #endregion IDisposable Support
     }
 }

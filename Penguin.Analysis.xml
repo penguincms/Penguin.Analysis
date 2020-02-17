@@ -48,24 +48,24 @@
             <param name="input"></param>
             <returns></returns>
         </member>
-        <member name="P:Penguin.Analysis.DataSourceBuilder.DataSourceSettings.ResultSettings.MatchOnly">
+        <member name="M:Penguin.Analysis.DataSourceBuilder.Transform">
+            <summary>
+            Runs registered table transformations to create the final analysis table
+            </summary>
+        </member>
+        <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MatchOnly">
             <summary>
             Only build trees that contain positive output matches
             </summary>
         </member>
-        <member name="P:Penguin.Analysis.DataSourceBuilder.DataSourceSettings.ResultSettings.MinimumHits">
-            <summary>
-            The minimum total times a route must be matched to be considered
-            </summary>
-        </member>
-        <member name="P:Penguin.Analysis.DataSourceBuilder.DataSourceSettings.ResultSettings.MinimumAccuracy">
+        <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MinimumAccuracy">
             <summary>
             Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
             </summary>
         </member>
-        <member name="M:Penguin.Analysis.DataSourceBuilder.Transform">
+        <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MinimumHits">
             <summary>
-            Runs registered table transformations to create the final analysis table
+            The minimum total times a route must be matched to be considered
             </summary>
         </member>
         <member name="F:Penguin.Analysis.MatchResult.None">
@@ -113,6 +113,21 @@
             <param name="transformer"></param>
         </member>
         <member name="M:Penguin.Analysis.Transformations.ConcatBits.TransformTable(System.Data.DataTable)">
+            <summary>
+            Adds new columns that may be required to hold values from row transformation
+            </summary>
+            <param name="table"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.GenericMerge.#ctor(System.Collections.Generic.List{System.String},System.String,System.Func{System.Collections.Generic.IEnumerable{Penguin.Analysis.Transformations.GenericMerge.ColumnDefinition},System.String})">
+            <summary>
+            Generic column transformation for converting/adding additional data columns
+            does NOT keep original column so original must be returned if required
+            </summary>
+            <param name="SourceColumnNames"></param>
+            <param name="NewColumn"></param>
+        </member>
+        <member name="M:Penguin.Analysis.Transformations.GenericMerge.TransformTable(System.Data.DataTable)">
             <summary>
             Adds new columns that may be required to hold values from row transformation
             </summary>

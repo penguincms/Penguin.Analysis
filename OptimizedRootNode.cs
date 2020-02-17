@@ -3,32 +3,101 @@ using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Penguin.Analysis
 {
     public class OptimizedRootNode : INode<INode>
     {
+        public List<int> HeaderBreaks = new List<int>() { 0 };
+
+        public Dictionary<int, int> ValueJumpList = new Dictionary<int, int>();
+
+        private List<INode> next = new List<INode>();
+
+        public float Accuracy { get; }
+
+        public int ChildCount { get; internal set; }
+
+        public sbyte ChildHeader => -1;
+
+        public byte Depth { get; }
+
+        public sbyte Header { get; } = -1;
+
+        public int Key { get; }
+
+        public bool LastNode { get; } = false;
+
+        public int Matched { get; } = 0;
+
+        public IEnumerable<INode> Next => this.next;
+
+        public INode ParentNode { get; }
+
+        public int[] Results { get; } = new int[4];
+
+        public int Value { get; } = 0;
+
+        public OptimizedRootNode(INode source)
+        {
+            foreach (INode n in source.Next)
+            {
+                foreach (INode c in n.Next)
+                {
+                    this.next.Add(c);
+                }
+            }
+
+            this.next = this.next.OrderBy(n => n.Header).ThenByDescending(n => n.GetMatched()).ToList();
+
+            sbyte lastHeader = this.Next.First().Header;
+            int lastValue = this.Next.First().Value;
+
+            this.ChildCount = this.next.Count;
+
+            int lastValueIndex = 0;
+
+            for (int i = 0; i < this.ChildCount; i++)
+            {
+                INode thisNode = this.Next.ElementAt(i);
+
+                if (thisNode.Header != lastHeader || thisNode.Value != lastValue)
+                {
+                    if (thisNode.Header != lastHeader)
+                    {
+                        this.HeaderBreaks.Add(i);
+                    }
+
+                    lastHeader = thisNode.Header;
+                    lastValue = thisNode.Value;
+
+                    this.ValueJumpList.Add(lastValueIndex, i);
+                    lastValueIndex = i;
+                }
+            }
+
+            this.ValueJumpList.Add(lastValueIndex, this.ChildCount);
+            this.HeaderBreaks.Add(this.ChildCount);
+        }
+
         public bool Evaluate(Evaluation e)
         {
-            
-
-            Parallel.ForEach(HeaderBreaks, (headerBreak) =>
+            Parallel.ForEach(this.HeaderBreaks, (headerBreak) =>
             {
                 bool Matched = false;
-                
-                if(headerBreak == HeaderBreaks.Last())
+
+                if (headerBreak == this.HeaderBreaks.Last())
                 {
                     return;
                 }
 
                 int i = headerBreak;
 
-                int stop = HeaderBreaks.Where(h => h > headerBreak).Min();
+                int stop = this.HeaderBreaks.Where(h => h > headerBreak).Min();
                 do
                 {
-                    if (!next.ElementAt(i).Evaluate(e))
+                    if (!this.next.ElementAt(i).Evaluate(e))
                     {
                         if (Matched)
                         {
@@ -37,7 +106,7 @@ namespace Penguin.Analysis
                         }
                         else
                         {
-                            i = ValueJumpList[i];
+                            i = this.ValueJumpList[i];
                         }
                         continue;
                     }
@@ -50,7 +119,6 @@ namespace Penguin.Analysis
                     {
                         return;
                     };
-                
                 } while (true);
             });
 
@@ -79,83 +147,8 @@ namespace Penguin.Analysis
             return true;
         }
 
-        public OptimizedRootNode(INode source)
-        {
-            foreach (INode n in source.Next)
-            {
-                foreach (INode c in n.Next)
-                {
-                    next.Add(c);
-                }
-            }
-
-            next = next.OrderBy(n => n.Header).ThenByDescending(n => n.GetMatched()).ToList();
-
-
-            sbyte lastHeader = this.Next.First().Header;
-            int lastValue = this.Next.First().Value;
-
-            ChildCount = next.Count;
-
-            int lastValueIndex = 0;
-
-          
-
-            for(int i = 0; i < ChildCount; i++)
-            {
-                INode thisNode = Next.ElementAt(i);
-
-                if(thisNode.Header != lastHeader || thisNode.Value != lastValue)
-                {
-                    if(thisNode.Header != lastHeader)
-                    {
-                        HeaderBreaks.Add(i);
-                    }
-
-                    lastHeader = thisNode.Header;
-                    lastValue = thisNode.Value;
-
-                    ValueJumpList.Add(lastValueIndex, i);
-                    lastValueIndex = i;
-                }
-            }
-
-            ValueJumpList.Add(lastValueIndex, ChildCount);
-            HeaderBreaks.Add(ChildCount);
-        }
-
-        private List<INode> next = new List<INode>();
-
-        public Dictionary<int, int> ValueJumpList = new Dictionary<int, int>();
-        
-        public List<int> HeaderBreaks = new List<int>() { 0 };
-
-        public IEnumerable<INode> Next => this.next;
-        public INode ParentNode { get; }
-        public int[] Results { get; } = new int[4];
-        public float GetScore(float BaseRate)
-        {
-            return 0;
-        }
-
-        public int Value { get; } = 0;
-        public float Accuracy { get; }
-        public byte Depth { get; }
-        public sbyte Header { get; } = -1;
-        public bool LastNode { get; } = false;
-        public int Matched { get; } = 0;
-        public int Key { get; }
-        public int ChildCount { get; internal set; }
-        public sbyte ChildHeader => -1;
-
         public void Flush(int depth)
         {
-            
-        }
-
-        public void Preload(int depth)
-        {
-            
         }
 
         public INode GetNextByValue(int Value)
@@ -163,37 +156,55 @@ namespace Penguin.Analysis
             throw new NotImplementedException();
         }
 
+        public float GetScore(float BaseRate)
+        {
+            return 0;
+        }
+
+        public void Preload(int depth)
+        {
+        }
+
         #region IDisposable Support
+
         private bool disposedValue = false; // To detect redundant calls
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            this.Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!this.disposedValue)
             {
                 if (disposing)
                 {
-                    foreach(INode n in this.next)
+                    foreach (INode n in this.next)
                     {
                         try
                         {
                             n.Dispose();
-                        } catch(Exception)
+                        }
+                        catch (Exception)
                         {
-
                         }
                     }
 
-                    next.Clear();
+                    this.next.Clear();
 
                     this.HeaderBreaks.Clear();
                     this.ValueJumpList.Clear();
-
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                disposedValue = true;
+                this.disposedValue = true;
             }
         }
 
@@ -204,14 +215,6 @@ namespace Penguin.Analysis
         //   Dispose(false);
         // }
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
+        #endregion IDisposable Support
     }
 }

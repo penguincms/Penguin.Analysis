@@ -1,23 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Linq;
 
 namespace Penguin.Analysis.Extensions
 {
     internal static class ByteArrayExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte[] Segment(this byte[] source, int offset, int length)
+        public static int GetInt(this byte[] source, int offset)
         {
-            byte[] chunk = new byte[length];
-
-            for (int i = 0; i < length; i++)
+            int result = 0;
+            for (int i = 0; i < 4; i++)
             {
-                chunk[i] = source[i + offset];
+                result <<= 8;
+                result |= (source[3 - i + offset] & 0xFF);
             }
+            return result;
+        }
 
-            return chunk;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IEnumerable<int> GetInts(this byte[] source, int offset, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                yield return source.GetInt(offset + (i * 4));
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -42,24 +48,16 @@ namespace Penguin.Analysis.Extensions
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static IEnumerable<int> GetInts(this byte[] source, int offset, int count)
+        public static byte[] Segment(this byte[] source, int offset, int length)
         {
-            for (int i = 0; i < count; i++)
-            {
-                yield return source.GetInt(offset + (i * 4));
-            }
-        }
+            byte[] chunk = new byte[length];
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetInt(this byte[] source, int offset)
-        {
-            int result = 0;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < length; i++)
             {
-                result <<= 8;
-                result |= (source[3 - i + offset] & 0xFF);
+                chunk[i] = source[i + offset];
             }
-            return result;
+
+            return chunk;
         }
     }
 }

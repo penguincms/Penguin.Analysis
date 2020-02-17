@@ -10,11 +10,10 @@ namespace Penguin.Analysis.Transformations
     {
         #region Properties
 
+        private Func<string, IEnumerable<string>> Process;
         public List<string> ResultColumns { get; internal set; }
 
         public string TargetColumn { get; internal set; }
-
-        private Func<string, IEnumerable<string>> Process;
 
         #endregion Properties
 
@@ -83,23 +82,33 @@ namespace Penguin.Analysis.Transformations
         }
 
         #region IDisposable Support
+
         private bool disposedValue = false; // To detect redundant calls
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            this.Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!this.disposedValue)
             {
                 if (disposing)
                 {
-                    ResultColumns.Clear();
+                    this.ResultColumns.Clear();
 
-                    Process = null;
+                    this.Process = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                disposedValue = true;
+                this.disposedValue = true;
             }
         }
 
@@ -110,15 +119,7 @@ namespace Penguin.Analysis.Transformations
         //   Dispose(false);
         // }
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
+        #endregion IDisposable Support
 
         #endregion Methods
     }

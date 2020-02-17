@@ -7,28 +7,46 @@ namespace Penguin.Analysis.Interfaces
     {
         new IEnumerable<TChild> Next { get; }
         new TChild ParentNode { get; }
+
         new TChild GetNextByValue(int Value);
     }
 
     public interface INode : IDisposable
     {
-        bool Evaluate(Evaluation e);
-        void Preload(int depth);
-        void Flush(int depth);
-        int[] Results { get; }
-        float GetScore(float BaseRate);
-        int Value { get; }
         float Accuracy { get; }
-        byte Depth { get; }
-        sbyte Header { get; }
-        bool LastNode { get; }
-        int Matched { get; }
-        int Key { get; }
-        string ToString();
+
         int ChildCount { get; }
-        IEnumerable<INode> Next { get; }
-        INode ParentNode { get; }
-        INode GetNextByValue(int Value);
+
         sbyte ChildHeader { get; }
+
+        byte Depth { get; }
+
+        sbyte Header { get; }
+
+        int Key { get; }
+
+        bool LastNode { get; }
+
+        int Matched { get; }
+
+        IEnumerable<INode> Next { get; }
+
+        INode ParentNode { get; }
+
+        int[] Results { get; }
+
+        int Value { get; }
+
+        bool Evaluate(Evaluation e);
+
+        void Flush(int depth);
+
+        INode GetNextByValue(int Value);
+
+        float GetScore(float BaseRate);
+
+        void Preload(int depth);
+
+        string ToString();
     }
 }

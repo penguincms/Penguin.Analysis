@@ -13,37 +13,32 @@ namespace Penguin.Analysis
     {
         #region Fields
 
-        public IList<TypelessDataRow> MatchingRows { get; set; }
-
-        [JsonProperty("R", Order = 1)]
-        public int[] Results { get; set; } = new int[4];
+        private int? key;
 
         public int Key
         {
             get
             {
-                if (key is null)
+                if (this.key is null)
                 {
-                    key = this.GetKey();
+                    this.key = this.GetKey();
                 }
-                return key.Value;
+                return this.key.Value;
             }
         }
 
-        private int? key;
+        public IList<TypelessDataRow> MatchingRows { get; set; }
+
+        [JsonProperty("R", Order = 1)]
+        public int[] Results { get; set; } = new int[4];
 
         #endregion Fields
 
         #region Properties
-        INode INode.GetNextByValue(int Value) => this.GetNextByValue(Value);
+
         public float Accuracy => this.GetAccuracy();
 
         public byte Depth => this.GetDepth();
-
-        public float GetScore(float BaseRate)
-        {
-            return this.CalculateScore(BaseRate);
-        }
 
         [JsonProperty("H", Order = 2)]
         public sbyte Header { get; set; }
@@ -64,6 +59,16 @@ namespace Penguin.Analysis
 
         [JsonProperty("V", Order = 3)]
         public int Value { get; set; }
+
+        INode INode.GetNextByValue(int Value)
+        {
+            return this.GetNextByValue(Value);
+        }
+
+        public float GetScore(float BaseRate)
+        {
+            return this.CalculateScore(BaseRate);
+        }
 
         #endregion Properties
 
@@ -97,6 +102,49 @@ namespace Penguin.Analysis
 
         #region Methods
 
+        public int ChildCount => this.Next?.Length ?? 0;
+
+        public sbyte ChildHeader => (sbyte)(this.ChildCount > 0 ? this.Next.Select(n => n.Header).Distinct().Single() : -1);
+
+        IEnumerable<INode> INode.Next => this.Next?.Cast<INode>()?.ToArray();
+
+        IEnumerable<Node> INode<Node>.Next => this.Next;
+
+        INode INode.ParentNode => this.ParentNode;
+
+        public bool Evaluate(Evaluation e)
+        {
+            return this.StandardEvaluate(e);
+        }
+
+        public void Flush(int depth)
+        {
+        }
+
+        public Node GetNextByValue(int Value)
+        {
+            if (this.ChildCount == 0)
+            {
+                return null;
+            }
+            else
+            {
+                foreach (Node n in this.Next)
+                {
+                    if (n.Value == Value)
+                    {
+                        return n;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public void Preload(int depth)
+        {
+        }
+
         public override string ToString()
         {
             if (this.Header == -1)
@@ -113,79 +161,45 @@ namespace Penguin.Analysis
             }
         }
 
-        public void Preload(int depth)
-        {
-
-        }
-
-        public void Flush(int depth)
-        {
-
-        }
-
-        public bool Evaluate(Evaluation e) => this.StandardEvaluate(e);
-
-        public Node GetNextByValue(int Value)
-        {
-            if(ChildCount == 0)
-            {
-                return null;
-            } else
-            {
-                foreach(Node n in Next)
-                {
-                    if(n.Value == Value)
-                    {
-                        return n;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        INode INode.ParentNode => this.ParentNode;
-
-        IEnumerable<INode> INode.Next => this.Next?.Cast<INode>()?.ToArray();
-
-        IEnumerable<Node> INode<Node>.Next
-        {
-            get => this.Next;
-        }
-
-        public int ChildCount => this.Next?.Length ?? 0;
-
-        public sbyte ChildHeader => (sbyte)(ChildCount > 0 ? this.Next.Select(n => n.Header).Distinct().Single() : -1);
-
         #region IDisposable Support
+
         private bool disposedValue = false; // To detect redundant calls
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            this.Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!this.disposedValue)
             {
                 if (disposing)
                 {
-                    MatchingRows.Clear();
-                    foreach(Node n in Next)
+                    this.MatchingRows.Clear();
+                    foreach (Node n in this.Next)
                     {
                         try
                         {
                             n.Dispose();
-                        } catch(Exception)
+                        }
+                        catch (Exception)
                         {
-
                         }
                     }
 
-                    Next = Array.Empty<Node>();
-                    ParentNode = null;
+                    this.Next = Array.Empty<Node>();
+                    this.ParentNode = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                disposedValue = true;
+                this.disposedValue = true;
             }
         }
 
@@ -196,15 +210,7 @@ namespace Penguin.Analysis
         //   Dispose(false);
         // }
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
+        #endregion IDisposable Support
 
         #endregion Methods
     }

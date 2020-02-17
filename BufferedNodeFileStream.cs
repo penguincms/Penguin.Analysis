@@ -5,22 +5,25 @@ namespace Penguin.Analysis
 {
     public class MemoryNodeFileStream : INodeFileStream
     {
+        public long SourceOffset;
         private MemoryStream stream = new MemoryStream();
 
+        public long Offset => this.stream.Position + this.SourceOffset;
         public bool Ready { get; set; }
-
-        public long SourceOffset;
 
         public MemoryNodeFileStream(long sourceOffset)
         {
             this.SourceOffset = sourceOffset;
         }
 
-        public long Offset => this.stream.Position + this.SourceOffset;
-
         public long Seek(long lastOffset)
         {
             return this.stream.Seek(lastOffset - this.SourceOffset, SeekOrigin.Begin);
+        }
+
+        public byte[] ToArray()
+        {
+            return this.stream.ToArray();
         }
 
         public void Write(byte[] toWrite)
@@ -33,28 +36,33 @@ namespace Penguin.Analysis
             this.Write(BitConverter.GetBytes(v));
         }
 
-        public byte[] ToArray()
-        {
-            return this.stream.ToArray();
-        }
-
         #region IDisposable Support
+
         private bool disposedValue = false; // To detect redundant calls
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            this.Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!this.disposedValue)
             {
                 if (disposing)
                 {
-                    stream.Dispose();
-                    stream = null;
+                    this.stream.Dispose();
+                    this.stream = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                disposedValue = true;
+                this.disposedValue = true;
             }
         }
 
@@ -65,14 +73,6 @@ namespace Penguin.Analysis
         //   Dispose(false);
         // }
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
+        #endregion IDisposable Support
     }
 }

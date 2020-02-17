@@ -9,6 +9,7 @@ namespace Penguin.Analysis.DataColumns
         public NullableBool(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
         {
         }
+
         #region Methods
 
         public override string Display(int Value)
@@ -44,7 +45,6 @@ namespace Penguin.Analysis.DataColumns
 
         protected override void OnDispose()
         {
-
         }
 
         #endregion Methods

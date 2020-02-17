@@ -9,11 +9,10 @@ namespace Penguin.Analysis
     {
         #region Properties
 
+        private readonly int[] _Items;
         public bool MatchesOutput { get; set; }
 
         public TypelessDataTable Table { get; set; }
-
-        private readonly int[] _Items;
 
         #endregion Properties
 
@@ -48,7 +47,7 @@ namespace Penguin.Analysis
 
         public override string ToString()
         {
-            return string.Join(", ", _Items);
+            return string.Join(", ", this._Items);
         }
     }
 
@@ -57,6 +56,7 @@ namespace Penguin.Analysis
     {
         #region Properties
 
+        private readonly List<TypelessDataRow> _rows;
         public int RowCount { get; internal set; }
 
         public IEnumerable<TypelessDataRow> Rows
@@ -69,8 +69,6 @@ namespace Penguin.Analysis
                 }
             }
         }
-
-        private readonly List<TypelessDataRow> _rows;
 
         #endregion Properties
 

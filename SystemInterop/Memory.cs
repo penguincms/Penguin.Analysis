@@ -1,29 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Penguin.Analysis.SystemInterop
 {
     public static class Memory
     {
-        public static MEMORYSTATUSEX Status { 
+        public static MEMORYSTATUSEX Status
+        {
             get
             {
-                MEMORYSTATUSEX memoryStatus = new MEMORYSTATUSEX();
-                memoryStatus.dwLength = (int)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
+                MEMORYSTATUSEX memoryStatus = new MEMORYSTATUSEX
+                {
+                    dwLength = Marshal.SizeOf(typeof(MEMORYSTATUSEX))
+                };
                 if (!GlobalMemoryStatusEx(ref memoryStatus))
                 {
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
 
                 return memoryStatus;
-            } 
+            }
         }
-
-        [DllImport("Kernel32.dll", SetLastError = true)]
-        public static extern bool GlobalMemoryStatusEx([In, Out] ref MEMORYSTATUSEX lpBuffer);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct MEMORYSTATUSEX
@@ -38,5 +35,8 @@ namespace Penguin.Analysis.SystemInterop
             public ulong ullAvailVirtual;
             public ulong ullAvailExtendedVirtual;
         }
+
+        [DllImport("Kernel32.dll", SetLastError = true)]
+        public static extern bool GlobalMemoryStatusEx([In, Out] ref MEMORYSTATUSEX lpBuffer);
     }
 }

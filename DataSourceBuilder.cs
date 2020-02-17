@@ -43,208 +43,6 @@ namespace Penguin.Analysis
 
         public DataSourceSettings Settings = new DataSourceSettings();
 
-        public class DataSourceSettings
-        {
-            public ulong MinFreeMemory { get; set; } = 1_000_000_000;
-            public ulong RangeFreeMemory { get; set; } = 500_000_000;
-
-            [JsonIgnore]
-            public Action<List<string>, bool> CheckedConstraint = null;
-
-            [JsonIgnore]
-            public Action<INode> TrimmedNode = null;
-
-            public int NodeFlushDepth { get; set; } = 0;
-            #region Classes
-
-            public ResultSettings Results = new ResultSettings();
-
-            public class ResultSettings
-            {
-                #region Properties
-
-                /// <summary>
-                /// Only build trees that contain positive output matches
-                /// </summary>
-                public bool MatchOnly { get; set; } = false;
-
-                /// <summary>
-                /// The minimum total times a route must be matched to be considered
-                /// </summary>
-                public int MinimumHits { get; set; } = 5;
-
-                /// <summary>
-                /// Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
-                /// </summary>
-                public float MinimumAccuracy { get; set; } = .4f;
-
-                #endregion Properties
-            }
-
-            #endregion Classes
-        }
-
-        private class NodeSetCollection : IList<NodeSet>
-        {
-            private List<NodeSet> nodeSets;
-
-            public int Count => ((IList<NodeSet>)this.nodeSets).Count;
-
-            public bool IsReadOnly => ((IList<NodeSet>)this.nodeSets).IsReadOnly;
-
-            public NodeSet this[int index] { get => ((IList<NodeSet>)this.nodeSets)[index]; set => ((IList<NodeSet>)this.nodeSets)[index] = value; }
-
-            public NodeSetCollection(IEnumerable<NodeSet> set)
-            {
-                this.nodeSets = set.ToList();
-            }
-
-            private static ConcurrentDictionary<sbyte, NodeSet> DefinedSets = new ConcurrentDictionary<sbyte, NodeSet>();
-
-            public NodeSetCollection(IEnumerable<(sbyte columnIndex, int[] values)> set)
-            {
-                this.nodeSets = new List<NodeSet>();
-
-                foreach ((sbyte columnIndex, int[] values) x in set)
-                {
-                    if (!DefinedSets.TryGetValue(x.columnIndex, out NodeSet n))
-                    {
-                        n = new NodeSet(x);
-                        DefinedSets.TryAdd(x.columnIndex, n);
-                    }
-
-                    this.nodeSets.Add(n);
-                }
-            }
-
-            public NodeSetCollection()
-            {
-                this.nodeSets = new List<NodeSet>();
-            }
-
-            public int IndexOf(NodeSet item)
-            {
-                return ((IList<NodeSet>)this.nodeSets).IndexOf(item);
-            }
-
-            public void Insert(int index, NodeSet item)
-            {
-                ((IList<NodeSet>)this.nodeSets).Insert(index, item);
-            }
-
-            public void RemoveAt(int index)
-            {
-                ((IList<NodeSet>)this.nodeSets).RemoveAt(index);
-            }
-
-            public void Add(NodeSet item)
-            {
-                ((IList<NodeSet>)this.nodeSets).Add(item);
-            }
-
-            public void Clear()
-            {
-                ((IList<NodeSet>)this.nodeSets).Clear();
-            }
-
-            public bool Contains(NodeSet item)
-            {
-                return ((IList<NodeSet>)this.nodeSets).Contains(item);
-            }
-
-            public void CopyTo(NodeSet[] array, int arrayIndex)
-            {
-                ((IList<NodeSet>)this.nodeSets).CopyTo(array, arrayIndex);
-            }
-
-            public bool Remove(NodeSet item)
-            {
-                return ((IList<NodeSet>)this.nodeSets).Remove(item);
-            }
-
-            public IEnumerator<NodeSet> GetEnumerator()
-            {
-                return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
-            }
-
-            public static implicit operator NodeSetCollection(List<NodeSet> n)
-            {
-                return new NodeSetCollection(n);
-            }
-
-            public static bool operator ==(NodeSetCollection obj1, NodeSetCollection obj2)
-            {
-                if (ReferenceEquals(obj1, obj2))
-                {
-                    return true;
-                }
-
-                if (obj1 is null || obj2 is null)
-                {
-                    return false;
-                }
-
-                if (obj1.Count != obj2.Count)
-                {
-                    return false;
-                }
-
-                for (int i = 0; i < obj1.Count; i++)
-                {
-                    if (!obj2.Contains(obj1.ElementAt(i)))
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-
-            // this is second one '!='
-            public static bool operator !=(NodeSetCollection obj1, NodeSetCollection obj2)
-            {
-                return !(obj1 == obj2);
-            }
-
-            public bool Equals(NodeSetCollection other)
-            {
-                if (other is null)
-                {
-                    return false;
-                }
-                if (ReferenceEquals(this, other))
-                {
-                    return true;
-                }
-
-                return this == other;
-            }
-
-            public override int GetHashCode()
-            {
-                return this.nodeSets.Sum(n => n.ColumnIndex);
-            }
-
-            public override bool Equals(object obj)
-            {
-                if (obj is null)
-                {
-                    return false;
-                }
-                if (ReferenceEquals(this, obj))
-                {
-                    return true;
-                }
-
-                return obj.GetType() == this.GetType() && this.Equals((NodeSetCollection)obj);
-            }
-        }
-
         private class NodeSet
         {
             #region Properties
@@ -261,16 +59,18 @@ namespace Penguin.Analysis
             {
             }
 
-            public override int GetHashCode()
-            {
-                return this.ColumnIndex;
-            }
-
             public NodeSet(sbyte columnIndex, int[] values)
             {
                 this.ColumnIndex = columnIndex;
                 this.Values = values.ToArray();
             }
+
+            // this is second one '!='
+            public static bool operator !=(NodeSet obj1, NodeSet obj2)
+            {
+                return !(obj1 == obj2);
+            }
+
             public static bool operator ==(NodeSet obj1, NodeSet obj2)
             {
                 if (ReferenceEquals(obj1, obj2))
@@ -284,12 +84,6 @@ namespace Penguin.Analysis
                 }
 
                 return obj1.ColumnIndex == obj2.ColumnIndex;
-            }
-
-            // this is second one '!='
-            public static bool operator !=(NodeSet obj1, NodeSet obj2)
-            {
-                return !(obj1 == obj2);
             }
 
             public bool Equals(NodeSet other)
@@ -320,8 +114,172 @@ namespace Penguin.Analysis
                 return obj.GetType() == this.GetType() && this.Equals((NodeSet)obj);
             }
 
+            public override int GetHashCode()
+            {
+                return this.ColumnIndex;
+            }
 
             #endregion Constructors
+        }
+
+        private class NodeSetCollection : IList<NodeSet>
+        {
+            private static ConcurrentDictionary<sbyte, NodeSet> DefinedSets = new ConcurrentDictionary<sbyte, NodeSet>();
+            private List<NodeSet> nodeSets;
+
+            public int Count => ((IList<NodeSet>)this.nodeSets).Count;
+
+            public bool IsReadOnly => ((IList<NodeSet>)this.nodeSets).IsReadOnly;
+
+            public NodeSetCollection(IEnumerable<NodeSet> set)
+            {
+                this.nodeSets = set.ToList();
+            }
+
+            public NodeSetCollection(IEnumerable<(sbyte columnIndex, int[] values)> set)
+            {
+                this.nodeSets = new List<NodeSet>();
+
+                foreach ((sbyte columnIndex, int[] values) x in set)
+                {
+                    if (!DefinedSets.TryGetValue(x.columnIndex, out NodeSet n))
+                    {
+                        n = new NodeSet(x);
+                        DefinedSets.TryAdd(x.columnIndex, n);
+                    }
+
+                    this.nodeSets.Add(n);
+                }
+            }
+
+            public NodeSetCollection()
+            {
+                this.nodeSets = new List<NodeSet>();
+            }
+
+            public NodeSet this[int index] { get => ((IList<NodeSet>)this.nodeSets)[index]; set => ((IList<NodeSet>)this.nodeSets)[index] = value; }
+
+            public static implicit operator NodeSetCollection(List<NodeSet> n)
+            {
+                return new NodeSetCollection(n);
+            }
+
+            // this is second one '!='
+            public static bool operator !=(NodeSetCollection obj1, NodeSetCollection obj2)
+            {
+                return !(obj1 == obj2);
+            }
+
+            public static bool operator ==(NodeSetCollection obj1, NodeSetCollection obj2)
+            {
+                if (ReferenceEquals(obj1, obj2))
+                {
+                    return true;
+                }
+
+                if (obj1 is null || obj2 is null)
+                {
+                    return false;
+                }
+
+                if (obj1.Count != obj2.Count)
+                {
+                    return false;
+                }
+
+                for (int i = 0; i < obj1.Count; i++)
+                {
+                    if (!obj2.Contains(obj1.ElementAt(i)))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            public void Add(NodeSet item)
+            {
+                ((IList<NodeSet>)this.nodeSets).Add(item);
+            }
+
+            public void Clear()
+            {
+                ((IList<NodeSet>)this.nodeSets).Clear();
+            }
+
+            public bool Contains(NodeSet item)
+            {
+                return ((IList<NodeSet>)this.nodeSets).Contains(item);
+            }
+
+            public void CopyTo(NodeSet[] array, int arrayIndex)
+            {
+                ((IList<NodeSet>)this.nodeSets).CopyTo(array, arrayIndex);
+            }
+
+            public bool Equals(NodeSetCollection other)
+            {
+                if (other is null)
+                {
+                    return false;
+                }
+                if (ReferenceEquals(this, other))
+                {
+                    return true;
+                }
+
+                return this == other;
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj is null)
+                {
+                    return false;
+                }
+                if (ReferenceEquals(this, obj))
+                {
+                    return true;
+                }
+
+                return obj.GetType() == this.GetType() && this.Equals((NodeSetCollection)obj);
+            }
+
+            public IEnumerator<NodeSet> GetEnumerator()
+            {
+                return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
+            }
+
+            public override int GetHashCode()
+            {
+                return this.nodeSets.Sum(n => n.ColumnIndex);
+            }
+
+            public int IndexOf(NodeSet item)
+            {
+                return ((IList<NodeSet>)this.nodeSets).IndexOf(item);
+            }
+
+            public void Insert(int index, NodeSet item)
+            {
+                ((IList<NodeSet>)this.nodeSets).Insert(index, item);
+            }
+
+            public bool Remove(NodeSet item)
+            {
+                return ((IList<NodeSet>)this.nodeSets).Remove(item);
+            }
+
+            public void RemoveAt(int index)
+            {
+                ((IList<NodeSet>)this.nodeSets).RemoveAt(index);
+            }
         }
 
         #endregion Classes
@@ -336,9 +294,6 @@ namespace Penguin.Analysis
             TypeNameHandling = TypeNameHandling.Auto
         };
 
-        [JsonIgnore]
-        public JsonSerializerSettings JsonSerializerSettings { get; set; } = DefaultSerializerSettings;
-
         public static JsonSerializerSettings DefaultSerializerSettings => new JsonSerializerSettings()
         {
             DefaultValueHandling = DefaultValueHandling.Ignore,
@@ -351,6 +306,9 @@ namespace Penguin.Analysis
 
         [JsonIgnore]
         public JsonSerializer JsonSerializer { get; set; }
+
+        [JsonIgnore]
+        public JsonSerializerSettings JsonSerializerSettings { get; set; } = DefaultSerializerSettings;
 
         #region Constructors
 
@@ -372,19 +330,18 @@ namespace Penguin.Analysis
 
         #region Methods
 
-        public void AddRouteConstraint(IRouteConstraint constraint)
-        {
-            this.RouteConstraints.Add(constraint);
-        }
+        private static string MemLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
+
+        private FileStream ManagedMemoryStream;
 
         [JsonIgnore]
-        public Task PreloadTask { get; private set; }
+        public bool IsPreloaded { get; private set; }
 
         [JsonIgnore]
         public Task MemoryManagementTask { get; private set; }
 
         [JsonIgnore]
-        public bool IsPreloaded { get; private set; }
+        public Task PreloadTask { get; private set; }
 
         [Flags]
         public enum MemoryManagementStyle
@@ -430,8 +387,6 @@ namespace Penguin.Analysis
 
             toReturn.Result.RootNode = gNode;
 
-
-
             if (memoryManagementStyle != MemoryManagementStyle.None)
             {
                 toReturn.Preload(FilePath, memoryManagementStyle);
@@ -440,243 +395,80 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        private static string MemLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
-        public async void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
+        public void AddRouteConstraint(IRouteConstraint constraint)
         {
-            if (Disposing)
+            this.RouteConstraints.Add(constraint);
+        }
+
+        public void Build(string outputFilePath)
+        {
+            this.Transform();
+
+            using (FileStream fstream = new FileStream(outputFilePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read, 1_000_000_00))
             {
-                return;
-            }
-
-            const int Chunks = 15000;
-
-            static void Log(string toLog)
-            {
-                string toWrite = $"[{DateTime.Now.ToString("yyyy MM dd HH:mm:ss")}]: {toLog}";
-                Debug.WriteLine(toWrite);
-                Console.WriteLine(toWrite);
-                File.AppendAllLines(MemLog, new List<string>() { toWrite });
-
-            }
-
-            try
-            {
-                Log("Running Preload...");
-
-                ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
-
-                Log($"{freeMem} available");
-
-                Log($"{this.Settings.MinFreeMemory} Min Free Memory");
-
-                Log($"{this.Settings.RangeFreeMemory} Range Free Memory");
-
-
-
-                Log($"Memory management mode {memoryManagementStyle}");
-
-                if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+                using (LockedNodeFileStream stream = new LockedNodeFileStream(fstream, false))
                 {
-                    while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                    stream.Write((long)0);
+
+                    this.Generate(stream);
+
+                    fstream.Seek(0, SeekOrigin.End);
+
+                    long JsonOffset = stream.Offset;
+
+                    try
                     {
-                        Log($"Found Free Memory. Filling...");
+                        string Json = JsonConvert.SerializeObject(this, this.JsonSerializerSettings);
 
-                        for (int i = 0; i < Chunks / 2; i++)
-                        {
+                        stream.Write(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(Json)));
 
-                            if (Disposing)
-                            {
-                                return;
-                            }
+                        stream.Seek(0);
 
-                            if (stream.Position >= JsonOffset)
-                            {
-                                return;
-                            }
+                        stream.Write(JsonOffset);
 
-                            byte[] thisNodeBytes = new byte[8];
-
-                            stream.Read(thisNodeBytes, 0, thisNodeBytes.Length);
-
-                            DiskNode _ = DiskNode.LoadNode(DiskNode._backingStream, thisNodeBytes.GetLong(0), true);
-                        }
-
-                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+                        stream.Flush();
+                    }
+                    catch (Exception ex)
+                    {
+                        throw;
                     }
                 }
-
-                if (freeMem < this.Settings.MinFreeMemory)
-                {
-
-
-
-                    int chunkBytes = Chunks * 8;
-
-                    while (freeMem < this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
-                    {
-                        if (Disposing)
-                        {
-                            return;
-                        }
-
-                        Log($"Need more memory... Clearing cache.");
-                        DiskNode.ClearCache(memoryManagementStyle);
-
-                        Log($"Collecting Garbage...");
-                        GC.Collect();
-
-                        Log($"Waiting...");
-                        Task.Delay(5000).Wait();
-
-                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
-
-                        Log($"{freeMem} Free memory");
-
-                        if (freeMem > this.Settings.MinFreeMemory || stream.Position == SortOffset || !memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
-                        {
-                            Log($"Nothing left to do.");
-                            return;
-                        }
-
-
-                        Log($"Reducing managed nodes...");
-
-                        long oldPost = stream.Position;
-
-                        long newPos = Math.Max(SortOffset, stream.Position - chunkBytes);
-
-                        stream.Seek(newPos, SeekOrigin.Begin);
-
-                        for (int i = 0; i < Chunks; i++)
-                        {
-                            if (Disposing)
-                            {
-                                return;
-                            }
-
-                            byte[] thisBlock = new byte[8];
-
-                            stream.Read(thisBlock, 0, thisBlock.Length);
-
-                            long offset = thisBlock.GetLong(0);
-
-                            if (DiskNode.MemoryManaged.TryGetValue(offset, out DiskNode dn))
-                            {
-                                DiskNode.MemoryManaged.Remove(offset);
-                            }
-
-                            if (stream.Position >= stream.Length || stream.Position >= oldPost)
-                            {
-                                break;
-                            }
-                        }
-
-                        Log(DiskNode.MemoryManaged.Count + " Memory Managed nodes remaining.");
-                        GC.Collect();
-
-                        Task.Delay(5000).Wait();
-
-                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
-
-                        stream.Seek(newPos, SeekOrigin.Begin);
-                    }
-
-
-                }
-
-                this.IsPreloaded = true;
-            }
-            catch (Exception ex)
-            {
-                Log(ex.Message);
-                Log(ex.StackTrace);
-                Debugger.Break();
             }
         }
 
-        FileStream ManagedMemoryStream;
-
-        public async void Preload(string Engine, MemoryManagementStyle memoryManagementStyle)
+        public Evaluation Evaluate(DataRow dr)
         {
-            ManagedMemoryStream = new FileStream(Engine, FileMode.Open, FileAccess.Read, FileShare.Read);
+            Dictionary<string, string> toEvaluate = new Dictionary<string, string>();
 
-
-            byte[] offsetBytes = new byte[DiskNode.HeaderBytes];
-
-            ManagedMemoryStream.Read(offsetBytes, 0, offsetBytes.Length);
-
-            long jsonOffset = offsetBytes.GetLong(0);
-            long SortOffset = offsetBytes.GetLong(8);
-
-            ManagedMemoryStream.Seek(SortOffset, SeekOrigin.Begin);
-
-            if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+            foreach (DataColumn dc in dr.Table.Columns)
             {
-                if (this.PreloadTask is null)
-                {
-                    this.PreloadTask = Task.Run(() => this.PreloadFunc(ManagedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle));
-                }
-
-                await this.PreloadTask;
+                toEvaluate.Add(dc.ColumnName, dr[dc].ToString());
             }
 
-            if (this.MemoryManagementTask is null)
-            {
-                this.MemoryManagementTask = new Task(() =>
-                {
-
-
-                    do
-                    {
-                    if(Disposing)
-                    {
-                        return;
-                    }
-                        try
-                        {
-                            this.PreloadFunc(ManagedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine("Prelod function failed to execute...");
-                            Console.WriteLine(ex.Message);
-                        }
-
-                        Task.Delay(5000).Wait();
-                    } while (true);
-                });
-
-                this.MemoryManagementTask.Start();
-            }
-
+            return this.Evaluate(toEvaluate);
         }
 
-        public bool IfValid(List<string> Headers, Action<List<string>> HeaderAction = null)
+        public Evaluation Evaluate(Dictionary<string, string> dataRow)
         {
-            while (!this.ValidateRouteConstraints(Headers) && Headers.Count > 0)
+            Evaluation evaluation = new Evaluation(this.Transform(dataRow), this.Result)
             {
-                Headers = Headers.Take(Headers.Count - 1).ToList();
+                //evaluation.Score = this.Result.BaseRate;
 
-                if (Headers.Count == 0)
-                {
-                    return false;
-                }
-            }
+                Result = this.Result
+            };
 
-            HeaderAction?.Invoke(Headers);
+            INode rootNode = this.Result.RootNode;
 
-            return true;
+            rootNode.Evaluate(evaluation);
+
+            return evaluation;
         }
 
         public void Generate(LockedNodeFileStream outputStream)
         {
-
-
             ScreenBuffer.Clear();
 
             ScreenBuffer.ReplaceLine($"Building complex tree", 0);
-
-
 
             int KeyIndex = this.Registrations.IndexOf(this.Registrations.Single(r => r.Column.GetType() == typeof(Key)));
 
@@ -720,7 +512,6 @@ namespace Penguin.Analysis
                 }
 
                 bool Valid = this.ValidateRouteConstraints(Headers);
-
             }
 
             rawGraph = null;
@@ -894,7 +685,6 @@ namespace Penguin.Analysis
                     n.Trim();
                 }
 
-
                 //thisRoot.Header = -1;
 
                 thisRoot.FillNodeData(this.Result.PositiveIndicators, this.Result.RawData.RowCount);
@@ -903,7 +693,6 @@ namespace Penguin.Analysis
 
                 thisRoot.Trim();
 
-                
                 this.Result.RegisterTree(thisRoot);
 
                 long thisNodeIndex = graphi++;
@@ -936,8 +725,6 @@ namespace Penguin.Analysis
             IEnumerable<NodeMeta> PreloadResults = results.OrderByDescending(n => n.Matches);
             IEnumerable<NodeMeta> RootOffsets = results.Where(n => n.Root).OrderBy(n => n.Header).ThenByDescending(n => n.Matches);
 
-
-
             long sortPos = outputStream.Offset;
 
             outputStream.Seek(RootChildListOffset);
@@ -955,46 +742,12 @@ namespace Penguin.Analysis
 
             outputStream.Seek(sortPos);
 
-
-
             foreach (NodeMeta nm in PreloadResults)
             {
                 outputStream.Write(nm.Offset);
             }
 
-
             this.Result.RootNode = new DiskNode(outputStream, DiskNode.HeaderBytes);
-        }
-
-
-        public Evaluation Evaluate(DataRow dr)
-        {
-            Dictionary<string, string> toEvaluate = new Dictionary<string, string>();
-
-            foreach (DataColumn dc in dr.Table.Columns)
-            {
-                toEvaluate.Add(dc.ColumnName, dr[dc].ToString());
-            }
-
-            return this.Evaluate(toEvaluate);
-
-
-        }
-
-        public Evaluation Evaluate(Dictionary<string, string> dataRow)
-        {
-            Evaluation evaluation = new Evaluation(this.Transform(dataRow), this.Result)
-            {
-                //evaluation.Score = this.Result.BaseRate;
-
-                Result = this.Result
-            };
-
-            INode rootNode = this.Result.RootNode;
-
-            rootNode.Evaluate(evaluation);
-
-            return evaluation;
         }
 
         public string GetNodeName(INode toCheck)
@@ -1020,44 +773,215 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        public void Build(string outputFilePath)
+        public bool IfValid(List<string> Headers, Action<List<string>> HeaderAction = null)
         {
-
-            this.Transform();
-
-            using (FileStream fstream = new FileStream(outputFilePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read, 1_000_000_00))
+            while (!this.ValidateRouteConstraints(Headers) && Headers.Count > 0)
             {
-                using (LockedNodeFileStream stream = new LockedNodeFileStream(fstream, false))
+                Headers = Headers.Take(Headers.Count - 1).ToList();
+
+                if (Headers.Count == 0)
                 {
-                    stream.Write((long)0);
-
-                    this.Generate(stream);
-
-                    fstream.Seek(0, SeekOrigin.End);
-
-                    long JsonOffset = stream.Offset;
-
-                    try
-                    {
-
-                        string Json = JsonConvert.SerializeObject(this, this.JsonSerializerSettings);
-
-                        stream.Write(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(Json)));
-
-                        stream.Seek(0);
-
-                        stream.Write(JsonOffset);
-
-                        stream.Flush();
-                    }
-                    catch (Exception ex)
-                    {
-                        throw;
-                    }
+                    return false;
                 }
             }
 
+            HeaderAction?.Invoke(Headers);
 
+            return true;
+        }
+
+        public async void Preload(string Engine, MemoryManagementStyle memoryManagementStyle)
+        {
+            this.ManagedMemoryStream = new FileStream(Engine, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+            byte[] offsetBytes = new byte[DiskNode.HeaderBytes];
+
+            this.ManagedMemoryStream.Read(offsetBytes, 0, offsetBytes.Length);
+
+            long jsonOffset = offsetBytes.GetLong(0);
+            long SortOffset = offsetBytes.GetLong(8);
+
+            this.ManagedMemoryStream.Seek(SortOffset, SeekOrigin.Begin);
+
+            if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+            {
+                if (this.PreloadTask is null)
+                {
+                    this.PreloadTask = Task.Run(() => this.PreloadFunc(this.ManagedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle));
+                }
+
+                await this.PreloadTask;
+            }
+
+            if (this.MemoryManagementTask is null)
+            {
+                this.MemoryManagementTask = new Task(() =>
+                {
+                    do
+                    {
+                        if (this.Disposing)
+                        {
+                            return;
+                        }
+                        try
+                        {
+                            this.PreloadFunc(this.ManagedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Prelod function failed to execute...");
+                            Console.WriteLine(ex.Message);
+                        }
+
+                        Task.Delay(5000).Wait();
+                    } while (true);
+                });
+
+                this.MemoryManagementTask.Start();
+            }
+        }
+
+        public async void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
+        {
+            if (this.Disposing)
+            {
+                return;
+            }
+
+            const int Chunks = 15000;
+
+            static void Log(string toLog)
+            {
+                string toWrite = $"[{DateTime.Now.ToString("yyyy MM dd HH:mm:ss")}]: {toLog}";
+                Debug.WriteLine(toWrite);
+                Console.WriteLine(toWrite);
+                File.AppendAllLines(MemLog, new List<string>() { toWrite });
+            }
+
+            try
+            {
+                Log("Running Preload...");
+
+                ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                Log($"{freeMem} available");
+
+                Log($"{this.Settings.MinFreeMemory} Min Free Memory");
+
+                Log($"{this.Settings.RangeFreeMemory} Range Free Memory");
+
+                Log($"Memory management mode {memoryManagementStyle}");
+
+                if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+                {
+                    while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                    {
+                        Log($"Found Free Memory. Filling...");
+
+                        for (int i = 0; i < Chunks / 2; i++)
+                        {
+                            if (this.Disposing)
+                            {
+                                return;
+                            }
+
+                            if (stream.Position >= JsonOffset)
+                            {
+                                return;
+                            }
+
+                            byte[] thisNodeBytes = new byte[8];
+
+                            stream.Read(thisNodeBytes, 0, thisNodeBytes.Length);
+
+                            DiskNode _ = DiskNode.LoadNode(DiskNode._backingStream, thisNodeBytes.GetLong(0), true);
+                        }
+
+                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+                    }
+                }
+
+                if (freeMem < this.Settings.MinFreeMemory)
+                {
+                    int chunkBytes = Chunks * 8;
+
+                    while (freeMem < this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                    {
+                        if (this.Disposing)
+                        {
+                            return;
+                        }
+
+                        Log($"Need more memory... Clearing cache.");
+                        DiskNode.ClearCache(memoryManagementStyle);
+
+                        Log($"Collecting Garbage...");
+                        GC.Collect();
+
+                        Log($"Waiting...");
+                        Task.Delay(5000).Wait();
+
+                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                        Log($"{freeMem} Free memory");
+
+                        if (freeMem > this.Settings.MinFreeMemory || stream.Position == SortOffset || !memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
+                        {
+                            Log($"Nothing left to do.");
+                            return;
+                        }
+
+                        Log($"Reducing managed nodes...");
+
+                        long oldPost = stream.Position;
+
+                        long newPos = Math.Max(SortOffset, stream.Position - chunkBytes);
+
+                        stream.Seek(newPos, SeekOrigin.Begin);
+
+                        for (int i = 0; i < Chunks; i++)
+                        {
+                            if (this.Disposing)
+                            {
+                                return;
+                            }
+
+                            byte[] thisBlock = new byte[8];
+
+                            stream.Read(thisBlock, 0, thisBlock.Length);
+
+                            long offset = thisBlock.GetLong(0);
+
+                            if (DiskNode.MemoryManaged.TryGetValue(offset, out DiskNode dn))
+                            {
+                                DiskNode.MemoryManaged.Remove(offset);
+                            }
+
+                            if (stream.Position >= stream.Length || stream.Position >= oldPost)
+                            {
+                                break;
+                            }
+                        }
+
+                        Log(DiskNode.MemoryManaged.Count + " Memory Managed nodes remaining.");
+                        GC.Collect();
+
+                        Task.Delay(5000).Wait();
+
+                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                        stream.Seek(newPos, SeekOrigin.Begin);
+                    }
+                }
+
+                this.IsPreloaded = true;
+            }
+            catch (Exception ex)
+            {
+                Log(ex.Message);
+                Log(ex.StackTrace);
+                Debugger.Break();
+            }
         }
 
         public void RegisterColumn(string ColumnName, IDataColumn registration)
@@ -1157,9 +1081,14 @@ namespace Penguin.Analysis
                 {
                     transform.TransformRow(dr);
                 }
+            }
 
+            foreach (ITransform transform in this.Transformations)
+            {
                 transform.Cleanup(dt);
             }
+
+            this.Settings.PostTransform?.Invoke(dt);
 
             toReturn = new TypelessDataTable(dt.Rows.Count);
 
@@ -1200,9 +1129,19 @@ namespace Penguin.Analysis
         }
 
         #region IDisposable Support
+
         private bool disposedValue = false; // To detect redundant calls
 
         private bool Disposing = false;
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            this.Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
 
         protected virtual void Dispose(bool disposing)
         {
@@ -1210,7 +1149,7 @@ namespace Penguin.Analysis
             {
                 if (disposing)
                 {
-                    Disposing = true;
+                    this.Disposing = true;
 
                     try
                     {
@@ -1218,7 +1157,6 @@ namespace Penguin.Analysis
                     }
                     catch (Exception)
                     {
-
                     }
 
                     try
@@ -1227,18 +1165,17 @@ namespace Penguin.Analysis
                     }
                     catch (Exception)
                     {
-
                     }
 
                     try
                     {
-                        ManagedMemoryStream.Dispose();
-                    } catch(Exception)
+                        this.ManagedMemoryStream.Dispose();
+                    }
+                    catch (Exception)
                     {
-
                     }
 
-                    ManagedMemoryStream = null;
+                    this.ManagedMemoryStream = null;
 
                     foreach (ColumnRegistration x in this.Registrations)
                     {
@@ -1264,9 +1201,9 @@ namespace Penguin.Analysis
                     try
                     {
                         this.Result.Dispose();
-                    } catch(Exception)
+                    }
+                    catch (Exception)
                     {
-
                     }
 
                     this.Result = null;
@@ -1290,15 +1227,7 @@ namespace Penguin.Analysis
         //   Dispose(false);
         // }
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
+        #endregion IDisposable Support
 
         #endregion Methods
     }

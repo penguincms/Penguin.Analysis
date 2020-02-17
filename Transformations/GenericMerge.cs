@@ -5,14 +5,19 @@ using System.Data;
 namespace Penguin.Analysis.Transformations
 {
     [Serializable]
-    public class Replace : ITransform
+    public class GenericMerge : ITransform
     {
+        public class ColumnDefinition
+        {
+            public string Name { get; set; }
+            public string Value { get; set; }
+        }
+
         #region Properties
 
-        private Func<string, string> Process;
-        public List<string> ResultColumns => throw new NotImplementedException();
-
-        public string TargetColumn { get; internal set; }
+        private Func<IEnumerable<ColumnDefinition>, string> Process;
+        public string ResultColumn { get; internal set; }
+        public List<string> SourceColumns { get; internal set; }
 
         #endregion Properties
 
@@ -22,12 +27,13 @@ namespace Penguin.Analysis.Transformations
         /// Generic column transformation for converting/adding additional data columns
         /// does NOT keep original column so original must be returned if required
         /// </summary>
-        /// <param name="ColumnName"></param>
-        /// <param name="transformer"></param>
-        public Replace(string ColumnName, Func<string, string> transformer)
+        /// <param name="SourceColumnNames"></param>
+        /// <param name="NewColumn"></param>
+        public GenericMerge(List<string> SourceColumnNames, string NewColumn, Func<IEnumerable<ColumnDefinition>, string> transformer)
         {
-            this.TargetColumn = ColumnName;
+            this.SourceColumns = SourceColumnNames;
             this.Process = transformer;
+            this.ResultColumn = NewColumn;
         }
 
         #endregion Constructors
@@ -36,15 +42,33 @@ namespace Penguin.Analysis.Transformations
 
         public void Cleanup(DataTable table)
         {
+            foreach (string columnName in this.SourceColumns)
+            {
+                if (table.Columns.Contains(columnName) && this.ResultColumn != columnName)
+                {
+                    table.Columns.Remove(columnName);
+                }
+            }
         }
 
         public void TransformRow(DataRow source)
         {
-            string Value = source[this.TargetColumn]?.ToString();
+            List<ColumnDefinition> toTransform = new List<ColumnDefinition>();
 
-            string postTransform = this.Process.Invoke(Value);
+            foreach (string sourceC in this.SourceColumns)
+            {
+                ColumnDefinition cd = new ColumnDefinition
+                {
+                    Name = sourceC,
+                    Value = source[sourceC]?.ToString()
+                };
 
-            source[this.TargetColumn] = postTransform;
+                toTransform.Add(cd);
+            }
+
+            string postTransform = this.Process.Invoke(toTransform);
+
+            source[this.ResultColumn] = postTransform;
         }
 
         /// <summary>
@@ -54,6 +78,11 @@ namespace Penguin.Analysis.Transformations
         /// <returns></returns>
         public DataTable TransformTable(DataTable table)
         {
+            if (!table.Columns.Contains(this.ResultColumn))
+            {
+                table.Columns.Add(this.ResultColumn);
+            }
+
             return table;
         }
 
@@ -76,6 +105,8 @@ namespace Penguin.Analysis.Transformations
             {
                 if (disposing)
                 {
+                    this.SourceColumns.Clear();
+
                     this.Process = null;
                 }
 
@@ -87,7 +118,7 @@ namespace Penguin.Analysis.Transformations
         }
 
         // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~Replace()
+        // ~GenericSplit()
         // {
         //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
         //   Dispose(false);

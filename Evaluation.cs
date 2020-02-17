@@ -1,8 +1,6 @@
-﻿using Penguin.Analysis.Extensions;
-using Penguin.Analysis.Interfaces;
+﻿using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace Penguin.Analysis
@@ -21,8 +19,8 @@ namespace Penguin.Analysis
 
         public float Score => !this.MatchedRoutes.Any() ? 0 : this.Scores.Average();
 
-        protected AnalysisResults AnalysisResults { get; set; }
         public ConcurrentBag<float> Scores { get; }
+        protected AnalysisResults AnalysisResults { get; set; }
 
         #endregion Properties
 
@@ -30,7 +28,7 @@ namespace Penguin.Analysis
 
         public Evaluation(TypelessDataRow dataRow, AnalysisResults BuilderResults)
         {
-            AnalysisResults = BuilderResults;
+            this.AnalysisResults = BuilderResults;
             this.Scores = new ConcurrentBag<float>();
             this.DataRow = dataRow;
         }
@@ -52,11 +50,11 @@ namespace Penguin.Analysis
             {
                 this.MatchedRoutes.TryAdd(Key, n);
 
-                int counts = AnalysisResults.GraphInstances / AnalysisResults.ColumnInstances[n.Header];
+                int counts = this.AnalysisResults.GraphInstances / this.AnalysisResults.ColumnInstances[n.Header];
 
                 for (int i = 0; i < counts; i++)
                 {
-                    this.Scores.Add(n.GetScore(Result.BaseRate));
+                    this.Scores.Add(n.GetScore(this.Result.BaseRate));
                 }
             }
         }
