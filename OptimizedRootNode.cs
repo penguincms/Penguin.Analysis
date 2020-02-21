@@ -2,6 +2,7 @@
 using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -81,68 +82,65 @@ namespace Penguin.Analysis
             this.HeaderBreaks.Add(this.ChildCount);
         }
 
-        public bool Evaluate(Evaluation e)
+        public void Evaluate(int headerBreak, Evaluation e, bool MultiThread = true)
         {
-            Parallel.ForEach(this.HeaderBreaks, (headerBreak) =>
-            {
-                bool Matched = false;
+            bool Matched = false;
 
-                if (headerBreak == this.HeaderBreaks.Last())
+            if (headerBreak == this.HeaderBreaks.Last())
+            {
+                return;
+            }
+
+            int i = headerBreak;
+
+            int stop = this.HeaderBreaks.Where(h => h > headerBreak).Min();
+            do
+            {
+                if(this.next.Count <= i)
                 {
+                    Debug.WriteLine($"Skipped to far while evaluating root. List ends at {this.next.Count} and we ended up at {i}");
                     return;
                 }
 
-                int i = headerBreak;
-
-                int stop = this.HeaderBreaks.Where(h => h > headerBreak).Min();
-                do
+                if (!this.next.ElementAt(i).Evaluate(e, MultiThread))
                 {
-                    if (!this.next.ElementAt(i).Evaluate(e))
+                    if (Matched)
                     {
-                        if (Matched)
-                        {
-                            Matched = false;
-                            return;
-                        }
-                        else
-                        {
-                            i = this.ValueJumpList[i];
-                        }
-                        continue;
+                        Matched = false;
+                        return;
                     }
                     else
                     {
-                        Matched = true;
+                        i = this.ValueJumpList[i];
                     }
+                    continue;
+                }
+                else
+                {
+                    Matched = true;
+                }
 
-                    if (++i >= stop)
-                    {
-                        return;
-                    };
-                } while (true);
-            });
-
-            //for (int i = 0; i < ChildCount; )
-            //{
-            //    if (!next.ElementAt(i).Evaluate(e))
-            //    {
-            //        if (Matched)
-            //        {
-            //            Matched = false;
-            //            i = HeaderBreaks.Where(h => h > i).Min();
-            //        }
-            //        else
-            //        {
-            //            i = ValueJumpList[i];
-            //        }
-            //        continue;
-            //    } else
-            //    {
-            //        Matched = true;
-            //    }
-
-            //    i++;
-            //}
+                if (++i >= stop)
+                {
+                    return;
+                };
+            } while (true);
+        }
+        public bool Evaluate(Evaluation e, bool MultiThread = true)
+        {
+            if (MultiThread)
+            {
+                Parallel.ForEach(this.HeaderBreaks, (headerBreak) =>
+                {
+                    Evaluate(headerBreak, e);
+                });
+            } else
+            {
+                foreach(int headerBreak in this.HeaderBreaks)
+                {
+                    Evaluate(headerBreak, e);
+                }
+            }
 
             return true;
         }

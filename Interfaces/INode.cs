@@ -37,7 +37,7 @@ namespace Penguin.Analysis.Interfaces
 
         int Value { get; }
 
-        bool Evaluate(Evaluation e);
+        bool Evaluate(Evaluation e, bool MultiThread = true);
 
         void Flush(int depth);
 

@@ -182,7 +182,7 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        public bool Evaluate(Evaluation e)
+        public bool Evaluate(Evaluation e, bool MultiThread = true)
         {
             return this.StandardEvaluate(e);
         }

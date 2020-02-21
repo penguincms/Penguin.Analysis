@@ -436,7 +436,7 @@ namespace Penguin.Analysis
             }
         }
 
-        public Evaluation Evaluate(DataRow dr)
+        public Evaluation Evaluate(DataRow dr, bool MultiThread = true)
         {
             Dictionary<string, string> toEvaluate = new Dictionary<string, string>();
 
@@ -445,10 +445,10 @@ namespace Penguin.Analysis
                 toEvaluate.Add(dc.ColumnName, dr[dc].ToString());
             }
 
-            return this.Evaluate(toEvaluate);
+            return this.Evaluate(toEvaluate, MultiThread);
         }
 
-        public Evaluation Evaluate(Dictionary<string, string> dataRow)
+        public Evaluation Evaluate(Dictionary<string, string> dataRow, bool MultiThread = true)
         {
             Evaluation evaluation = new Evaluation(this.Transform(dataRow), this.Result)
             {
@@ -459,7 +459,7 @@ namespace Penguin.Analysis
 
             INode rootNode = this.Result.RootNode;
 
-            rootNode.Evaluate(evaluation);
+            rootNode.Evaluate(evaluation, MultiThread);
 
             return evaluation;
         }

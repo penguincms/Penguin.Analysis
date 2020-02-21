@@ -112,7 +112,7 @@ namespace Penguin.Analysis
 
         INode INode.ParentNode => this.ParentNode;
 
-        public bool Evaluate(Evaluation e)
+        public bool Evaluate(Evaluation e, bool MultiThread = true)
         {
             return this.StandardEvaluate(e);
         }
