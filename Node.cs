@@ -14,7 +14,11 @@ namespace Penguin.Analysis
         #region Fields
 
         private long? key;
-
+        public int this[MatchResult result]
+        {
+            get => this.Results[(int)result];
+            set => this.Results[(int)result] = value;
+        }
         public long Key
         {
             get

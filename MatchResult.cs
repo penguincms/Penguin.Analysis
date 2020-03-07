@@ -23,6 +23,6 @@ namespace Penguin.Analysis
         /// <summary>
         /// The record matches the node path, and is a positive indicator of outcome
         /// </summary>
-        Both = 3
+        Both = Route | Output
     }
 }

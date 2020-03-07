@@ -108,6 +108,12 @@ namespace Penguin.Analysis
 
         private long ParentOffset => this.BackingData.GetLong(0);
 
+        public int this[MatchResult result]
+        {
+            get => this.Results[(int)result];
+            set => this.Results[(int)result] = value;
+        }
+
         public DiskNode(LockedNodeFileStream fileStream, long offset)
         {
             this.Offset = offset;

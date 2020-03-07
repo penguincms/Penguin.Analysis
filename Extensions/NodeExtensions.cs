@@ -85,7 +85,7 @@ namespace Penguin.Analysis.Extensions
                 throw new ArgumentNullException(nameof(tnode));
             }
 
-            return tnode.Results[(int)MatchResult.Route] + tnode.Results[(int)MatchResult.Both];
+            return tnode[MatchResult.Route] + tnode[MatchResult.Both];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -96,14 +96,14 @@ namespace Penguin.Analysis.Extensions
                 throw new ArgumentNullException(nameof(tnode));
             }
 
-            if (tnode.Results[(int)MatchResult.Route] == 0 && tnode.Results[(int)MatchResult.Both] > 0)
+            if (tnode[MatchResult.Route] == 0 && tnode[MatchResult.Both] > 0)
             {
                 return 1;
             }
 
-            float d = (tnode.Results[(int)MatchResult.Route] + tnode.Results[(int)MatchResult.Both]);
+            float d = (tnode[MatchResult.Route] + tnode[MatchResult.Both]);
 
-            float v = d == 0 ? 0 : tnode.Results[(int)MatchResult.Both] / d;
+            float v = d == 0 ? 0 : tnode[MatchResult.Both] / d;
 
             return v;
         }
@@ -134,12 +134,12 @@ namespace Penguin.Analysis.Extensions
             if (n.Header == -1)
             { return; }
 
-            float MissingMatches = PositiveIndicators - n.Results[(int)MatchResult.Both];
+            float MissingMatches = PositiveIndicators - n[MatchResult.Both];
 
-            float MissingMisses = RawRowCount - (MissingMatches + n.Results[(int)MatchResult.Route] + n.Results[(int)MatchResult.Both]);
+            float MissingMisses = RawRowCount - (MissingMatches + n[MatchResult.Route] + n[MatchResult.Both]);
 
-            n.Results[(int)MatchResult.None] = (int)MissingMisses;
-            n.Results[(int)MatchResult.Output] = (int)MissingMatches;
+            n[MatchResult.None] = (int)MissingMisses;
+            n[MatchResult.Output] = (int)MissingMatches;
         }
 
         public static void TrimNodesWithNoBearing(this Node target, DataSourceBuilder sourceBuilder)
@@ -289,7 +289,7 @@ namespace Penguin.Analysis.Extensions
 
                 int hits = next.Matched;
 
-                if (sourceBuilder.Settings.Results.MatchOnly && next.Results[(int)MatchResult.Both] == 0)
+                if (sourceBuilder.Settings.Results.MatchOnly && next[MatchResult.Both] == 0)
                 {
                     hits = 0;
                 }
@@ -379,7 +379,7 @@ namespace Penguin.Analysis.Extensions
                 tnode.MatchingRows.Add(dataRow);
             }
 
-            tnode.Results[(int)pool]++;
+            tnode[pool]++;
 
             return MatchesRoute;
         }

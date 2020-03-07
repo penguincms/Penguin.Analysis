@@ -13,6 +13,8 @@ namespace Penguin.Analysis.Interfaces
 
     public interface INode : IDisposable
     {
+        int this[MatchResult result] {get;set;}
+
         float Accuracy { get; }
 
         int ChildCount { get; }

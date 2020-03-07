@@ -15,7 +15,11 @@ namespace Penguin.Analysis
         public Dictionary<int, int> ValueJumpList = new Dictionary<int, int>();
 
         private List<INode> next = new List<INode>();
-
+        public int this[MatchResult result]
+        {
+            get => this.Results[(int)result];
+            set => this.Results[(int)result] = value;
+        }
         public float Accuracy { get; }
 
         public int ChildCount { get; internal set; }
