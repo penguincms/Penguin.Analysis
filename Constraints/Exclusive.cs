@@ -18,6 +18,8 @@ namespace Penguin.Analysis.Constraints
 
         #region Constructors
 
+        public LongByte Key { get; set; }
+
         public Exclusive(params string[] headers)
         {
             if (headers.Length > 0)
@@ -34,16 +36,23 @@ namespace Penguin.Analysis.Constraints
 
         #region Methods
 
-        public bool Evaluate(params string[] headers)
+        public bool Evaluate(LongByte key)
         {
-            if (this.Headers.Count > 1)
+            LongByte tlb = this.Key;
+
+            return (tlb & key) == 0 || key.Count < 2 || (tlb.Count > 1 && tlb.Count < key.Count);
+        }
+
+        public void SetKey(ColumnRegistration[] registrations)
+        {
+            LongByte lb = 0;
+
+            for (int x = 0; x < registrations.Length; x++)
             {
-                return !(this.Headers.Count >= headers.Length && this.Headers.All(h => headers.Contains(h)));
+                lb.SetBit(x, this.Headers.Contains(registrations[x].Header));
             }
-            else
-            {
-                return headers.Length == 1 || !headers.Contains(this.Headers.First());
-            }
+
+            this.Key = lb;
         }
 
         #region IDisposable Support

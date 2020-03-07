@@ -30,8 +30,7 @@ namespace Penguin.Analysis
             set => this.RootNode = value;
         }
 
-        public int[] ColumnInstances { get; set; } = new int[256];
-        public double ExpectedMatches { get; set; }
+        public Dictionary<long, int> ColumnInstances { get; set; } = new Dictionary<long, int>();
         public int GraphInstances { get; set; } = 0;
         public float PositiveIndicators { get; set; }
 
@@ -41,7 +40,6 @@ namespace Penguin.Analysis
         [JsonIgnore]
         public INode RootNode { get; set; }
 
-        public int TotalRoutes { get; set; }
         public float TotalRows { get; set; }
 
         #region IDisposable Support
@@ -49,7 +47,7 @@ namespace Penguin.Analysis
         private static object RegustrationLock = new object();
         private bool disposedValue = false; // To detect redundant calls
 
-        private HashSet<int> RegisteredKeys = new HashSet<int>();
+        private HashSet<long> RegisteredKeys = new HashSet<long>();
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
@@ -72,7 +70,7 @@ namespace Penguin.Analysis
             {
                 foreach (Node n in thisRoot.FullTree())
                 {
-                    int Key = n.GetKey();
+                    long Key = n.GetKey();
 
                     if (this.RegisteredKeys.Add(Key))
                     {
@@ -80,10 +78,14 @@ namespace Penguin.Analysis
 
                         for (int i = 0; i < 32; i++)
                         {
-                            if (((Key >> i) & 1) == 1)
+                            long v = (Key >> i);
+
+                            if (!this.ColumnInstances.ContainsKey(v))
                             {
-                                this.ColumnInstances[i]++;
+                                this.ColumnInstances.Add(v, 0);
                             }
+
+                            this.ColumnInstances[v]++;
                         }
                     }
                 }

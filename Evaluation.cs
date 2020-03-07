@@ -11,16 +11,44 @@ namespace Penguin.Analysis
 
         public TypelessDataRow DataRow { get; set; }
 
-        public ConcurrentDictionary<int, INode> MatchedRoutes { get; } = new ConcurrentDictionary<int, INode>();
+        public ConcurrentDictionary<long, INode> MatchedRoutes { get; } = new ConcurrentDictionary<long, INode>();
 
         public int MatchingRoutes { get; set; }
 
         public AnalysisResults Result { get; set; }
 
-        public float Score => !this.MatchedRoutes.Any() ? 0 : this.Scores.Average();
+        public ConcurrentBag<Score> Scores { get; }
 
-        public ConcurrentBag<float> Scores { get; }
+        public double Value
+        {
+            get
+            {
+                if (!this.MatchedRoutes.Any())
+                {
+                    return 0;
+                }
+
+                double score = 0;
+                double counts = 0;
+
+                foreach (Score Escore in this.Scores)
+                {
+                    counts += Escore.Count;
+
+                    score += Escore.Count * Escore.Value;
+                }
+
+                return score / counts;
+            }
+        }
+
         protected AnalysisResults AnalysisResults { get; set; }
+
+        public class Score
+        {
+            public double Count { get; set; }
+            public double Value { get; set; }
+        }
 
         #endregion Properties
 
@@ -29,7 +57,7 @@ namespace Penguin.Analysis
         public Evaluation(TypelessDataRow dataRow, AnalysisResults BuilderResults)
         {
             this.AnalysisResults = BuilderResults;
-            this.Scores = new ConcurrentBag<float>();
+            this.Scores = new ConcurrentBag<Score>();
             this.DataRow = dataRow;
         }
 
@@ -44,17 +72,19 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(n));
             }
 
-            int Key = n.Key;
+            long Key = n.Key;
 
             if (!this.MatchedRoutes.ContainsKey(Key))
             {
                 this.MatchedRoutes.TryAdd(Key, n);
 
-                int counts = this.AnalysisResults.GraphInstances / this.AnalysisResults.ColumnInstances[n.Header];
-
-                for (int i = 0; i < counts; i++)
+                if (this.AnalysisResults.ColumnInstances.ContainsKey(n.Key))
                 {
-                    this.Scores.Add(n.GetScore(this.Result.BaseRate));
+                    this.Scores.Add(new Score()
+                    {
+                        Value = n.GetScore(this.Result.BaseRate),
+                        Count = this.AnalysisResults.GraphInstances / this.AnalysisResults.ColumnInstances[n.Key]
+                    });
                 }
             }
         }

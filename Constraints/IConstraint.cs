@@ -6,12 +6,20 @@ namespace Penguin.Analysis.Constraints
     {
         #region Methods
 
+        public LongByte Key { get; }
+
         /// <summary>
         /// Checks to make sure the headers pass this constraint
         /// </summary>
         /// <param name="headers"></param>
         /// <returns></returns>
-        bool Evaluate(params string[] headers);
+        bool Evaluate(LongByte key);
+
+        /// <summary>
+        /// Uses the column registrations to convert the header string values into a key
+        /// </summary>
+        /// <param name="columns">The registered columns</param>
+        void SetKey(ColumnRegistration[] columns);
 
         #endregion Methods
     }

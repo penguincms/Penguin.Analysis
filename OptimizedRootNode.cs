@@ -26,7 +26,7 @@ namespace Penguin.Analysis
 
         public sbyte Header { get; } = -1;
 
-        public int Key { get; }
+        public long Key { get; }
 
         public bool LastNode { get; } = false;
 
@@ -96,7 +96,7 @@ namespace Penguin.Analysis
             int stop = this.HeaderBreaks.Where(h => h > headerBreak).Min();
             do
             {
-                if(this.next.Count <= i)
+                if (this.next.Count <= i)
                 {
                     Debug.WriteLine($"Skipped to far while evaluating root. List ends at {this.next.Count} and we ended up at {i}");
                     return;
@@ -126,6 +126,7 @@ namespace Penguin.Analysis
                 };
             } while (true);
         }
+
         public bool Evaluate(Evaluation e, bool MultiThread = true)
         {
             if (MultiThread)
@@ -134,9 +135,10 @@ namespace Penguin.Analysis
                 {
                     Evaluate(headerBreak, e);
                 });
-            } else
+            }
+            else
             {
-                foreach(int headerBreak in this.HeaderBreaks)
+                foreach (int headerBreak in this.HeaderBreaks)
                 {
                     Evaluate(headerBreak, e);
                 }
@@ -154,7 +156,7 @@ namespace Penguin.Analysis
             throw new NotImplementedException();
         }
 
-        public float GetScore(float BaseRate)
+        public double GetScore(float BaseRate)
         {
             return 0;
         }

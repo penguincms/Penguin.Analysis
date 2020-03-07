@@ -23,7 +23,7 @@ namespace Penguin.Analysis.Interfaces
 
         sbyte Header { get; }
 
-        int Key { get; }
+        long Key { get; }
 
         bool LastNode { get; }
 
@@ -43,7 +43,7 @@ namespace Penguin.Analysis.Interfaces
 
         INode GetNextByValue(int Value);
 
-        float GetScore(float BaseRate);
+        double GetScore(float BaseRate);
 
         void Preload(int depth);
 

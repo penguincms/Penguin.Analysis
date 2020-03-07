@@ -9,7 +9,7 @@ namespace Penguin.Analysis
     public class DataSourceSettings
     {
         [JsonIgnore]
-        public Action<List<string>, bool> CheckedConstraint = null;
+        public Action<IEnumerable<string>, bool> CheckedConstraint = null;
 
         [JsonIgnore]
         public Action<INode> TrimmedNode = null;

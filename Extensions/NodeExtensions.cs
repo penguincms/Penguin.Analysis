@@ -11,22 +11,26 @@ namespace Penguin.Analysis.Extensions
         #region Methods
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float CalculateScore(this INode tnode, float BaseRate)
+        public static double CalculateScore(this INode tnode, float BaseRate)
         {
             if (tnode is null)
             {
                 throw new ArgumentNullException(nameof(tnode));
             }
 
-            float Accuracy = tnode.GetAccuracy();
+            double Accuracy = tnode.GetAccuracy();
 
-            if (Accuracy < BaseRate)
+            //This is pivoted around the base rate instead of 50% because a value
+            //that has an accuracy matching the base rate has 0 effect on the rate,
+            //and is therefor 0 in terms of likelyhood. Stop changing this because
+            //you forgot how it works.
+            if (Accuracy > BaseRate)
             {
-                return (1 - 1 / (BaseRate / Accuracy)) * -1;
+                return (Accuracy - BaseRate) / (1 - BaseRate);
             }
             else
             {
-                return 1 - (1 / (BaseRate * 2 / BaseRate)) + BaseRate;
+                return (Accuracy / BaseRate) - 1;
             }
         }
 
@@ -412,9 +416,9 @@ namespace Penguin.Analysis.Extensions
             }
         }
 
-        public static int GetKey(this INode tnode)
+        public static long GetKey(this INode tnode)
         {
-            int Key = 0;
+            long Key = 0;
 
             INode n = tnode;
 
@@ -431,7 +435,7 @@ namespace Penguin.Analysis.Extensions
 
             foreach (INode tn in GetTree(n).Where(tnn => tnn.Header != -1))
             {
-                Key |= (1 << tn.Header);
+                Key |= ((long)1 << tn.Header);
             }
 
             return Key;

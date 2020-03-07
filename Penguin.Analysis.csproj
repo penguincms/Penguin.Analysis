@@ -16,7 +16,7 @@
     <None Remove=".meta" />
     <None Remove=".metaOne" />
     <None Remove="README.md" />
-    <PackageReference Include="Penguin.IO" Version="1.1.11-T9SAD4U" />
+    <PackageReference Include="Penguin.IO" Version="1.1.11-T9SPWN8" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />

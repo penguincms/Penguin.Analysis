@@ -4,9 +4,9 @@ using Penguin.Analysis.DataColumns;
 using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
 using Penguin.Analysis.Transformations;
+using Penguin.Extensions.Collections;
 using Penguin.IO.Extensions;
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
@@ -33,7 +33,11 @@ namespace Penguin.Analysis
 
         public AnalysisResults Result { get; set; } = new AnalysisResults();
 
-        private List<IRouteConstraint> RouteConstraints { get; set; } = new List<IRouteConstraint>();
+        private List<IRouteConstraint> routeConstraint { get; set; } = new List<IRouteConstraint>();
+
+        [JsonIgnore]
+        public IEnumerable<IRouteConstraint> RouteConstraints => this.routeConstraint;
+
 
         private DataTable TempTable { get; set; }
 
@@ -42,245 +46,6 @@ namespace Penguin.Analysis
         #region Classes
 
         public DataSourceSettings Settings = new DataSourceSettings();
-
-        private class NodeSet
-        {
-            #region Properties
-
-            public sbyte ColumnIndex { get; set; }
-
-            public int[] Values { get; set; }
-
-            #endregion Properties
-
-            #region Constructors
-
-            public NodeSet((sbyte columnIndex, int[] values) r) : this(r.columnIndex, r.values)
-            {
-            }
-
-            public NodeSet(sbyte columnIndex, int[] values)
-            {
-                this.ColumnIndex = columnIndex;
-                this.Values = values.ToArray();
-            }
-
-            // this is second one '!='
-            public static bool operator !=(NodeSet obj1, NodeSet obj2)
-            {
-                return !(obj1 == obj2);
-            }
-
-            public static bool operator ==(NodeSet obj1, NodeSet obj2)
-            {
-                if (ReferenceEquals(obj1, obj2))
-                {
-                    return true;
-                }
-
-                if (obj1 is null || obj2 is null)
-                {
-                    return false;
-                }
-
-                return obj1.ColumnIndex == obj2.ColumnIndex;
-            }
-
-            public bool Equals(NodeSet other)
-            {
-                if (other is null)
-                {
-                    return false;
-                }
-                if (ReferenceEquals(this, other))
-                {
-                    return true;
-                }
-
-                return this.ColumnIndex == other.ColumnIndex;
-            }
-
-            public override bool Equals(object obj)
-            {
-                if (obj is null)
-                {
-                    return false;
-                }
-                if (ReferenceEquals(this, obj))
-                {
-                    return true;
-                }
-
-                return obj.GetType() == this.GetType() && this.Equals((NodeSet)obj);
-            }
-
-            public override int GetHashCode()
-            {
-                return this.ColumnIndex;
-            }
-
-            #endregion Constructors
-        }
-
-        private class NodeSetCollection : IList<NodeSet>
-        {
-            private static ConcurrentDictionary<sbyte, NodeSet> DefinedSets = new ConcurrentDictionary<sbyte, NodeSet>();
-            private List<NodeSet> nodeSets;
-
-            public int Count => ((IList<NodeSet>)this.nodeSets).Count;
-
-            public bool IsReadOnly => ((IList<NodeSet>)this.nodeSets).IsReadOnly;
-
-            public NodeSetCollection(IEnumerable<NodeSet> set)
-            {
-                this.nodeSets = set.ToList();
-            }
-
-            public NodeSetCollection(IEnumerable<(sbyte columnIndex, int[] values)> set)
-            {
-                this.nodeSets = new List<NodeSet>();
-
-                foreach ((sbyte columnIndex, int[] values) x in set)
-                {
-                    if (!DefinedSets.TryGetValue(x.columnIndex, out NodeSet n))
-                    {
-                        n = new NodeSet(x);
-                        DefinedSets.TryAdd(x.columnIndex, n);
-                    }
-
-                    this.nodeSets.Add(n);
-                }
-            }
-
-            public NodeSetCollection()
-            {
-                this.nodeSets = new List<NodeSet>();
-            }
-
-            public NodeSet this[int index] { get => ((IList<NodeSet>)this.nodeSets)[index]; set => ((IList<NodeSet>)this.nodeSets)[index] = value; }
-
-            public static implicit operator NodeSetCollection(List<NodeSet> n)
-            {
-                return new NodeSetCollection(n);
-            }
-
-            // this is second one '!='
-            public static bool operator !=(NodeSetCollection obj1, NodeSetCollection obj2)
-            {
-                return !(obj1 == obj2);
-            }
-
-            public static bool operator ==(NodeSetCollection obj1, NodeSetCollection obj2)
-            {
-                if (ReferenceEquals(obj1, obj2))
-                {
-                    return true;
-                }
-
-                if (obj1 is null || obj2 is null)
-                {
-                    return false;
-                }
-
-                if (obj1.Count != obj2.Count)
-                {
-                    return false;
-                }
-
-                for (int i = 0; i < obj1.Count; i++)
-                {
-                    if (!obj2.Contains(obj1.ElementAt(i)))
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-
-            public void Add(NodeSet item)
-            {
-                ((IList<NodeSet>)this.nodeSets).Add(item);
-            }
-
-            public void Clear()
-            {
-                ((IList<NodeSet>)this.nodeSets).Clear();
-            }
-
-            public bool Contains(NodeSet item)
-            {
-                return ((IList<NodeSet>)this.nodeSets).Contains(item);
-            }
-
-            public void CopyTo(NodeSet[] array, int arrayIndex)
-            {
-                ((IList<NodeSet>)this.nodeSets).CopyTo(array, arrayIndex);
-            }
-
-            public bool Equals(NodeSetCollection other)
-            {
-                if (other is null)
-                {
-                    return false;
-                }
-                if (ReferenceEquals(this, other))
-                {
-                    return true;
-                }
-
-                return this == other;
-            }
-
-            public override bool Equals(object obj)
-            {
-                if (obj is null)
-                {
-                    return false;
-                }
-                if (ReferenceEquals(this, obj))
-                {
-                    return true;
-                }
-
-                return obj.GetType() == this.GetType() && this.Equals((NodeSetCollection)obj);
-            }
-
-            public IEnumerator<NodeSet> GetEnumerator()
-            {
-                return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return ((IList<NodeSet>)this.nodeSets).GetEnumerator();
-            }
-
-            public override int GetHashCode()
-            {
-                return this.nodeSets.Sum(n => n.ColumnIndex);
-            }
-
-            public int IndexOf(NodeSet item)
-            {
-                return ((IList<NodeSet>)this.nodeSets).IndexOf(item);
-            }
-
-            public void Insert(int index, NodeSet item)
-            {
-                ((IList<NodeSet>)this.nodeSets).Insert(index, item);
-            }
-
-            public bool Remove(NodeSet item)
-            {
-                return ((IList<NodeSet>)this.nodeSets).Remove(item);
-            }
-
-            public void RemoveAt(int index)
-            {
-                ((IList<NodeSet>)this.nodeSets).RemoveAt(index);
-            }
-        }
 
         #endregion Classes
 
@@ -397,7 +162,7 @@ namespace Penguin.Analysis
 
         public void AddRouteConstraint(IRouteConstraint constraint)
         {
-            this.RouteConstraints.Add(constraint);
+            this.routeConstraint.Add(constraint);
         }
 
         public void Build(string outputFilePath)
@@ -474,54 +239,10 @@ namespace Penguin.Analysis
 
             object rootLock = new object();
 
-            this.Result.ExpectedMatches = Math.Pow(2, (this.Registrations.Count - 1));
-
-            NodeSetCollection[] rawGraph = this.BuildComplexTree(this.Registrations
-                                                                     //.OrderByDescending(r => r.Column.GetOptions().Count())
-                                                                     .Where(r => r.Column.GetType() != typeof(Key))
-                                                                     .Select(r =>
-                                                                        ((sbyte)this.Registrations.IndexOf(r),
-                                                                         r.Column.GetOptions()
-                                                                                 .ToArray())
-                                                                        ).ToArray()).Select(n => new NodeSetCollection(n)).ToArray();
-
-            HashSet<NodeSetCollection> graph = new HashSet<NodeSetCollection>();
-
-            ScreenBuffer.ReplaceLine($"Applying Constraints", 0);
-
-            foreach (NodeSetCollection nodeSetCollection in rawGraph)
-            {
-                List<string> Headers = nodeSetCollection.Select(n => this.Registrations[n.ColumnIndex].Header).ToList();
-
-                if (!this.IfValid(Headers, (headers) =>
-                 {
-                     NodeSetCollection nSet = nodeSetCollection.Take(headers.Count).ToList();
-
-                     if (graph.Add(nSet))
-                     {
-                         this.Settings.CheckedConstraint?.Invoke(headers, true);
-                         this.Result.TotalRoutes++;
-                     }
-                     else
-                     {
-                         this.Result.ExpectedMatches--;
-                     }
-                 }))
-                {
-                    this.Result.ExpectedMatches--;
-                }
-
-                bool Valid = this.ValidateRouteConstraints(Headers);
-            }
-
-            rawGraph = null;
+            NodeSetGraph graph = new NodeSetGraph(this);
 
             ScreenBuffer.ReplaceLine($"Building decision tree", 0);
             ScreenBuffer.AutoFlush = false;
-
-            long graphi = 0;
-
-            long graphc = graph.Count;
 
             long RootChildListOffset = DiskNode.HeaderBytes + DiskNode.NodeSize;
 
@@ -532,9 +253,9 @@ namespace Penguin.Analysis
 
             outputStream.Seek(RootChildListOffset - 4);
 
-            outputStream.Write((int)graphc);
+            outputStream.Write(graph.RealCount);
 
-            long CurrentNodeOffset = (graphc * DiskNode.NextSize) + RootChildListOffset;
+            long CurrentNodeOffset = (graph.RealCount * DiskNode.NextSize) + RootChildListOffset;
 
             object offsetLock = new object();
 
@@ -606,7 +327,7 @@ namespace Penguin.Analysis
 
                 nodesetc = nodeSetData.Count;
 
-                ScreenBuffer.ReplaceLine($"--------Graph: [{graphi + 1}/{graphc}]", RootLine);
+                ScreenBuffer.ReplaceLine($"--------Graph: [{graph.Index + 1}/{graph.RealCount}]", RootLine);
 
                 double dataRowi = 0;
                 double dataRowc = this.Result.RawData.RowCount;
@@ -695,7 +416,6 @@ namespace Penguin.Analysis
 
                 this.Result.RegisterTree(thisRoot);
 
-                long thisNodeIndex = graphi++;
                 MemoryNodeFileStream memCache;
 
                 lock (offsetLock)
@@ -773,19 +493,26 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        public bool IfValid(List<string> Headers, Action<List<string>> HeaderAction = null)
+        public bool IfValid(LongByte Key, Action<long> HeaderAction = null)
         {
-            while (!this.ValidateRouteConstraints(Headers) && Headers.Count > 0)
+            if (Key == 0)
             {
-                Headers = Headers.Take(Headers.Count - 1).ToList();
+                return false;
+            }
 
-                if (Headers.Count == 0)
+            LongByte cKey = Key;
+
+            while (!this.ValidateRouteConstraints(cKey))
+            {
+                cKey.TrimLeft(1);
+
+                if (cKey.Value == 0)
                 {
                     return false;
                 }
             }
 
-            HeaderAction?.Invoke(Headers);
+            HeaderAction?.Invoke(cKey);
 
             return true;
         }
@@ -1031,44 +758,6 @@ namespace Penguin.Analysis
             return this.Transform(dt).Rows.First();
         }
 
-        private IList<(sbyte ColumnIndex, T[] Values)>[] BuildComplexTree<T>((sbyte ColumnIndex, T[] Values)[] ColumnData)
-        {
-            double Hc = Math.Pow(2, ColumnData.Length);
-
-            int Hl = (int)(Hc / 2);
-
-            IList<(sbyte ColumnIndex, T[] Values)>[] graph = new IList<(sbyte ColumnIndex, T[] Values)>[Hl];
-
-            for (int Hi = 0; Hi < Hc; Hi += 2)
-            {
-                int sbits = 0;
-
-                int Hb = Hi + 1;
-
-                while (Hb != 0)
-                {
-                    if ((Hb & 1) != 0)
-                    {
-                        sbits++;
-                    }
-
-                    Hb >>= 1;
-                }
-
-                graph[Hi / 2] = new List<(sbyte ColumnIndex, T[] Values)>(sbits);
-
-                for (int Wi = ColumnData.Length - 1; Wi >= 0; Wi--)
-                {
-                    if ((((Hi + 1) >> Wi) & 1) != 0)
-                    {
-                        graph[Hi / 2].Add(ColumnData[Wi]);
-                    }
-                }
-            }
-
-            return graph;
-        }
-
         private TypelessDataTable Transform(DataTable dt)
         {
             TypelessDataTable toReturn;
@@ -1115,11 +804,16 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        private bool ValidateRouteConstraints(IEnumerable<string> Headers)
+        private bool ValidateRouteConstraints(LongByte Key)
         {
-            foreach (IRouteConstraint constraint in this.RouteConstraints)
+            foreach (IRouteConstraint constraint in this.routeConstraint.NotOfType<Exclusive>()) //Move this check to the interface (NOTEXC)
             {
-                if (!constraint.Evaluate(Headers.ToArray()))
+                if (constraint.Key == 0)
+                {
+                    constraint.SetKey(this.Registrations.ToArray());
+                }
+
+                if (!constraint.Evaluate(Key))
                 {
                     return false;
                 }
@@ -1153,7 +847,10 @@ namespace Penguin.Analysis
 
                     try
                     {
-                        this.MemoryManagementTask?.Dispose();
+                        if (this.PreloadTask.IsCompleted)
+                        {
+                            this.MemoryManagementTask?.Dispose();
+                        }
                     }
                     catch (Exception)
                     {
@@ -1161,7 +858,10 @@ namespace Penguin.Analysis
 
                     try
                     {
-                        this.PreloadTask?.Dispose();
+                        if (this.PreloadTask.IsCompleted)
+                        {
+                            this.PreloadTask?.Dispose();
+                        }
                     }
                     catch (Exception)
                     {
@@ -1191,12 +891,12 @@ namespace Penguin.Analysis
 
                     this.Transformations.Clear();
 
-                    foreach (IRouteConstraint x in this.RouteConstraints)
+                    foreach (IRouteConstraint x in this.routeConstraint)
                     {
                         x.Dispose();
                     }
 
-                    this.RouteConstraints.Clear();
+                    this.routeConstraint.Clear();
 
                     try
                     {

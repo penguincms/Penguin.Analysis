@@ -13,9 +13,9 @@ namespace Penguin.Analysis
     {
         #region Fields
 
-        private int? key;
+        private long? key;
 
-        public int Key
+        public long Key
         {
             get
             {
@@ -65,7 +65,7 @@ namespace Penguin.Analysis
             return this.GetNextByValue(Value);
         }
 
-        public float GetScore(float BaseRate)
+        public double GetScore(float BaseRate)
         {
             return this.CalculateScore(BaseRate);
         }

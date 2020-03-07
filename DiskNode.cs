@@ -27,7 +27,7 @@ namespace Penguin.Analysis
 
         private byte? depth;
 
-        private int? key;
+        private long? key;
 
         private int[] results;
 
@@ -54,7 +54,7 @@ namespace Penguin.Analysis
         [JsonProperty("H", Order = 2)]
         public sbyte Header => unchecked((sbyte)this.BackingData[24]);
 
-        public int Key
+        public long Key
         {
             get
             {
@@ -209,7 +209,7 @@ namespace Penguin.Analysis
             return this.GetNextByValue(Value);
         }
 
-        public float GetScore(float BaseRate)
+        public double GetScore(float BaseRate)
         {
             return this.CalculateScore(BaseRate);
         }

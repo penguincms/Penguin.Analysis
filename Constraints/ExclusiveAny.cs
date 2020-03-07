@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Penguin.Analysis.Constraints
 {
@@ -12,7 +11,7 @@ namespace Penguin.Analysis.Constraints
     {
         #region Fields
 
-        private readonly List<string> Headers = new List<string>();
+        private readonly HashSet<string> Headers = new HashSet<string>();
 
         #endregion Fields
 
@@ -20,16 +19,47 @@ namespace Penguin.Analysis.Constraints
 
         public ExclusiveAny(params string[] headers)
         {
-            this.Headers = headers.ToList();
+            foreach (string h in headers)
+            {
+                Headers.Add(h);
+            }
         }
 
         #endregion Constructors
 
+        int MaxBit = -1;
+
         #region Methods
 
-        public bool Evaluate(params string[] headers)
+        public LongByte Key { get; set; }
+
+        public bool Evaluate(LongByte key)
         {
-            return headers.Count(h => this.Headers.Contains(h)) <= 1;
+            int i = 0;
+
+            foreach (int _ in LongByte.GetSetBits(key.Value & Key.Value, true))
+            {
+                if (++i == 2)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public void SetKey(ColumnRegistration[] registrations)
+        {
+            LongByte lb = 0;
+            
+            MaxBit = registrations.Length;
+
+            for (int x = 0; x < registrations.Length; x++)
+            {
+                lb.SetBit(x, this.Headers.Contains(registrations[x].Header));
+            }
+
+            this.Key = lb;
         }
 
         #region IDisposable Support

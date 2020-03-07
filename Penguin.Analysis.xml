@@ -14,12 +14,18 @@
             Do not allow any possible combination to appear as a route. Useful if one property is derivative of another
             </summary>
         </member>
-        <member name="M:Penguin.Analysis.Constraints.IRouteConstraint.Evaluate(System.String[])">
+        <member name="M:Penguin.Analysis.Constraints.IRouteConstraint.Evaluate(Penguin.Analysis.LongByte)">
             <summary>
             Checks to make sure the headers pass this constraint
             </summary>
             <param name="headers"></param>
             <returns></returns>
+        </member>
+        <member name="M:Penguin.Analysis.Constraints.IRouteConstraint.SetKey(Penguin.Analysis.ColumnRegistration[])">
+            <summary>
+            Uses the column registrations to convert the header string values into a key
+            </summary>
+            <param name="columns">The registered columns</param>
         </member>
         <member name="P:Penguin.Analysis.DataColumns.Enumeration.GlobalSettings.MinimumInstances">
             <summary>
