@@ -59,6 +59,16 @@
             Runs registered table transformations to create the final analysis table
             </summary>
         </member>
+        <member name="F:Penguin.Analysis.DataSourceSettings.CheckedConstraint">
+            <summary>
+            Action to be called when the engine removes a route based on contraint checking
+            </summary>
+        </member>
+        <member name="F:Penguin.Analysis.DataSourceSettings.TrimmedNode">
+            <summary>
+            Action to be called when a node is removed due to fewer matches than configured to allow
+            </summary>
+        </member>
         <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MatchOnly">
             <summary>
             Only build trees that contain positive output matches

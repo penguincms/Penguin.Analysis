@@ -15,6 +15,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Penguin.Debugging;
+
 
 namespace Penguin.Analysis
 {
@@ -77,7 +79,7 @@ namespace Penguin.Analysis
 
         #region Constructors
 
-        public DataSourceBuilder(string FileName) : this(new FileInfo(FileName).ReadToDataTable())
+        public DataSourceBuilder(string FileName) : this(new FileInfo(FileName).ToDataTable())
         {
         }
 
@@ -108,15 +110,7 @@ namespace Penguin.Analysis
         [JsonIgnore]
         public Task PreloadTask { get; private set; }
 
-        [Flags]
-        public enum MemoryManagementStyle
-        {
-            None = 0,
-            Preload = 1,
-            MemoryFlush = 2,
-            PreloadAndFlush = 3
-        }
-
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "<Pending>")]
         public static DataSourceBuilder Deserialize(string FilePath, MemoryManagementStyle memoryManagementStyle = MemoryManagementStyle.MemoryFlush, JsonSerializerSettings jsonSerializerSettings = null)
         {
             DiskNode._backingStream = null;
@@ -231,6 +225,11 @@ namespace Penguin.Analysis
 
         public void Generate(LockedNodeFileStream outputStream)
         {
+            if (outputStream is null)
+            {
+                throw new ArgumentNullException(nameof(outputStream));
+            }
+
             ScreenBuffer.Clear();
 
             ScreenBuffer.ReplaceLine($"Building complex tree", 0);
@@ -556,8 +555,9 @@ namespace Penguin.Analysis
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("Prelod function failed to execute...");
-                            Console.WriteLine(ex.Message);
+                            
+                            Penguin.Debugging.StaticLogger.Log("Prelod function failed to execute...");
+                            Penguin.Debugging.StaticLogger.Log(ex);
                         }
 
                         Task.Delay(5000).Wait();
@@ -570,6 +570,11 @@ namespace Penguin.Analysis
 
         public async void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
         {
+            if (stream is null)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
+
             if (this.Disposing)
             {
                 return;
@@ -581,7 +586,7 @@ namespace Penguin.Analysis
             {
                 string toWrite = $"[{DateTime.Now.ToString("yyyy MM dd HH:mm:ss")}]: {toLog}";
                 Debug.WriteLine(toWrite);
-                Console.WriteLine(toWrite);
+                Penguin.Debugging.StaticLogger.Log(toWrite);
                 File.AppendAllLines(MemLog, new List<string>() { toWrite });
             }
 
@@ -734,7 +739,7 @@ namespace Penguin.Analysis
         /// </summary>
         public void Transform() //I really feel like transforms and column transforms should be sequential (interlaced) in order added
         {
-            Console.WriteLine("Applying transformations");
+            Penguin.Debugging.StaticLogger.Log("Applying transformations");
 
             this.Result.RawData = this.Transform(this.TempTable);
 

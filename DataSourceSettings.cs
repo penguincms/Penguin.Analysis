@@ -8,9 +8,15 @@ namespace Penguin.Analysis
 {
     public class DataSourceSettings
     {
+        /// <summary>
+        /// Action to be called when the engine removes a route based on contraint checking
+        /// </summary>
         [JsonIgnore]
         public Action<IEnumerable<string>, bool> CheckedConstraint = null;
 
+        /// <summary>
+        /// Action to be called when a node is removed due to fewer matches than configured to allow
+        /// </summary>
         [JsonIgnore]
         public Action<INode> TrimmedNode = null;
 
