@@ -847,7 +847,7 @@ namespace Penguin.Analysis
 
                     try
                     {
-                        if (this.PreloadTask.IsCompleted)
+                        if (this.PreloadTask?.IsCompleted ?? false)
                         {
                             this.MemoryManagementTask?.Dispose();
                         }
@@ -858,7 +858,7 @@ namespace Penguin.Analysis
 
                     try
                     {
-                        if (this.PreloadTask.IsCompleted)
+                        if (this.PreloadTask?.IsCompleted ?? false)
                         {
                             this.PreloadTask?.Dispose();
                         }
@@ -869,7 +869,7 @@ namespace Penguin.Analysis
 
                     try
                     {
-                        this.ManagedMemoryStream.Dispose();
+                        this.ManagedMemoryStream?.Dispose();
                     }
                     catch (Exception)
                     {

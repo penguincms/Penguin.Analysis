@@ -24,14 +24,9 @@ namespace Penguin.Analysis.Extensions
             //that has an accuracy matching the base rate has 0 effect on the rate,
             //and is therefor 0 in terms of likelyhood. Stop changing this because
             //you forgot how it works.
-            if (Accuracy > BaseRate)
-            {
-                return (Accuracy - BaseRate) / (1 - BaseRate);
-            }
-            else
-            {
-                return (Accuracy / BaseRate) - 1;
-            }
+            double toReturn = Accuracy > BaseRate ? (Accuracy - BaseRate) / (1 - BaseRate) : (Accuracy / BaseRate) - 1;
+
+            return toReturn;
         }
 
         internal static bool StandardEvaluate(this INode node, Evaluation e)
@@ -108,7 +103,9 @@ namespace Penguin.Analysis.Extensions
 
             float d = (tnode.Results[(int)MatchResult.Route] + tnode.Results[(int)MatchResult.Both]);
 
-            return d == 0 ? 0 : tnode.Results[(int)MatchResult.Both] / d;
+            float v = d == 0 ? 0 : tnode.Results[(int)MatchResult.Both] / d;
+
+            return v;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
