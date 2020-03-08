@@ -89,6 +89,8 @@ namespace Penguin.Analysis
 
             this.MatchingRows = new List<TypelessDataRow>(backingRows);
 
+            this[MatchResult.None] = backingRows;
+
             this.Value = value;
 
             if (children != 0)

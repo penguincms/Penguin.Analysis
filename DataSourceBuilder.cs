@@ -26,6 +26,7 @@ namespace Penguin.Analysis
         #region Fields
 
         public List<ColumnRegistration> Registrations = new List<ColumnRegistration>();
+        public ColumnRegistration TableKey { get; set; }
 
         private readonly List<ITransform> Transformations = new List<ITransform>();
 
@@ -234,11 +235,11 @@ namespace Penguin.Analysis
 
             ScreenBuffer.ReplaceLine($"Building complex tree", 0);
 
-            int KeyIndex = this.Registrations.IndexOf(this.Registrations.Single(r => r.Column.GetType() == typeof(Key)));
-
             object rootLock = new object();
 
-            NodeSetGraph graph = new NodeSetGraph(this);
+            NodeSetGraph graph = new NodeSetGraph(this, this.Settings.NodeEnumProgress);
+
+            Settings.PostGraphCalculation?.Invoke(graph);
 
             ScreenBuffer.ReplaceLine($"Building decision tree", 0);
             ScreenBuffer.AutoFlush = false;
@@ -492,28 +493,59 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        public bool IfValid(LongByte Key, Action<long> HeaderAction = null)
+        public ValidationResult IfValid(LongByte Key, Action<ValidationResult> OnFailure = null, Action<long> HeaderAction = null)
         {
+            ValidationResult result = null;
+
             if (Key == 0)
             {
-                return false;
+                result = new ValidationResult("Key can not be 0", Key);
             }
-
-            LongByte cKey = Key;
-
-            while (!this.ValidateRouteConstraints(cKey))
+            else
             {
-                cKey.TrimLeft(1);
 
-                if (cKey.Value == 0)
+                LongByte cKey = Key;
+
+                do
                 {
-                    return false;
-                }
+                    IEnumerator<IRouteConstraint> RouteViolations = this.RouteViolations(cKey).GetEnumerator();
+
+                    bool HasViolation = RouteViolations.MoveNext();
+
+                    if (!HasViolation)
+                    {
+                        break;
+                    }
+
+                    result = new ValidationResult(RouteViolations.Current, cKey);
+
+                    if (OnFailure != null)
+                    {
+                        while (RouteViolations.MoveNext())
+                        {
+                            result.Violations.Add(RouteViolations.Current);
+                        }
+
+                        OnFailure?.Invoke(result);
+                    }
+
+                    cKey.TrimRight(1);
+
+                    if (cKey.Value == 0)
+                    {
+                        result = new ValidationResult("Key can not be 0", Key);
+                        OnFailure?.Invoke(result);
+                        return result;
+                    }
+
+                } while (true);
+
+                HeaderAction?.Invoke(cKey);
+
+                result = new ValidationResult(cKey);
             }
 
-            HeaderAction?.Invoke(cKey);
-
-            return true;
+            return result;
         }
 
         public async void Preload(string Engine, MemoryManagementStyle memoryManagementStyle)
@@ -718,14 +750,23 @@ namespace Penguin.Analysis
 
         public void RegisterColumn(string ColumnName, IDataColumn registration)
         {
-            this.Registrations.Add(new ColumnRegistration() { Header = ColumnName, Column = registration });
+
+            ColumnRegistration r = new ColumnRegistration() { Header = ColumnName, Column = registration };
+
+            if (registration is Key)
+            {
+                this.TableKey = r;
+            } else
+            {
+                this.Registrations.Add(r);
+            }
         }
 
         public void RegisterColumn<T>(params string[] ColumnNames) where T : IDataColumn
         {
             foreach (string ColumnName in ColumnNames)
             {
-                this.Registrations.Add(new ColumnRegistration() { Header = ColumnName, Column = (T)Activator.CreateInstance(typeof(T), this) });
+                this.RegisterColumn(ColumnName, (T)Activator.CreateInstance(typeof(T), this));
             }
         }
 
@@ -786,32 +827,31 @@ namespace Penguin.Analysis
 
             toReturn = new TypelessDataTable(dt.Rows.Count);
 
-            ColumnRegistration KeyRegistration = this.Registrations.Single(r => r.Column.GetType() == typeof(Key));
-            int KeyIndex = this.Registrations.IndexOf(KeyRegistration);
-
             foreach (DataRow dr in dt.Rows)
             {
                 List<int> values = new List<int>();
 
                 foreach (ColumnRegistration registration in this.Registrations)
                 {
-                    values.Add(registration.Column.Transform(dr[registration.Header].ToString(), Bool.GetValue(dr[KeyRegistration.Header].ToString()) == 1));
+                    values.Add(registration.Column.Transform(dr[registration.Header].ToString(), Bool.GetValue(dr[TableKey.Header].ToString()) == 1));
                 }
+
+                values.Add(Bool.GetValue(dr[TableKey.Header].ToString()));
 
                 toReturn.AddRow(values.ToArray());
             }
 
             foreach (TypelessDataRow dr in toReturn.Rows)
             {
-                dr.MatchesOutput = dr[KeyIndex] == 1;
+                dr.MatchesOutput = dr.Last() == 1;
             }
 
             return toReturn;
         }
 
-        private bool ValidateRouteConstraints(LongByte Key)
+        private IEnumerable<IRouteConstraint> RouteViolations(LongByte Key)
         {
-            foreach (IRouteConstraint constraint in this.routeConstraint.NotOfType<Exclusive>()) //Move this check to the interface (NOTEXC)
+            foreach (IRouteConstraint constraint in this.routeConstraint) //Move this check to the interface (NOTEXC)
             {
                 if (constraint.Key == 0)
                 {
@@ -820,11 +860,9 @@ namespace Penguin.Analysis
 
                 if (!constraint.Evaluate(Key))
                 {
-                    return false;
+                    yield return constraint;
                 }
             }
-
-            return true;
         }
 
         #region IDisposable Support

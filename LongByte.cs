@@ -236,12 +236,34 @@ namespace Penguin.Analysis
         public bool TrimLeft(int bits = 1)
         {
             long nKey;
-            ulong mask = long.MaxValue;
+            long mask = -1;
             do
             {
-                mask = (mask + 1) / 2;
-                nKey = Value & (long)mask;
+                mask >>= 1;
+                nKey = Value & mask;
             } while (nKey == Value && mask > 1);
+
+            if (mask == 0)
+            {
+                return false;
+            }
+
+            Value = nKey;
+
+            Count -= bits;
+
+            return true;
+        }
+
+        public bool TrimRight(int bits = 1)
+        {
+            long nKey;
+            long mask = -1;
+            do
+            {
+                mask <<= 1;
+                nKey = Value & mask;
+            } while (nKey == Value && (nKey & mask) > 1);
 
             if (mask == 0)
             {

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Penguin.Extensions.Collections;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -32,6 +33,10 @@ namespace Penguin.Analysis.Constraints
             }
         }
 
+        public override string ToString()
+        {
+            return $"{nameof(Exclusive)}: " + this.Headers.Join();
+        }
         #endregion Constructors
 
         #region Methods

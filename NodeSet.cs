@@ -2,7 +2,7 @@
 
 namespace Penguin.Analysis
 {
-    internal class NodeSet
+    public class NodeSet
     {
         #region Properties
 
@@ -15,11 +15,11 @@ namespace Penguin.Analysis
 
         #region Constructors
 
-        public NodeSet((sbyte columnIndex, int[] values) r) : this(r.columnIndex, r.values)
+        internal NodeSet((sbyte columnIndex, int[] values) r) : this(r.columnIndex, r.values)
         {
         }
 
-        public NodeSet(sbyte columnIndex, int[] values)
+        internal NodeSet(sbyte columnIndex, int[] values)
         {
             this.ColumnIndex = columnIndex;
             this.Values = values.ToArray();

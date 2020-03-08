@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Penguin.Analysis
 {
-    internal class NodeSetCollection : IList<NodeSet>
+    public class NodeSetCollection : IList<NodeSet>
     {
         private static readonly NodeSet[] nodeSets = new NodeSet[256];
 
@@ -12,22 +12,22 @@ namespace Penguin.Analysis
         public bool IsReadOnly => false;
         public long Key { get; private set; }
 
-        public NodeSetCollection(IEnumerable<NodeSet> set)
+        internal NodeSetCollection(IEnumerable<NodeSet> set)
         {
             SetKey(set);
         }
 
-        public NodeSetCollection(IEnumerable<int> set)
+        internal NodeSetCollection(IEnumerable<int> set)
         {
             Key = new LongByte(set);
         }
 
-        public NodeSetCollection(long key)
+        internal NodeSetCollection(long key)
         {
             Key = key;
         }
 
-        public NodeSetCollection(IEnumerable<(sbyte columnIndex, int[] values)> set)
+        internal NodeSetCollection(IEnumerable<(sbyte columnIndex, int[] values)> set)
         {
             List<NodeSet> localSets = new List<NodeSet>();
 
@@ -43,7 +43,7 @@ namespace Penguin.Analysis
             SetKey(localSets);
         }
 
-        public NodeSetCollection()
+        internal NodeSetCollection()
         {
         }
 

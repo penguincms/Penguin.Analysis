@@ -12,7 +12,13 @@ namespace Penguin.Analysis
         /// Action to be called when the engine removes a route based on contraint checking
         /// </summary>
         [JsonIgnore]
-        public Action<IEnumerable<string>, bool> CheckedConstraint = null;
+        public Action<IEnumerable<string>, ValidationResult> CheckedConstraint = null;
+
+        /// <summary>
+        /// Action to be called when the engine approves a route based on contraint checking
+        /// </summary>
+        [JsonIgnore]
+        public Action<IEnumerable<string>, LongByte> NoCheckedConstraint = null;
 
         /// <summary>
         /// Action to be called when a node is removed due to fewer matches than configured to allow
@@ -26,7 +32,14 @@ namespace Penguin.Analysis
         [JsonIgnore]
         public Action<DataTable> PostTransform { get; set; }
 
+        /// <summary>
+        /// Executed after the graph is generated and the node count is enumerated
+        /// </summary>
+        [JsonIgnore]
+        public Action<NodeSetGraph> PostGraphCalculation { get; set; }
+
         public ulong RangeFreeMemory { get; set; } = 500_000_000;
+        public Action<NodeSetGraphProgress> NodeEnumProgress { get; set; }
 
         #region Classes
 

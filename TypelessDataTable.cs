@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Penguin.Analysis
 {
     [Serializable]
-    public class TypelessDataRow
+    public class TypelessDataRow : IEnumerable<int>
     {
         #region Properties
 
@@ -48,6 +49,16 @@ namespace Penguin.Analysis
         public override string ToString()
         {
             return string.Join(", ", this._Items);
+        }
+
+        public IEnumerator<int> GetEnumerator()
+        {
+            return ((IEnumerable<int>)this._Items).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return ((IEnumerable<int>)this._Items).GetEnumerator();
         }
     }
 

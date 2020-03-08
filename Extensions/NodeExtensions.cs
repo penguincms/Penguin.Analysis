@@ -379,7 +379,11 @@ namespace Penguin.Analysis.Extensions
                 tnode.MatchingRows.Add(dataRow);
             }
 
-            tnode[pool]++;
+            if (pool != MatchResult.None)
+            {
+                tnode[MatchResult.None]--;
+                tnode[pool]++;
+            }
 
             return MatchesRoute;
         }

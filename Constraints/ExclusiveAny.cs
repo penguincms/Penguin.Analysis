@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Penguin.Extensions.Collections;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Penguin.Analysis.Constraints
 {
@@ -32,6 +34,10 @@ namespace Penguin.Analysis.Constraints
         #region Methods
 
         public LongByte Key { get; set; }
+        public override string ToString()
+        {
+            return $"{nameof(ExclusiveAny)}: " + this.Headers.Join();
+        }
 
         public bool Evaluate(LongByte key)
         {

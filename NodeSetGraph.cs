@@ -8,58 +8,71 @@ using System.Threading;
 
 namespace Penguin.Analysis
 {
-    internal class NodeSetGraph : IEnumerable<NodeSetCollection>
+    public struct NodeSetGraphProgress
+    {
+        public float Progress { get; set; }
+        public long Index { get; set; }
+        public long MaxCount { get; set; }
+        public long RealCount { get; set; }
+    }
+    public class NodeSetGraph : IEnumerable<NodeSetCollection>
     {
         private readonly DataSourceBuilder Builder;
         private readonly object collectionLock = new object();
         public long Index { get; private set; } = -1;
         public long MaxCount { get; private set; }
-        public long RealCount { get; private set; }
-        public List<sbyte> Individuals = new List<sbyte>();
+        public long RealCount { get; private set; } = 0;
 
-        internal NodeSetGraph(DataSourceBuilder builder)
+        public Action<NodeSetGraphProgress> ReportProgress { get; set; }
+
+        internal NodeSetGraph(DataSourceBuilder builder, Action<NodeSetGraphProgress> reportProgress = null)
         {
             Builder = builder;
+            
+            ReportProgress = reportProgress;
 
-            foreach (Exclusive e in Builder.RouteConstraints.OfType<Exclusive>()) //Move this check to the interface (NOTEXC)
-            {
-                if (e.Key == 0)
-                {
-                    e.SetKey(Builder.Registrations.ToArray());
-                }
-
-                foreach (sbyte i in new LongByte((long)e.Key))
-                {
-                    Individuals.Add(i);
-                }
-            }
-
-            MaxCount = (long)Math.Pow(2, ColumnsToProcess.Where(r => !Individuals.Contains(r.ColumnIndex)).Count() - 1) + Individuals.Count;
-
-            float LastPer = 0;
+            MaxCount = (long)Math.Pow(2, ColumnsToProcess.Count());
 
             HashSet<long> AlteredNodes = new HashSet<long>();
-            foreach (long h in BuildNodeDefinitions((n) => ValidateNode(n, AlteredNodes, Builder)))
+
+            Action<ValidationResult> badRoute = null;
+
+            if (builder.Settings.CheckedConstraint != null)
             {
-                RealCount++;
-
-                float thisPer = ((int)((Index * 10000) / MaxCount) / 100f);
-
-                if (LastPer != thisPer)
+                badRoute = (v) =>
                 {
-                    LastPer = thisPer;
-                    Console.WriteLine($"Reading node count: {RealCount} - {thisPer}%");
-                }
+                    IEnumerable<string> headers = v.Checked == 0 ? new List<string>() : v.Checked.Select(k => Builder.Registrations[k].Header);
+                    Builder.Settings.CheckedConstraint.Invoke(headers, v);
+                };
             }
 
-            Console.Clear();
+            Action<LongByte> goodRoute = null;
+
+            if (builder.Settings.NoCheckedConstraint != null)
+            {
+                goodRoute = (v) =>
+                {
+                    IEnumerable<string> headers = v == 0 ? new List<string>() : v.Select(k => Builder.Registrations[k].Header);
+                    Builder.Settings.NoCheckedConstraint.Invoke(headers, v);
+                };
+            }
+
+            RealCount = BuildNodeDefinitions((n) => ValidateNode(n, AlteredNodes, Builder, badRoute, goodRoute)).Count();
+
+            ReportProgress?.Invoke(new NodeSetGraphProgress()
+            {
+                Index = Index,
+                MaxCount = MaxCount,
+                Progress = 1,
+                RealCount = RealCount
+            });
         }
 
         public IEnumerator<NodeSetCollection> GetEnumerator()
         {
             HashSet<long> AlteredNodes = new HashSet<long>();
 
-            IEnumerator<NodeSetCollection> cEnum = BuildNodeDefinitions((n) => (ValidateNode(n, AlteredNodes, Builder) != 0) ? new NodeSetCollection(n) : null).GetEnumerator();
+            IEnumerator<NodeSetCollection> cEnum = BuildNodeDefinitions((n) => ValidateNode(n, AlteredNodes, Builder) != 0 ? new NodeSetCollection(n) : null).GetEnumerator();
 
             NodeSetCollection next;
 
@@ -87,13 +100,20 @@ namespace Penguin.Analysis
 
         private static IEnumerable<T> BuildComplexTree<T>((sbyte ColumnIndex, int[] Values)[] ColumnData, Func<IList<(sbyte ColumnIndex, int[] Values)>, T> ValidateNode)
         {
-            long Hc = (long)Math.Pow(2, ColumnData.Length);
+            int[][] data = new int[ColumnData.Length][];
 
-            for (long Hi = 0; Hi < Hc; Hi += 2)
+            for(int i = 0; i < ColumnData.Length; i++)
+            {
+                data[i] = ColumnData[i].Values;
+            }
+
+            long Hc = (long)Math.Pow(2, ColumnData.Length) - 1;
+
+            for (long Hi = Hc; Hi >= 1; Hi -= 2)
             {
                 byte sbits = 0;
 
-                long Hb = Hi + 1;
+                long Hb = Hi;
 
                 while (Hb != 0)
                 {
@@ -107,11 +127,11 @@ namespace Penguin.Analysis
 
                 List<(sbyte ColumnIndex, int[] Values)> thisGraph = new List<(sbyte ColumnIndex, int[] Values)>(sbits);
 
-                for (int Wi = ColumnData.Length - 1; Wi >= 0; Wi--)
+                for (sbyte Wi = (sbyte)(ColumnData.Length - 1); Wi >= 0; Wi--)
                 {
-                    if ((((Hi + 1) >> Wi) & 1) != 0)
+                    if (((Hi >> Wi) & 1) != 0)
                     {
-                        thisGraph.Add(ColumnData[Wi]);
+                        thisGraph.Add((Wi, data[Wi]));
                     }
                 }
 
@@ -122,14 +142,19 @@ namespace Penguin.Analysis
             }
         }
 
-        private static long ValidateNode(IList<(sbyte ColumnIndex, int[] Values)> toValidate, HashSet<long> AlteredNodes, DataSourceBuilder Builder)
+        private static long ValidateNode(IList<(sbyte ColumnIndex, int[] Values)> toValidate, HashSet<long> AlteredNodes, DataSourceBuilder Builder, Action<ValidationResult> OnFailure = null, Action<LongByte> OnSuccess = null)
         {
             LongByte key = new LongByte(toValidate.Select(v => v.ColumnIndex));
 
             long toReturn = 0;
 
+            if(AlteredNodes.Contains(key))
+            {
+                return 0;
+            }
+
             //Check the valid function to see what the most valid subset of the current headers is
-            if (Builder.IfValid(key, (ckey) =>  //If there is any valid subset
+            if (Builder.IfValid(key, OnFailure, (ckey) =>  //If there is any valid subset
             {
                 //Has the set been trimmed?
                 bool altered = key != ckey;
@@ -152,19 +177,19 @@ namespace Penguin.Analysis
                     //No alteration + valid, return as is
                     toReturn = ckey;
                 }
-            }))
+            }).IsValid)
             {
+                if (OnSuccess != null && toReturn != 0)
+                {
+                    OnSuccess(toReturn);
+                }
                 //The above func sets this value while finding a valid subset
                 return toReturn;
-            }
-            else
+            } else
             {
-                //No valid subsets? Log it.
-                Builder.Settings.CheckedConstraint?.Invoke(key.Select(k => Builder.Registrations[k].Header), true);
-
-                //return null. We do nothing
                 return 0;
             }
+
         }
 
         private IEnumerable<(sbyte ColumnIndex, int[] Values)> ColumnsToProcess
@@ -172,8 +197,6 @@ namespace Penguin.Analysis
             get
             {
                 return Builder.Registrations
-                              //.OrderByDescending(r => r.Column.GetOptions().Count())
-                              .Where(r => !(r.Column is Key))
                               .Select(r => (
                                 ColumnIndex: (sbyte)Builder.Registrations.IndexOf(r),
                                 Values: r.Column.GetOptions().ToArray()
@@ -183,23 +206,36 @@ namespace Penguin.Analysis
         private IEnumerable<T> BuildNodeDefinitions<T>(Func<IList<(sbyte ColumnIndex, int[] Values)>, T> ValidateNode)
         {
             Index = 0;
+            IEnumerable<(sbyte ColumnIndex, int[] Values)> columnsToProcess = ColumnsToProcess;
+            float LastPer = 0;
 
-            foreach(T t in  BuildComplexTree(ColumnsToProcess
-                                                     .Where(v => !Individuals.Contains(v.ColumnIndex))
-                                                     .ToArray(), 
-                                             ValidateNode)
-                            .Where((v)
-                             =>
-                            {
-                                bool r = !EqualityComparer<T>.Default.Equals(v, default);
-                                if (r)
-                                {
-                                    Index++;
-                                }
-                                return r;
-                            }))
+
+            foreach (T t in  BuildComplexTree(columnsToProcess.ToArray(), (r) => ValidateNode(r)))
             {
-                yield return t;
+                if (ReportProgress != null)
+                {
+                    Index++;
+
+                    float thisPer = ((int)((Index * 10000) / MaxCount) / 10000f);
+
+                    if (LastPer != thisPer)
+                    {
+                        LastPer = thisPer;
+
+                        ReportProgress.Invoke(new NodeSetGraphProgress()
+                        {
+                            Index = Index,
+                            MaxCount = MaxCount,
+                            Progress = thisPer,
+                            RealCount = RealCount
+                        });
+                    }
+                }
+
+                if (!EqualityComparer<T>.Default.Equals(t, default))
+                {
+                    yield return t;
+                }
             }
         }
     }

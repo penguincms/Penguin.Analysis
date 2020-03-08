@@ -64,9 +64,19 @@
             Action to be called when the engine removes a route based on contraint checking
             </summary>
         </member>
+        <member name="F:Penguin.Analysis.DataSourceSettings.NoCheckedConstraint">
+            <summary>
+            Action to be called when the engine approves a route based on contraint checking
+            </summary>
+        </member>
         <member name="F:Penguin.Analysis.DataSourceSettings.TrimmedNode">
             <summary>
             Action to be called when a node is removed due to fewer matches than configured to allow
+            </summary>
+        </member>
+        <member name="P:Penguin.Analysis.DataSourceSettings.PostGraphCalculation">
+            <summary>
+            Executed after the graph is generated and the node count is enumerated
             </summary>
         </member>
         <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MatchOnly">
