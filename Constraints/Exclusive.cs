@@ -37,6 +37,7 @@ namespace Penguin.Analysis.Constraints
         {
             return $"{nameof(Exclusive)}: " + this.Headers.Join();
         }
+
         #endregion Constructors
 
         #region Methods

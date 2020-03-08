@@ -13,31 +13,19 @@ namespace Penguin.Analysis.Interfaces
 
     public interface INode : IDisposable
     {
-        int this[MatchResult result] {get;set;}
-
         float Accuracy { get; }
-
         int ChildCount { get; }
-
         sbyte ChildHeader { get; }
-
         byte Depth { get; }
-
         sbyte Header { get; }
-
         long Key { get; }
-
         bool LastNode { get; }
-
         int Matched { get; }
-
         IEnumerable<INode> Next { get; }
-
         INode ParentNode { get; }
-
         int[] Results { get; }
-
         int Value { get; }
+        int this[MatchResult result] { get; set; }
 
         bool Evaluate(Evaluation e, bool MultiThread = true);
 

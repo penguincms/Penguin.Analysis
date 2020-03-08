@@ -14,11 +14,7 @@ namespace Penguin.Analysis
         #region Fields
 
         private long? key;
-        public int this[MatchResult result]
-        {
-            get => this.Results[(int)result];
-            set => this.Results[(int)result] = value;
-        }
+
         public long Key
         {
             get
@@ -35,6 +31,12 @@ namespace Penguin.Analysis
 
         [JsonProperty("R", Order = 1)]
         public int[] Results { get; set; } = new int[4];
+
+        public int this[MatchResult result]
+        {
+            get => this.Results[(int)result];
+            set => this.Results[(int)result] = value;
+        }
 
         #endregion Fields
 

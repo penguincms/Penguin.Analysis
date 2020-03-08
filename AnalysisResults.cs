@@ -44,10 +44,10 @@ namespace Penguin.Analysis
 
         #region IDisposable Support
 
-        private static object RegustrationLock = new object();
+        private static readonly object RegustrationLock = new object();
         private bool disposedValue = false; // To detect redundant calls
 
-        private HashSet<long> RegisteredKeys = new HashSet<long>();
+        private readonly HashSet<long> RegisteredKeys = new HashSet<long>();
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()

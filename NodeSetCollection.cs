@@ -6,23 +6,29 @@ namespace Penguin.Analysis
 {
     public class NodeSetCollection : IList<NodeSet>
     {
-        private static readonly NodeSet[] nodeSets = new NodeSet[256];
+        internal static readonly NodeSet[] NodeSetCache = new NodeSet[256];
 
-        public int Count { get; set; } = 0;
+        public int Count => Key.Count;
         public bool IsReadOnly => false;
-        public long Key { get; private set; }
+        public LongByte Key { get; private set; }
 
-        internal NodeSetCollection(IEnumerable<NodeSet> set)
+        internal NodeSetCollection(IEnumerable<NodeSet> set) : this(new LongByte(set.Select(s => s.ColumnIndex)).Value)
         {
-            SetKey(set);
+            foreach(NodeSet thisSet in set)
+            {
+                if(NodeSetCache[thisSet.ColumnIndex] is null)
+                {
+                    NodeSetCache[thisSet.ColumnIndex] = thisSet;
+                }
+            }
         }
 
-        internal NodeSetCollection(IEnumerable<int> set)
+        internal NodeSetCollection(IEnumerable<int> set) : this(new LongByte(set))
         {
-            Key = new LongByte(set);
+
         }
 
-        internal NodeSetCollection(long key)
+        internal NodeSetCollection(LongByte key)
         {
             Key = key;
         }
@@ -33,13 +39,14 @@ namespace Penguin.Analysis
 
             foreach ((sbyte columnIndex, int[] values) x in set)
             {
-                if (nodeSets[x.columnIndex] is null)
+                if (NodeSetCache[x.columnIndex] is null)
                 {
-                    nodeSets[x.columnIndex] = new NodeSet(x);
+                    NodeSetCache[x.columnIndex] = new NodeSet(x);
                 }
 
-                localSets.Add(nodeSets[x.columnIndex]);
+                localSets.Add(NodeSetCache[x.columnIndex]);
             }
+
             SetKey(localSets);
         }
 
@@ -49,12 +56,12 @@ namespace Penguin.Analysis
 
         public NodeSet this[int index]
         {
-            get => nodeSets[new LongByte(Key).ElementAt(index)];
+            get => NodeSetCache[Key.ElementAt(index)];
             set
             {
-                if (nodeSets[value.ColumnIndex] is null)
+                if (NodeSetCache[value.ColumnIndex] is null)
                 {
-                    nodeSets[value.ColumnIndex] = value;
+                    NodeSetCache[value.ColumnIndex] = value;
                 }
 
                 Key = LongByte.SetBit(Key, index, value != null);
@@ -172,17 +179,14 @@ namespace Penguin.Analysis
 
         public void RemoveAt(int index) => Remove((sbyte)index);
 
-        private IEnumerable<NodeSet> GetSets() => new LongByte(Key).Select(i => nodeSets[i]);
+        private IEnumerable<NodeSet> GetSets() => Key.Select(i => NodeSetCache[i]);
 
         private void SetKey(IEnumerable<NodeSet> set)
         {
             this.Key = 0;
-            this.Count = 0;
 
             foreach (NodeSet n in set)
             {
-                Count++;
-
                 this.Key |= n.Key;
             }
         }

@@ -46,11 +46,6 @@ namespace Penguin.Analysis
 
         #endregion Methods
 
-        public override string ToString()
-        {
-            return string.Join(", ", this._Items);
-        }
-
         public IEnumerator<int> GetEnumerator()
         {
             return ((IEnumerable<int>)this._Items).GetEnumerator();
@@ -59,6 +54,11 @@ namespace Penguin.Analysis
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ((IEnumerable<int>)this._Items).GetEnumerator();
+        }
+
+        public override string ToString()
+        {
+            return string.Join(", ", this._Items);
         }
     }
 

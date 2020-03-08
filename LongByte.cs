@@ -39,6 +39,17 @@ namespace Penguin.Analysis
             }
         }
 
+        public LongByte(IEnumerable<LongByte> indexes)
+        {
+            count = -1;
+            Value = 0;
+            foreach (LongByte index in indexes)
+            {
+                Count++;
+                this.Value |= index.Value;
+            }
+        }
+
         public LongByte(IEnumerable<sbyte> indexes)
         {
             count = -1;
@@ -88,7 +99,6 @@ namespace Penguin.Analysis
 
             return count;
         }
-
 
         public static IEnumerable<int> GetSetBits(long value, bool state)
         {

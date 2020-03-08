@@ -1,39 +1,80 @@
-﻿using Penguin.Analysis.Constraints;
-using Penguin.Analysis.DataColumns;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using Penguin.Extensions.Strings.Security;
+using Penguin.Extensions.Strings;
 using System.Threading;
+using Penguin.Analysis.Constraints;
 
 namespace Penguin.Analysis
 {
-    public struct NodeSetGraphProgress
-    {
-        public float Progress { get; set; }
-        public long Index { get; set; }
-        public long MaxCount { get; set; }
-        public long RealCount { get; set; }
-    }
-    public class NodeSetGraph : IEnumerable<NodeSetCollection>
+    public class NodeSetGraph : IEnumerable<NodeSetCollection>, IDisposable
     {
         private readonly DataSourceBuilder Builder;
         private readonly object collectionLock = new object();
+        private Stream ValidationCache;
         public long Index { get; private set; } = -1;
+        public long RealIndex { get; private set; }
         public long MaxCount { get; private set; }
         public long RealCount { get; private set; } = 0;
-
         public Action<NodeSetGraphProgress> ReportProgress { get; set; }
+
+        private IEnumerable<(sbyte ColumnIndex, int[] Values)> ColumnsToProcess
+        {
+            get
+            {
+                return Builder.Registrations
+                              .Select(r => (
+                                ColumnIndex: (sbyte)Builder.Registrations.IndexOf(r),
+                                Values: r.Column.GetOptions().ToArray()
+                              ));
+            }
+        }
+
+        private string ValidationCacheFileName
+        {
+            get
+            {
+                string ch = string.Empty;
+
+                unchecked
+                {
+                    foreach (ColumnRegistration r in Builder.Registrations)
+                    {
+                        ch += r.Header + "|";
+                    }
+                }
+
+                return $"NodeValidation_{ch.ComputeSha1Hash()}.cache";
+            }
+        }
 
         internal NodeSetGraph(DataSourceBuilder builder, Action<NodeSetGraphProgress> reportProgress = null)
         {
             Builder = builder;
-            
             ReportProgress = reportProgress;
 
-            MaxCount = (long)Math.Pow(2, ColumnsToProcess.Count());
+            if (File.Exists(ValidationCacheFileName))
+            {
+                ValidationCache = new FileStream(ValidationCacheFileName, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-            HashSet<long> AlteredNodes = new HashSet<long>();
+                byte[] bytes = new byte[8];
+                ValidationCache.Read(bytes, 0, 8);
+
+                RealCount = BitConverter.ToInt64(bytes, 0);
+
+                if (RealCount == 0)
+                {
+                    ValidationCache.Dispose();
+                    ValidationCache = null;
+                    File.Delete(ValidationCacheFileName);
+                }
+            }
+
+            MaxCount = (long)Math.Pow(2, ColumnsToProcess.Count() - 1);
 
             Action<ValidationResult> badRoute = null;
 
@@ -57,7 +98,20 @@ namespace Penguin.Analysis
                 };
             }
 
-            RealCount = BuildNodeDefinitions((n) => ValidateNode(n, AlteredNodes, Builder, badRoute, goodRoute)).Count();
+            if (RealCount == 0)
+            {
+                foreach (long _ in BuildNodeDefinitions(badRoute, goodRoute, ReportProgress))
+                {
+                    RealCount++;
+                }
+            }
+
+            foreach ((sbyte ColumnIndex, int[] Values) cv in ColumnsToProcess)
+            {
+                NodeSet ns = new NodeSet(cv);
+
+                NodeSetCollection.NodeSetCache[cv.ColumnIndex] = ns;
+            }
 
             ReportProgress?.Invoke(new NodeSetGraphProgress()
             {
@@ -68,41 +122,38 @@ namespace Penguin.Analysis
             });
         }
 
+        public void Dispose()
+        {
+            ValidationCache?.Dispose();
+        }
+
         public IEnumerator<NodeSetCollection> GetEnumerator()
         {
             HashSet<long> AlteredNodes = new HashSet<long>();
 
-            IEnumerator<NodeSetCollection> cEnum = BuildNodeDefinitions((n) => ValidateNode(n, AlteredNodes, Builder) != 0 ? new NodeSetCollection(n) : null).GetEnumerator();
-
-            NodeSetCollection next;
+            IEnumerator<long> cEnum = BuildNodeDefinitions().GetEnumerator();
 
             Monitor.Enter(collectionLock);
 
-            bool success = cEnum.MoveNext();
-
-            while (success)
+            while (cEnum.MoveNext())
             {
-                next = cEnum.Current;
-
                 Monitor.Exit(collectionLock);
 
-                yield return next;
+                yield return new NodeSetCollection(cEnum.Current);
 
                 Monitor.Enter(collectionLock);
-
-                success = cEnum.MoveNext();
-            };
-
+            }
+            
             Monitor.Exit(collectionLock);
         }
 
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 
-        private static IEnumerable<T> BuildComplexTree<T>((sbyte ColumnIndex, int[] Values)[] ColumnData, Func<IList<(sbyte ColumnIndex, int[] Values)>, T> ValidateNode)
+        private static IEnumerable<List<(sbyte ColumnIndex, int[] Values)>> BuildComplexTree((sbyte ColumnIndex, int[] Values)[] ColumnData)
         {
             int[][] data = new int[ColumnData.Length][];
 
-            for(int i = 0; i < ColumnData.Length; i++)
+            for (int i = 0; i < ColumnData.Length; i++)
             {
                 data[i] = ColumnData[i].Values;
             }
@@ -135,20 +186,15 @@ namespace Penguin.Analysis
                     }
                 }
 
-                if (thisGraph.Any())
-                {
-                    yield return ValidateNode.Invoke(thisGraph);
-                }
+                yield return thisGraph;
             }
         }
 
-        private static long ValidateNode(IList<(sbyte ColumnIndex, int[] Values)> toValidate, HashSet<long> AlteredNodes, DataSourceBuilder Builder, Action<ValidationResult> OnFailure = null, Action<LongByte> OnSuccess = null)
+        private static long ValidateNode(LongByte key, HashSet<long> AlteredNodes, DataSourceBuilder Builder, Action<ValidationResult> OnFailure = null, Action<LongByte> OnSuccess = null)
         {
-            LongByte key = new LongByte(toValidate.Select(v => v.ColumnIndex));
-
             long toReturn = 0;
 
-            if(AlteredNodes.Contains(key))
+            if (AlteredNodes.Contains(key))
             {
                 return 0;
             }
@@ -185,58 +231,246 @@ namespace Penguin.Analysis
                 }
                 //The above func sets this value while finding a valid subset
                 return toReturn;
-            } else
+            }
+            else
             {
                 return 0;
             }
-
         }
 
-        private IEnumerable<(sbyte ColumnIndex, int[] Values)> ColumnsToProcess
+        private IEnumerable<long> BuildNodeDefinitions(Action<ValidationResult> OnFailure = null, Action<LongByte> OnSuccess = null, Action<NodeSetGraphProgress> reportProgress = null)
         {
-            get
-            {
-                return Builder.Registrations
-                              .Select(r => (
-                                ColumnIndex: (sbyte)Builder.Registrations.IndexOf(r),
-                                Values: r.Column.GetOptions().ToArray()
-                              ));
-            }
-        }
-        private IEnumerable<T> BuildNodeDefinitions<T>(Func<IList<(sbyte ColumnIndex, int[] Values)>, T> ValidateNode)
-        {
+
+            //string jumpListFname = DateTime.Now.ToString("yyyyMMddHHmmss") + "_NodeCacheGeneration.log";
+            //string jumpListLoadFname = DateTime.Now.ToString("yyyyMMddHHmmss") + "_NodeCacheLoad.log";
+
+            //long SkipMask = new LongByte(Builder.Registrations.OfType<Exclusive>().Select(e => e.Key));
+
+
             Index = 0;
+            RealIndex = 0;
             IEnumerable<(sbyte ColumnIndex, int[] Values)> columnsToProcess = ColumnsToProcess;
-            float LastPer = 0;
+            HashSet<long> AlteredNodes = new HashSet<long>();
+            bool LastValid = true;
+            bool ExistingStream = !(ValidationCache is null);
+            long NextFlip = 0;
+            long SkipTo = 0;
+            long NextKey = 0;
 
+            int Step = (int)(MaxCount / 10000);
 
-            foreach (T t in  BuildComplexTree(columnsToProcess.ToArray(), (r) => ValidateNode(r)))
+            void ReadNextFlip()
             {
-                if (ReportProgress != null)
+                byte[] bytes = new byte[8];
+                ValidationCache.Read(bytes, 0, 8);
+                NextFlip = BitConverter.ToInt64(bytes, 0);
+                ValidationCache.Read(bytes, 0, 8);
+                NextKey = BitConverter.ToInt64(bytes, 0);
+            }
+
+            if (!ExistingStream)
+            {
+                ValidationCache = new FileStream(ValidationCacheFileName, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
+                ValidationCache.Write(BitConverter.GetBytes((long)0), 0, 8);
+            }
+            else
+            {
+                ReadNextFlip();
+            }
+
+
+            void CheckReportProgress()
+            {
+                if (reportProgress != null && Index % Step == 0)
                 {
-                    Index++;
-
-                    float thisPer = ((int)((Index * 10000) / MaxCount) / 10000f);
-
-                    if (LastPer != thisPer)
+                    reportProgress.Invoke(new NodeSetGraphProgress()
                     {
-                        LastPer = thisPer;
+                        Index = Index,
+                        MaxCount = MaxCount,
+                        Progress = ((int)((Index * 10000) / MaxCount) / 10000f),
+                        RealCount = RealCount
+                    });
+                }
+            }
 
-                        ReportProgress.Invoke(new NodeSetGraphProgress()
+            IEnumerator<List<(sbyte ColumnIndex, int[] Values)>> TreeEnumerator = BuildComplexTree(columnsToProcess.ToArray()).GetEnumerator();
+
+            bool hasNext = TreeEnumerator.MoveNext();
+
+            while (hasNext)
+            {
+                long key = 0;
+
+                if (!ExistingStream)
+                {
+                    LongByte thisKey = new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex));
+
+                    long newKey = ValidateNode(thisKey, AlteredNodes, Builder, OnFailure, OnSuccess);
+
+                    bool stateChange = (newKey != 0) != LastValid;
+                    bool keyChange = newKey != thisKey.Value && newKey != 0;
+                    bool write = stateChange || keyChange;
+
+                    if (write)
+                    {
+                        //List<string> lines = new List<string>
+                        //{
+                        //    $"{thisKey}:"
+                        //};
+
+                        //if (stateChange)
+                        //{
+                        //    lines.Add($"\tNew State: {(newKey != 0)}");
+                        //}
+
+                        //if (keyChange)
+                        //{
+                        //    lines.Add($"\tNew Key: {new LongByte(newKey)}");
+                        //}
+
+                        //lines.Add($"\t\tWriting: {Index}, {newKey}");
+
+
+                        //File.AppendAllLines(jumpListFname, lines);
+
+                        //foreach (string s in lines)
+                        //{
+                        //    Console.WriteLine(s);
+                        //}
+
+                        ValidationCache.Write(BitConverter.GetBytes(Index), 0, 8);
+                        ValidationCache.Write(BitConverter.GetBytes(newKey), 0, 8);
+
+                        if (stateChange)
                         {
-                            Index = Index,
-                            MaxCount = MaxCount,
-                            Progress = thisPer,
-                            RealCount = RealCount
-                        });
+                            LastValid = (newKey != 0);
+                        }
+                    }
+
+                    if (newKey != 0)
+                    {
+                        key = newKey;
+                    }
+                }
+                else
+                {
+                    if (Index == NextFlip)
+                    {           
+                        //File.AppendAllText(jumpListLoadFname, $"{new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex))}:" + System.Environment.NewLine);
+                        
+                        if (NextKey != 0)
+                        {
+                            //if(!LastValid)
+                            //{
+                            //    File.AppendAllText(jumpListLoadFname, $"\tNew State: {true}" + System.Environment.NewLine);
+                            //}
+
+                            //if (new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex)) != new LongByte(NextKey))
+                            //{
+                            //    File.AppendAllText(jumpListLoadFname, $"\tNew Key: {new LongByte(NextKey)}" + System.Environment.NewLine);
+                            //}
+
+                            LastValid = true;
+                            key = NextKey;
+                        }
+                        else
+                        {
+
+                            //File.AppendAllText(jumpListLoadFname, $"\tNew State: {!LastValid}" + System.Environment.NewLine);
+                            
+
+                            LastValid = !LastValid;
+                            if (LastValid)
+                            {
+                                key = new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex));
+                            }
+                        }
+                        //File.AppendAllText(jumpListLoadFname, $"\t\tRead: {NextFlip}, {NextKey}" + System.Environment.NewLine);
+                        ReadNextFlip();
+                    }
+                    else
+                    {
+                        key = new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex));
                     }
                 }
 
-                if (!EqualityComparer<T>.Default.Equals(t, default))
+                if (LastValid && key != 0)
                 {
-                    yield return t;
+                    if (ExistingStream)
+                    {
+                        long KeyValidation = ValidateNode(key, new HashSet<long>(), Builder);
+                        if (KeyValidation != key)
+                        {
+                            if (Debugger.IsAttached)
+                            {
+                                Debugger.Break();
+                            }
+                            else
+                            {
+                                throw new Exception($"Node revalidation failed for node {key}. The existing node cache does not appear to be valid");
+                            }
+                        }
+
+                        OnSuccess?.Invoke(key);
+                    }
+                    yield return key;
+                    RealIndex++;
+                }
+
+                if (ExistingStream && !LastValid)
+                {
+                    for (; Index < NextFlip; Index++)
+                    {
+                        hasNext = TreeEnumerator.MoveNext();
+                        CheckReportProgress();
+                    }
+                }
+                else
+                {
+                    Index++;
+                    hasNext = TreeEnumerator.MoveNext();
+
+                    if (!ExistingStream && ReportProgress != null)
+                    {
+                        CheckReportProgress();
+                    }
+                }             
+            }
+
+            try
+            {
+
+                if (!ExistingStream)
+                {
+                    ValidationCache.Seek(0, SeekOrigin.Begin);
+                    ValidationCache.Write(BitConverter.GetBytes(RealCount), 0, 8);
+                }
+                else
+                {
+                    ValidationCache.Seek(8, SeekOrigin.Begin);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                if (Debugger.IsAttached)
+                {
+                    Debugger.Break();
+                }
+                else
+                {
+                    throw;
                 }
             }
+
         }
+    }
+
+    public struct NodeSetGraphProgress
+    {
+        public long Index;
+        public long MaxCount;
+        public float Progress;
+        public long RealCount;
     }
 }

@@ -52,7 +52,7 @@ namespace Penguin.Analysis
         public NodeMeta(INodeFileStream stream, INode node, long parentOffset)
         {
             this.Offset = stream.Offset;
-            this.Root = parentOffset == DiskNode.HeaderBytes;
+            this.Root = parentOffset == DiskNode.HEADER_BYTES;
             this.Matches = node.GetMatched();
 
             if (node.Header == -1)

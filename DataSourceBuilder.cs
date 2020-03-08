@@ -15,8 +15,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Penguin.Debugging;
-
 
 namespace Penguin.Analysis
 {
@@ -26,9 +24,8 @@ namespace Penguin.Analysis
         #region Fields
 
         public List<ColumnRegistration> Registrations = new List<ColumnRegistration>();
-        public ColumnRegistration TableKey { get; set; }
-
         private readonly List<ITransform> Transformations = new List<ITransform>();
+        public ColumnRegistration TableKey { get; set; }
 
         #endregion Fields
 
@@ -36,13 +33,11 @@ namespace Penguin.Analysis
 
         public AnalysisResults Result { get; set; } = new AnalysisResults();
 
-        private List<IRouteConstraint> routeConstraint { get; set; } = new List<IRouteConstraint>();
-
         [JsonIgnore]
         public IEnumerable<IRouteConstraint> RouteConstraints => this.routeConstraint;
 
-
-        private DataTable TempTable { get; set; }
+        private readonly List<IRouteConstraint> routeConstraint = new List<IRouteConstraint>();
+        private DataTable TempTable;
 
         #endregion Properties
 
@@ -98,7 +93,7 @@ namespace Penguin.Analysis
 
         #region Methods
 
-        private static string MemLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
+        private static readonly string MemLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
 
         private FileStream ManagedMemoryStream;
 
@@ -141,7 +136,7 @@ namespace Penguin.Analysis
 
             DataSourceBuilder toReturn = JsonConvert.DeserializeObject<DataSourceBuilder>(Json, jsonSerializerSettings ?? DefaultSerializerSettings);
 
-            DiskNode virtualRoot = new DiskNode(stream, DiskNode.HeaderBytes);
+            DiskNode virtualRoot = new DiskNode(stream, DiskNode.HEADER_BYTES);
 
             OptimizedRootNode gNode = new OptimizedRootNode(virtualRoot);
 
@@ -244,9 +239,9 @@ namespace Penguin.Analysis
             ScreenBuffer.ReplaceLine($"Building decision tree", 0);
             ScreenBuffer.AutoFlush = false;
 
-            long RootChildListOffset = DiskNode.HeaderBytes + DiskNode.NodeSize;
+            long RootChildListOffset = DiskNode.HEADER_BYTES + DiskNode.NODE_SIZE;
 
-            outputStream.Seek(DiskNode.HeaderBytes + 24);
+            outputStream.Seek(DiskNode.HEADER_BYTES + 24);
 
             outputStream.Write((sbyte)-1);
             outputStream.Write((long)-1);
@@ -255,7 +250,7 @@ namespace Penguin.Analysis
 
             outputStream.Write(graph.RealCount);
 
-            long CurrentNodeOffset = (graph.RealCount * DiskNode.NextSize) + RootChildListOffset;
+            long CurrentNodeOffset = (graph.RealCount * DiskNode.NEXT_SIZE) + RootChildListOffset;
 
             object offsetLock = new object();
 
@@ -327,7 +322,7 @@ namespace Penguin.Analysis
 
                 nodesetc = nodeSetData.Count;
 
-                ScreenBuffer.ReplaceLine($"--------Graph: [{graph.Index + 1}/{graph.RealCount}]", RootLine);
+                ScreenBuffer.ReplaceLine($"--------Graph: [{graph.RealIndex + 1}/{graph.RealCount}]", RootLine);
 
                 double dataRowi = 0;
                 double dataRowc = this.Result.RawData.RowCount;
@@ -425,7 +420,7 @@ namespace Penguin.Analysis
                     flushCommands.Enqueue(memCache);
                 }
 
-                results.AddRange(thisRoot.Serialize(memCache, DiskNode.HeaderBytes));
+                results.AddRange(thisRoot.Serialize(memCache, DiskNode.HEADER_BYTES));
 
                 memCache.Ready = true;
 
@@ -467,7 +462,7 @@ namespace Penguin.Analysis
                 outputStream.Write(nm.Offset);
             }
 
-            this.Result.RootNode = new DiskNode(outputStream, DiskNode.HeaderBytes);
+            this.Result.RootNode = new DiskNode(outputStream, DiskNode.HEADER_BYTES);
         }
 
         public string GetNodeName(INode toCheck)
@@ -503,7 +498,6 @@ namespace Penguin.Analysis
             }
             else
             {
-
                 LongByte cKey = Key;
 
                 do
@@ -537,7 +531,6 @@ namespace Penguin.Analysis
                         OnFailure?.Invoke(result);
                         return result;
                     }
-
                 } while (true);
 
                 HeaderAction?.Invoke(cKey);
@@ -552,7 +545,7 @@ namespace Penguin.Analysis
         {
             this.ManagedMemoryStream = new FileStream(Engine, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-            byte[] offsetBytes = new byte[DiskNode.HeaderBytes];
+            byte[] offsetBytes = new byte[DiskNode.HEADER_BYTES];
 
             this.ManagedMemoryStream.Read(offsetBytes, 0, offsetBytes.Length);
 
@@ -587,7 +580,6 @@ namespace Penguin.Analysis
                         }
                         catch (Exception ex)
                         {
-                            
                             Penguin.Debugging.StaticLogger.Log("Prelod function failed to execute...");
                             Penguin.Debugging.StaticLogger.Log(ex);
                         }
@@ -677,7 +669,7 @@ namespace Penguin.Analysis
                         }
 
                         Log($"Need more memory... Clearing cache.");
-                        DiskNode.ClearCache(memoryManagementStyle);
+                        DiskNode.ClearCache();
 
                         Log($"Collecting Garbage...");
                         GC.Collect();
@@ -750,13 +742,13 @@ namespace Penguin.Analysis
 
         public void RegisterColumn(string ColumnName, IDataColumn registration)
         {
-
             ColumnRegistration r = new ColumnRegistration() { Header = ColumnName, Column = registration };
 
             if (registration is Key)
             {
                 this.TableKey = r;
-            } else
+            }
+            else
             {
                 this.Registrations.Add(r);
             }
@@ -804,6 +796,22 @@ namespace Penguin.Analysis
             return this.Transform(dt).Rows.First();
         }
 
+        private IEnumerable<IRouteConstraint> RouteViolations(LongByte Key)
+        {
+            foreach (IRouteConstraint constraint in this.routeConstraint) //Move this check to the interface (NOTEXC)
+            {
+                if (constraint.Key == 0)
+                {
+                    constraint.SetKey(this.Registrations.ToArray());
+                }
+
+                if (!constraint.Evaluate(Key))
+                {
+                    yield return constraint;
+                }
+            }
+        }
+
         private TypelessDataTable Transform(DataTable dt)
         {
             TypelessDataTable toReturn;
@@ -847,22 +855,6 @@ namespace Penguin.Analysis
             }
 
             return toReturn;
-        }
-
-        private IEnumerable<IRouteConstraint> RouteViolations(LongByte Key)
-        {
-            foreach (IRouteConstraint constraint in this.routeConstraint) //Move this check to the interface (NOTEXC)
-            {
-                if (constraint.Key == 0)
-                {
-                    constraint.SetKey(this.Registrations.ToArray());
-                }
-
-                if (!constraint.Evaluate(Key))
-                {
-                    yield return constraint;
-                }
-            }
         }
 
         #region IDisposable Support

@@ -27,10 +27,10 @@ namespace Penguin.Analysis
         public Action<INode> TrimmedNode = null;
 
         public ulong MinFreeMemory { get; set; } = 1_000_000_000;
-        public int NodeFlushDepth { get; set; } = 0;
 
         [JsonIgnore]
-        public Action<DataTable> PostTransform { get; set; }
+        public Action<NodeSetGraphProgress> NodeEnumProgress { get; set; }
+        public int NodeFlushDepth { get; set; } = 0;
 
         /// <summary>
         /// Executed after the graph is generated and the node count is enumerated
@@ -38,8 +38,10 @@ namespace Penguin.Analysis
         [JsonIgnore]
         public Action<NodeSetGraph> PostGraphCalculation { get; set; }
 
+        [JsonIgnore]
+        public Action<DataTable> PostTransform { get; set; }
+
         public ulong RangeFreeMemory { get; set; } = 500_000_000;
-        public Action<NodeSetGraphProgress> NodeEnumProgress { get; set; }
 
         #region Classes
 

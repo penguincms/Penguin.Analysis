@@ -14,12 +14,7 @@ namespace Penguin.Analysis
 
         public Dictionary<int, int> ValueJumpList = new Dictionary<int, int>();
 
-        private List<INode> next = new List<INode>();
-        public int this[MatchResult result]
-        {
-            get => this.Results[(int)result];
-            set => this.Results[(int)result] = value;
-        }
+        private readonly List<INode> next = new List<INode>();
         public float Accuracy { get; }
 
         public int ChildCount { get; internal set; }
@@ -84,6 +79,12 @@ namespace Penguin.Analysis
 
             this.ValueJumpList.Add(lastValueIndex, this.ChildCount);
             this.HeaderBreaks.Add(this.ChildCount);
+        }
+
+        public int this[MatchResult result]
+        {
+            get => this.Results[(int)result];
+            set => this.Results[(int)result] = value;
         }
 
         public void Evaluate(int headerBreak, Evaluation e, bool MultiThread = true)

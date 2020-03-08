@@ -29,15 +29,11 @@ namespace Penguin.Analysis.Constraints
 
         #endregion Constructors
 
-        int MaxBit = -1;
+        private int MaxBit = -1;
 
         #region Methods
 
         public LongByte Key { get; set; }
-        public override string ToString()
-        {
-            return $"{nameof(ExclusiveAny)}: " + this.Headers.Join();
-        }
 
         public bool Evaluate(LongByte key)
         {
@@ -57,7 +53,7 @@ namespace Penguin.Analysis.Constraints
         public void SetKey(ColumnRegistration[] registrations)
         {
             LongByte lb = 0;
-            
+
             MaxBit = registrations.Length;
 
             for (int x = 0; x < registrations.Length; x++)
@@ -66,6 +62,11 @@ namespace Penguin.Analysis.Constraints
             }
 
             this.Key = lb;
+        }
+
+        public override string ToString()
+        {
+            return $"{nameof(ExclusiveAny)}: " + this.Headers.Join();
         }
 
         #region IDisposable Support

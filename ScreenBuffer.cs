@@ -16,13 +16,13 @@ namespace Penguin.Analysis
         /// </summary>
         public static int FlushDelayMs { get; set; } = 100;
 
-        private static char[] Data { get; set; } = new char[Console.WindowWidth * Console.WindowHeight];
+        private static readonly char[] Data = new char[Console.WindowWidth * Console.WindowHeight];
         private static int Height => Console.WindowHeight;
-        private static char[] Last { get; set; } = new char[Console.WindowWidth * Console.WindowHeight];
+        private static readonly char[] Last = new char[Console.WindowWidth * Console.WindowHeight];
         private static DateTime LastFlush { get; set; }
-        private static int Pointer { get; set; } = 0;
-        private static object ScreenBufferLock { get; set; } = new object();
-        private static int Width { get; set; } = Console.WindowWidth;
+        private static int Pointer = 0;
+        private static readonly object ScreenBufferLock = new object();
+        private static readonly int Width = Console.WindowWidth;
 
         #endregion Properties
 

@@ -184,13 +184,13 @@ namespace Penguin.Analysis.Extensions
                 throw new ArgumentNullException(nameof(tnode));
             }
 
-            long length = DiskNode.NodeSize;
+            long length = DiskNode.NODE_SIZE;
 
             if (!(tnode.Next is null))
             {
                 foreach (Node cnode in tnode.Next)
                 {
-                    length += DiskNode.NextSize;
+                    length += DiskNode.NEXT_SIZE;
                     length += cnode.GetLength();
                 }
             }
@@ -204,7 +204,7 @@ namespace Penguin.Analysis.Extensions
             long thisOffset = results.Single().Offset;
             //parent 0 - 8
 
-            byte[] toWrite = new byte[DiskNode.NodeSize];
+            byte[] toWrite = new byte[DiskNode.NODE_SIZE];
 
             BitConverter.GetBytes(ParentOffset).CopyTo(toWrite, 0);
 
@@ -234,7 +234,7 @@ namespace Penguin.Analysis.Extensions
             {
                 List<Node> orderedList = tnode.Next.OrderBy(tn => tn.Header).ThenByDescending(tn => tn.GetMatched()).ToList();
 
-                int skip = (nCount * DiskNode.NextSize);
+                int skip = (nCount * DiskNode.NEXT_SIZE);
 
                 long ChildListOffset = lockedNodeFileStream.Offset;
 
@@ -242,14 +242,14 @@ namespace Penguin.Analysis.Extensions
 
                 lockedNodeFileStream.Write(skipBytes);
 
-                byte[] nextOffsets = new byte[nCount * DiskNode.NextSize];
+                byte[] nextOffsets = new byte[nCount * DiskNode.NEXT_SIZE];
 
                 int i;
 
                 for (i = 0; i < nCount; i++)
                 {
-                    BitConverter.GetBytes(lockedNodeFileStream.Offset).CopyTo(nextOffsets, i * DiskNode.NextSize);
-                    BitConverter.GetBytes(orderedList.ElementAt(i).Value).CopyTo(nextOffsets, i * DiskNode.NextSize + 8);
+                    BitConverter.GetBytes(lockedNodeFileStream.Offset).CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE);
+                    BitConverter.GetBytes(orderedList.ElementAt(i).Value).CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE + 8);
 
                     results.AddRange(orderedList.ElementAt(i).Serialize(lockedNodeFileStream, thisOffset));
                 }

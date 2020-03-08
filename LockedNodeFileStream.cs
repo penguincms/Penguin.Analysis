@@ -7,11 +7,11 @@ namespace Penguin.Analysis
 {
     public class LockedNodeFileStream : INodeFileStream, IDisposable
     {
-        private static object NodeFileLock = new object();
+        private static readonly object NodeFileLock = new object();
         private static int StreamPointer = 0;
         private static StreamLock[] StreamPool;
         private FileStream _backingStream;
-        private bool PoolStreams;
+        private readonly bool PoolStreams;
         public long Offset => this._backingStream.Position;
 
         private struct StreamLock : IDisposable
@@ -69,7 +69,7 @@ namespace Penguin.Analysis
         {
             int p = 0;
 
-            byte[] bByte = new byte[DiskNode.NodeSize];
+            byte[] bByte = new byte[DiskNode.NODE_SIZE];
 
             FileStream sourceStream;
             StreamLock sl = default;
@@ -93,9 +93,9 @@ namespace Penguin.Analysis
 
             sourceStream.Seek(offset, SeekOrigin.Begin);
 
-            sourceStream.Read(bByte, 0, DiskNode.NodeSize);
+            sourceStream.Read(bByte, 0, DiskNode.NODE_SIZE);
 
-            int childCount = bByte.GetInt(DiskNode.NodeSize - 4);
+            int childCount = bByte.GetInt(DiskNode.NODE_SIZE - 4);
 
             if (childCount == 0)
             {
@@ -107,7 +107,7 @@ namespace Penguin.Analysis
                 return bByte;
             }
 
-            byte[] cByte = new byte[childCount * DiskNode.NextSize];
+            byte[] cByte = new byte[childCount * DiskNode.NEXT_SIZE];
 
             sourceStream.Read(cByte, 0, cByte.Length);
 
@@ -120,7 +120,7 @@ namespace Penguin.Analysis
 
             bByte.CopyTo(toReturn, 0);
 
-            cByte.CopyTo(toReturn, DiskNode.NodeSize);
+            cByte.CopyTo(toReturn, DiskNode.NODE_SIZE);
 
             return toReturn;
         }

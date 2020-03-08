@@ -7,23 +7,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using static Penguin.Analysis.DataSourceBuilder;
 
 namespace Penguin.Analysis
 {
     [JsonObject(MemberSerialization.OptIn)]
     public class DiskNode : INode
     {
-        public const int HeaderBytes = 16;
-        public const int NextSize = 12;
-        public const int NodeSize = 35;
+        public const int HEADER_BYTES = 16;
+        public const int NEXT_SIZE = 12;
+        public const int NODE_SIZE = 35;
         internal static LockedNodeFileStream _backingStream;
         internal static ConcurrentDictionary<long, DiskNode> Cache = new ConcurrentDictionary<long, DiskNode>();
 
         internal static Dictionary<long, DiskNode> MemoryManaged = new Dictionary<long, DiskNode>();
 
         internal long Offset;
-        private static object clearCacheLock = new object();
+        private static readonly object clearCacheLock = new object();
 
         private byte? depth;
 
@@ -33,7 +32,7 @@ namespace Penguin.Analysis
 
         public float Accuracy => this.GetAccuracy();
 
-        public int ChildCount => this.BackingData.GetInt(DiskNode.NodeSize - 4);
+        public int ChildCount => this.BackingData.GetInt(DiskNode.NODE_SIZE - 4);
 
         public sbyte ChildHeader => unchecked((sbyte)this.BackingData[30]);
 
@@ -108,12 +107,6 @@ namespace Penguin.Analysis
 
         private long ParentOffset => this.BackingData.GetLong(0);
 
-        public int this[MatchResult result]
-        {
-            get => this.Results[(int)result];
-            set => this.Results[(int)result] = value;
-        }
-
         public DiskNode(LockedNodeFileStream fileStream, long offset)
         {
             this.Offset = offset;
@@ -124,7 +117,7 @@ namespace Penguin.Analysis
 
             for (int i = 0; i < this.ChildOffsets.Length; i++)
             {
-                int oset = NodeSize + (i * NextSize);
+                int oset = NODE_SIZE + (i * NEXT_SIZE);
 
                 this.ChildOffsets[i] = new OffsetValue()
                 {
@@ -136,7 +129,13 @@ namespace Penguin.Analysis
             _backingStream = _backingStream ?? fileStream ?? throw new ArgumentNullException(nameof(fileStream));
         }
 
-        public static int ClearCache(MemoryManagementStyle memoryManagementStyle)
+        public int this[MatchResult result]
+        {
+            get => this.Results[(int)result];
+            set => this.Results[(int)result] = value;
+        }
+
+        public static int ClearCache()
         {
             int CacheSize = Cache.Count;
 
