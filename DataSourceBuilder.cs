@@ -31,13 +31,12 @@ namespace Penguin.Analysis
 
         #region Properties
 
+        private readonly List<IRouteConstraint> routeConstraint = new List<IRouteConstraint>();
+        private DataTable TempTable;
         public AnalysisResults Result { get; set; } = new AnalysisResults();
 
         [JsonIgnore]
         public IEnumerable<IRouteConstraint> RouteConstraints => this.routeConstraint;
-
-        private readonly List<IRouteConstraint> routeConstraint = new List<IRouteConstraint>();
-        private DataTable TempTable;
 
         #endregion Properties
 
@@ -132,7 +131,9 @@ namespace Penguin.Analysis
                 b64Bytes[b64P++] = (byte)tbyte;
             }
 
-            string Json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(System.Text.Encoding.UTF8.GetString(b64Bytes)));
+            string b64 = System.Text.Encoding.UTF8.GetString(b64Bytes);
+
+            string Json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(b64));
 
             DataSourceBuilder toReturn = JsonConvert.DeserializeObject<DataSourceBuilder>(Json, jsonSerializerSettings ?? DefaultSerializerSettings);
 
@@ -209,8 +210,21 @@ namespace Penguin.Analysis
             {
                 //evaluation.Score = this.Result.BaseRate;
 
-                Result = this.Result
+                Result = this.Result,
+                InputData = dataRow
             };
+
+            int[] vints = evaluation.DataRow.ToArray();
+
+            for (int index = 0; index < vints.Length - 1; index++)
+            {
+                string k = this.Registrations[index].Header;
+                string v = this.Registrations[index].Column.Display(vints[index]);
+
+                evaluation.CalculatedData.Add(k, v);
+            }
+
+            evaluation.CalculatedData.Add(this.TableKey.Header, this.TableKey.Column.Display(vints[vints.Length - 1]));
 
             INode rootNode = this.Result.RootNode;
 
@@ -284,7 +298,7 @@ namespace Penguin.Analysis
                         { }
                         while (!command.Ready)
                         {
-                            System.Threading.Thread.Sleep(50);
+                            Thread.Sleep(50);
                         }
 
                         outputStream.Write(command.ToArray());

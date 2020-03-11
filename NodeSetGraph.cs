@@ -11,15 +11,23 @@ using Penguin.Analysis.Constraints;
 
 namespace Penguin.Analysis
 {
+    public struct NodeSetGraphProgress
+    {
+        public long Index;
+        public long MaxCount;
+        public float Progress;
+        public long RealCount;
+    }
+
     public class NodeSetGraph : IEnumerable<NodeSetCollection>, IDisposable
     {
         private readonly DataSourceBuilder Builder;
         private readonly object collectionLock = new object();
         private Stream ValidationCache;
         public long Index { get; private set; } = -1;
-        public long RealIndex { get; private set; }
         public long MaxCount { get; private set; }
         public long RealCount { get; private set; } = 0;
+        public long RealIndex { get; private set; }
         public Action<NodeSetGraphProgress> ReportProgress { get; set; }
 
         private IEnumerable<(sbyte ColumnIndex, int[] Values)> ColumnsToProcess
@@ -143,7 +151,7 @@ namespace Penguin.Analysis
 
                 Monitor.Enter(collectionLock);
             }
-            
+
             Monitor.Exit(collectionLock);
         }
 
@@ -240,12 +248,10 @@ namespace Penguin.Analysis
 
         private IEnumerable<long> BuildNodeDefinitions(Action<ValidationResult> OnFailure = null, Action<LongByte> OnSuccess = null, Action<NodeSetGraphProgress> reportProgress = null)
         {
-
             //string jumpListFname = DateTime.Now.ToString("yyyyMMddHHmmss") + "_NodeCacheGeneration.log";
             //string jumpListLoadFname = DateTime.Now.ToString("yyyyMMddHHmmss") + "_NodeCacheLoad.log";
 
             //long SkipMask = new LongByte(Builder.Registrations.OfType<Exclusive>().Select(e => e.Key));
-
 
             Index = 0;
             RealIndex = 0;
@@ -254,7 +260,6 @@ namespace Penguin.Analysis
             bool LastValid = true;
             bool ExistingStream = !(ValidationCache is null);
             long NextFlip = 0;
-            long SkipTo = 0;
             long NextKey = 0;
 
             int Step = (int)(MaxCount / 10000);
@@ -277,7 +282,6 @@ namespace Penguin.Analysis
             {
                 ReadNextFlip();
             }
-
 
             void CheckReportProgress()
             {
@@ -330,7 +334,6 @@ namespace Penguin.Analysis
 
                         //lines.Add($"\t\tWriting: {Index}, {newKey}");
 
-
                         //File.AppendAllLines(jumpListFname, lines);
 
                         //foreach (string s in lines)
@@ -355,9 +358,9 @@ namespace Penguin.Analysis
                 else
                 {
                     if (Index == NextFlip)
-                    {           
+                    {
                         //File.AppendAllText(jumpListLoadFname, $"{new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex))}:" + System.Environment.NewLine);
-                        
+
                         if (NextKey != 0)
                         {
                             //if(!LastValid)
@@ -375,9 +378,7 @@ namespace Penguin.Analysis
                         }
                         else
                         {
-
                             //File.AppendAllText(jumpListLoadFname, $"\tNew State: {!LastValid}" + System.Environment.NewLine);
-                            
 
                             LastValid = !LastValid;
                             if (LastValid)
@@ -434,12 +435,11 @@ namespace Penguin.Analysis
                     {
                         CheckReportProgress();
                     }
-                }             
+                }
             }
 
             try
             {
-
                 if (!ExistingStream)
                 {
                     ValidationCache.Seek(0, SeekOrigin.Begin);
@@ -449,7 +449,6 @@ namespace Penguin.Analysis
                 {
                     ValidationCache.Seek(8, SeekOrigin.Begin);
                 }
-
             }
             catch (Exception ex)
             {
@@ -462,15 +461,6 @@ namespace Penguin.Analysis
                     throw;
                 }
             }
-
         }
-    }
-
-    public struct NodeSetGraphProgress
-    {
-        public long Index;
-        public long MaxCount;
-        public float Progress;
-        public long RealCount;
     }
 }

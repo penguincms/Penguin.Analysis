@@ -30,7 +30,7 @@ namespace Penguin.Analysis
 
         private int[] results;
 
-        public float Accuracy => this.GetAccuracy();
+        public Accuracy Accuracy => this.GetAccuracy();
 
         public int ChildCount => this.BackingData.GetInt(DiskNode.NODE_SIZE - 4);
 

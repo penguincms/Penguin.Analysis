@@ -30,34 +30,34 @@ namespace Penguin.Analysis
 
         public LongByte(IEnumerable<int> indexes)
         {
-            count = -1;
+            count = 0;
             Value = 0;
             foreach (int index in indexes)
             {
-                Count++;
-                this.AddBitAt(index);
+                count++;
+                this.Value |= 1 << index;
             }
         }
 
         public LongByte(IEnumerable<LongByte> indexes)
         {
-            count = -1;
+            count = 0;
             Value = 0;
             foreach (LongByte index in indexes)
             {
-                Count++;
+                count++;
                 this.Value |= index.Value;
             }
         }
 
         public LongByte(IEnumerable<sbyte> indexes)
         {
-            count = -1;
+            count = 0;
             Value = 0;
             foreach (int index in indexes)
             {
-                Count++;
-                this.AddBitAt(index);
+                count++;
+                this.Value |= 1 << index;
             }
         }
 
@@ -134,7 +134,7 @@ namespace Penguin.Analysis
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasBitAt(long value, int Index) => (value & ((long)1 << Index)) != 1;
+        public static bool HasBitAt(long value, int Index) => (value & ((long)1 << Index)) != 0;
 
         public static implicit operator long(LongByte d) => d.Value;
 
@@ -177,7 +177,7 @@ namespace Penguin.Analysis
 
             if (v != Value)
             {
-                Count++;
+                count++;
                 Value = v;
             }
         }
@@ -223,7 +223,7 @@ namespace Penguin.Analysis
 
             if (v)
             {
-                Count--;
+                count--;
             }
 
             return v;
@@ -236,7 +236,7 @@ namespace Penguin.Analysis
 
             if (v != Value)
             {
-                Count += state ? 1 : -1;
+                count += state ? 1 : -1;
                 Value = v;
             }
         }
@@ -260,7 +260,7 @@ namespace Penguin.Analysis
 
             Value = nKey;
 
-            Count -= bits;
+            count -= bits;
 
             return true;
         }
@@ -282,7 +282,7 @@ namespace Penguin.Analysis
 
             Value = nKey;
 
-            Count -= bits;
+            count -= bits;
 
             return true;
         }

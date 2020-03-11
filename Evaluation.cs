@@ -1,6 +1,7 @@
 ﻿using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Penguin.Analysis
@@ -9,8 +10,9 @@ namespace Penguin.Analysis
     {
         #region Properties
 
+        public Dictionary<string, string> CalculatedData { get; set; } = new Dictionary<string, string>();
         public TypelessDataRow DataRow { get; set; }
-
+        public Dictionary<string, string> InputData { get; set; } = new Dictionary<string, string>();
         public ConcurrentDictionary<long, INode> MatchedRoutes { get; } = new ConcurrentDictionary<long, INode>();
 
         public int MatchingRoutes { get; set; }

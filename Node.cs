@@ -42,7 +42,7 @@ namespace Penguin.Analysis
 
         #region Properties
 
-        public float Accuracy => this.GetAccuracy();
+        public Accuracy Accuracy => this.GetAccuracy();
 
         public byte Depth => this.GetDepth();
 

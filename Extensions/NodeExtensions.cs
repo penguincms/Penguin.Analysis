@@ -18,7 +18,7 @@ namespace Penguin.Analysis.Extensions
                 throw new ArgumentNullException(nameof(tnode));
             }
 
-            double Accuracy = tnode.GetAccuracy();
+            double Accuracy = tnode.GetAccuracy().Next;
 
             //This is pivoted around the base rate instead of 50% because a value
             //that has an accuracy matching the base rate has 0 effect on the rate,
@@ -89,23 +89,14 @@ namespace Penguin.Analysis.Extensions
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetAccuracy(this INode tnode)
+        public static Accuracy GetAccuracy(this INode tnode)
         {
             if (tnode is null)
             {
                 throw new ArgumentNullException(nameof(tnode));
             }
 
-            if (tnode[MatchResult.Route] == 0 && tnode[MatchResult.Both] > 0)
-            {
-                return 1;
-            }
-
-            float d = (tnode[MatchResult.Route] + tnode[MatchResult.Both]);
-
-            float v = d == 0 ? 0 : tnode[MatchResult.Both] / d;
-
-            return v;
+            return new Accuracy(tnode[MatchResult.Route] + tnode[MatchResult.Both], tnode[MatchResult.Both]);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -131,15 +122,23 @@ namespace Penguin.Analysis.Extensions
                 throw new ArgumentNullException(nameof(n));
             }
 
-            if (n.Header == -1)
-            { return; }
+            if (n.Header != -1)
+            {
+                float MissingMatches = PositiveIndicators - n[MatchResult.Both];
 
-            float MissingMatches = PositiveIndicators - n[MatchResult.Both];
+                float MissingMisses = RawRowCount - (MissingMatches + n[MatchResult.Route] + n[MatchResult.Both]);
 
-            float MissingMisses = RawRowCount - (MissingMatches + n[MatchResult.Route] + n[MatchResult.Both]);
+                n[MatchResult.None] = (int)MissingMisses;
+                n[MatchResult.Output] = (int)MissingMatches;
+            }
 
-            n[MatchResult.None] = (int)MissingMisses;
-            n[MatchResult.Output] = (int)MissingMatches;
+            if (n.Next != null)
+            {
+                foreach (Node nChild in n.Next)
+                {
+                    nChild.FillNodeData(PositiveIndicators, RawRowCount);
+                }
+            }
         }
 
         public static void TrimNodesWithNoBearing(this Node target, DataSourceBuilder sourceBuilder)
@@ -162,7 +161,7 @@ namespace Penguin.Analysis.Extensions
 
             if (target.Header != -1 && (target.Next is null || !target.Next.Where(n => n != null).Any()))
             {
-                if ((target.Accuracy > BaseRate - (BaseRate * MinimumAccuracy) && target.Accuracy < ((1 - BaseRate) * MinimumAccuracy) + BaseRate) && target.ParentNode != null)
+                if ((target.Accuracy.Next > BaseRate - (BaseRate * MinimumAccuracy) && target.Accuracy.Next < ((1 - BaseRate) * MinimumAccuracy) + BaseRate) && target.ParentNode != null)
                 {
                     sourceBuilder.Settings.TrimmedNode?.Invoke(target);
 
@@ -440,31 +439,6 @@ namespace Penguin.Analysis.Extensions
             }
 
             return Key;
-        }
-
-        public static float GetWeight(this Node n, AnalysisResults r)
-        {
-            if (n is null)
-            {
-                throw new ArgumentNullException(nameof(n));
-            }
-
-            if (r is null)
-            {
-                throw new ArgumentNullException(nameof(r));
-            }
-
-            float Weight;
-            if (n.Accuracy > r.BaseRate)
-            {
-                Weight = n.Accuracy / r.BaseRate;
-            }
-            else
-            {
-                Weight = 0 - (r.BaseRate / n.Accuracy);
-            }
-
-            return Weight;
         }
 
         public static void RemoveNode(this Node tnode, Node n)

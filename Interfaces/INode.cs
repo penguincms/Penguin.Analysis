@@ -13,7 +13,7 @@ namespace Penguin.Analysis.Interfaces
 
     public interface INode : IDisposable
     {
-        float Accuracy { get; }
+        Accuracy Accuracy { get; }
         int ChildCount { get; }
         sbyte ChildHeader { get; }
         byte Depth { get; }

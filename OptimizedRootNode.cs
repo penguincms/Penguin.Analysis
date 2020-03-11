@@ -15,7 +15,7 @@ namespace Penguin.Analysis
         public Dictionary<int, int> ValueJumpList = new Dictionary<int, int>();
 
         private readonly List<INode> next = new List<INode>();
-        public float Accuracy { get; }
+        public Accuracy Accuracy { get; }
 
         public int ChildCount { get; internal set; }
 
