@@ -5,52 +5,75 @@ using System.Linq;
 namespace Penguin.Analysis.DataColumns
 {
     [Serializable]
-    public class RangedFloat : Enumeration
+    public class RangedFloat : BaseColumn
     {
         #region Properties
 
-        public List<float> RangeStarts { get; set; } = new List<float>();
+        public override int OptionCount => RangeStarts.Length;
+        public float[] RangeStarts { get; set; }
 
         #endregion Properties
 
         #region Constructors
 
-        public RangedFloat(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        public RangedFloat() : base()
         {
         }
 
-        public RangedFloat(DataSourceBuilder sourceBuilder, params int[] rangeStarts) : base(sourceBuilder)
+        public RangedFloat(int a, int b, int c, params int[] other) : base()
         {
-            foreach (int i in rangeStarts)
+            RangeStarts = new List<int>()
             {
-                this.RangeStarts.Add(i);
-            }
+                a,b,c
+            }.Concat(other).OrderBy(r => r).Cast<float>().ToArray();
         }
 
-        public RangedFloat(DataSourceBuilder sourceBuilder, params float[] rangeStarts) : base(sourceBuilder)
+        public RangedFloat(int Max, int Step = 1) : base()
         {
-            foreach (float i in rangeStarts)
+            List<float> rangeStarts = new List<float>();
+
+            for (int i = 0; i <= Max; i += Step)
             {
-                this.RangeStarts.Add(i);
+                rangeStarts.Add(i);
             }
+
+            RangeStarts = rangeStarts.ToArray();
+        }
+
+        public RangedFloat(params float[] rangeStarts) : base()
+        {
+            RangeStarts = rangeStarts.OrderBy(r => r).ToArray();
         }
 
         #endregion Constructors
 
         #region Methods
 
-        public override int Transform(string input, bool PositiveIndicator)
+        public override void EndSeed()
+        {
+        }
+
+        public override void Seed(string input, bool PositiveIndicator)
+        {
+        }
+
+        public override int Transform(string input)
         {
             float test = float.Parse(input);
 
-            float Closest = this.RangeStarts.Min();
-
-            if (this.RangeStarts.Any(r => r <= test))
+            for (int i = 0; i < RangeStarts.Length - 1; i++)
             {
-                Closest = this.RangeStarts.Where(r => r <= test).Max();
+                if (RangeStarts[i + 1] > test)
+                {
+                    return i;
+                }
             }
 
-            return base.Transform(Closest.ToString(), PositiveIndicator);
+            return RangeStarts.Length - 1;
+        }
+
+        protected override void OnDispose()
+        {
         }
 
         #endregion Methods

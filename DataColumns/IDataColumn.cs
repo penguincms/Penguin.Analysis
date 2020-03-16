@@ -8,6 +8,16 @@ namespace Penguin.Analysis.DataColumns
         #region Methods
 
         /// <summary>
+        /// A count of all possible options returned
+        /// </summary>
+        int OptionCount { get; }
+
+        /// <summary>
+        /// If false, dont bother seeding this column data
+        /// </summary>
+        bool SeedMe { get; }
+
+        /// <summary>
         /// Allows for converting the value back to a human understandable type
         /// </summary>
         /// <param name="Value"></param>
@@ -15,19 +25,22 @@ namespace Penguin.Analysis.DataColumns
         string Display(int Value);
 
         /// <summary>
-        /// Returns all possible matching and nonmatching values based on this columns logic.
+        /// When all possible values have been passed in
         /// </summary>
-        /// <param name="tableValues"></param>
-        /// <param name="Result"></param>
-        /// <returns></returns>
-        IEnumerable<int> GetOptions();
+        void EndSeed();
 
         /// <summary>
-        /// Optional method to "prewarm" all the values in the row so that they match the expected format
+        /// Accepts each option one at a time
+        /// </summary>
+        /// <param name="input">The option</param>
+        void Seed(string input, bool PositiveIndicator);
+
+        /// <summary>
+        /// Method to "prewarm" all the values in the row so that they match the expected format
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        int Transform(string input, bool PositiveIndicator);
+        int Transform(string input);
 
         #endregion Methods
     }

@@ -1,36 +1,50 @@
-﻿using Newtonsoft.Json;
-using Penguin.Analysis.Extensions;
-using Penguin.Analysis.Interfaces;
+﻿using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Penguin.Analysis
 {
-    [Serializable]
-    [JsonObject(MemberSerialization.OptIn)]
-    public class Node : INode<Node>
+    public abstract class Node : INode
     {
-        #region Fields
+        protected bool disposedValue = false;
 
-        private long? key;
+        private byte? depth;
+        public virtual Accuracy Accuracy => new Accuracy(this[MatchResult.Route] + this[MatchResult.Both], this[MatchResult.Both]);
 
-        public long Key
+        public abstract int ChildCount { get; }
+
+        public abstract sbyte ChildHeader { get; }
+
+        public virtual byte Depth
         {
             get
             {
-                if (this.key is null)
+                if (this.depth is null)
                 {
-                    this.key = this.GetKey();
+                    this.depth = GetDepth();
                 }
-                return this.key.Value;
+                return this.depth.Value;
             }
         }
 
-        public IList<TypelessDataRow> MatchingRows { get; set; }
+        public abstract sbyte Header { get; }
 
-        [JsonProperty("R", Order = 1)]
-        public int[] Results { get; set; } = new int[4];
+        public abstract long Key { get; }
+
+        public abstract bool LastNode { get; }
+
+        public virtual int Matched => this[MatchResult.Route] + this[MatchResult.Both];
+
+        public abstract IEnumerable<INode> Next { get; }
+
+        public abstract INode ParentNode { get; }
+
+        public virtual int[] Results { get; } = new int[4];
+
+        public abstract int Value { get; }
 
         public int this[MatchResult result]
         {
@@ -38,143 +52,8 @@ namespace Penguin.Analysis
             set => this.Results[(int)result] = value;
         }
 
-        #endregion Fields
-
-        #region Properties
-
-        public Accuracy Accuracy => this.GetAccuracy();
-
-        public byte Depth => this.GetDepth();
-
-        [JsonProperty("H", Order = 2)]
-        public sbyte Header { get; set; }
-
-        [JsonProperty("L", Order = 4)]
-        public bool LastNode { get; set; }
-
-        /// <summary>
-        /// The number of times this route has been matched against
-        /// </summary>
-        public int Matched => this.GetMatched();
-
-        [JsonProperty("N", Order = 5)]
-        public Node[] Next { get; set; }
-
-        [JsonProperty("P", Order = 0)]
-        public Node ParentNode { get; set; }
-
-        [JsonProperty("V", Order = 3)]
-        public int Value { get; set; }
-
-        INode INode.GetNextByValue(int Value)
-        {
-            return this.GetNextByValue(Value);
-        }
-
-        public double GetScore(float BaseRate)
-        {
-            return this.CalculateScore(BaseRate);
-        }
-
-        #endregion Properties
-
-        #region Constructors
-
-        /// <summary>
-        /// Deserialization only. Dont use this unless you're a deserializer
-        /// </summary>
-        public Node() { }
-
-        public Node(sbyte header, int value, int children, int backingRows)
-        {
-            this.Header = header;
-
-            this.MatchingRows = new List<TypelessDataRow>(backingRows);
-
-            this[MatchResult.None] = backingRows;
-
-            this.Value = value;
-
-            if (children != 0)
-            {
-                this.Next = new Node[children];
-                this.LastNode = false;
-            }
-            else
-            {
-                this.LastNode = true;
-            }
-        }
-
-        #endregion Constructors
-
-        #region Methods
-
-        public int ChildCount => this.Next?.Length ?? 0;
-
-        public sbyte ChildHeader => (sbyte)(this.ChildCount > 0 ? this.Next.Select(n => n.Header).Distinct().Single() : -1);
-
-        IEnumerable<INode> INode.Next => this.Next?.Cast<INode>()?.ToArray();
-
-        IEnumerable<Node> INode<Node>.Next => this.Next;
-
-        INode INode.ParentNode => this.ParentNode;
-
-        public bool Evaluate(Evaluation e, bool MultiThread = true)
-        {
-            return this.StandardEvaluate(e);
-        }
-
-        public void Flush(int depth)
-        {
-        }
-
-        public Node GetNextByValue(int Value)
-        {
-            if (this.ChildCount == 0)
-            {
-                return null;
-            }
-            else
-            {
-                foreach (Node n in this.Next)
-                {
-                    if (n.Value == Value)
-                    {
-                        return n;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        public void Preload(int depth)
-        {
-        }
-
-        public override string ToString()
-        {
-            if (this.Header == -1)
-            {
-                return "";
-            }
-            else if (this.ParentNode is null)
-            {
-                return $"{this.Header}: {this.Value}";
-            }
-            else
-            {
-                return $"{this.ParentNode} => {this.Header}: {this.Value}";
-            }
-        }
-
-        #region IDisposable Support
-
-        private bool disposedValue = false; // To detect redundant calls
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
+        // To detect redundant calls
+        public virtual void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             this.Dispose(true);
@@ -182,44 +61,105 @@ namespace Penguin.Analysis
             // GC.SuppressFinalize(this);
         }
 
-        protected virtual void Dispose(bool disposing)
+        public virtual void Evaluate(Evaluation e, bool MultiThread = true)
         {
-            if (!this.disposedValue)
+            if (e is null)
             {
-                if (disposing)
+                throw new ArgumentNullException(nameof(e));
+            }
+
+            if (Header == -1)
+            {
+                foreach (INode child in Next)
                 {
-                    this.MatchingRows.Clear();
-                    foreach (Node n in this.Next)
+                    if (child.Evaluate(e.DataRow))
                     {
-                        try
-                        {
-                            n.Dispose();
-                        }
-                        catch (Exception)
-                        {
-                        }
+                        child.Evaluate(e, MultiThread);
                     }
-
-                    this.Next = Array.Empty<Node>();
-                    this.ParentNode = null;
                 }
+            }
+            else
+            {
+                e.MatchRoute(this);
 
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
+                if (ChildCount > 0)
+                {
+                    INode Next = NextAt(e.DataRow[ChildHeader]);
 
-                this.disposedValue = true;
+                    if (Next != null)
+                    {
+                        Next.Evaluate(e);
+                    }
+                }
             }
         }
 
-        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~Node()
-        // {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
+        public virtual bool Evaluate(TypelessDataRow row) => row.Equals(Header, Value);
 
-        #endregion IDisposable Support
+        public virtual void Flush(int depth)
+        {
+        }
 
-        #endregion Methods
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public byte GetDepth()
+        {
+            INode toCheck = this;
+            byte depth = 0;
+
+            while (toCheck != null && toCheck.Header != -1)
+            {
+                depth++;
+
+                toCheck = toCheck.ParentNode;
+            }
+
+            return depth;
+        }
+
+        public long GetKey()
+        {
+            long Key = 0;
+
+            INode n = this;
+
+            static IEnumerable<INode> GetTree(INode np)
+            {
+                INode n = np;
+                while (n != null)
+                {
+                    yield return n;
+
+                    n = n.ParentNode;
+                }
+            }
+
+            foreach (INode tn in GetTree(n).Where(tnn => tnn.Header != -1))
+            {
+                Key |= ((long)1 << tn.Header);
+            }
+
+            return Key;
+        }
+
+        public virtual double GetScore(float BaseRate)
+        {
+            double accuracy = Accuracy.Next;
+
+            //This is pivoted around the base rate instead of 50% because a value
+            //that has an accuracy matching the base rate has 0 effect on the rate,
+            //and is therefor 0 in terms of likelyhood. Stop changing this because
+            //you forgot how it works.
+            double toReturn = accuracy > BaseRate ? (accuracy - BaseRate) / (1 - BaseRate) : (accuracy / BaseRate) - 1;
+
+            return toReturn;
+        }
+
+        public abstract INode NextAt(int index);
+
+        public virtual void Preload(int depth)
+        {
+        }
+
+        protected abstract void Dispose(bool disposing);
     }
 }

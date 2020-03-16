@@ -240,9 +240,9 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(outputStream));
             }
 
-            ScreenBuffer.Clear();
+            Console.Clear();
 
-            ScreenBuffer.ReplaceLine($"Building complex tree", 0);
+            Console.WriteLine($"Building complex tree");
 
             object rootLock = new object();
 
@@ -250,8 +250,7 @@ namespace Penguin.Analysis
 
             Settings.PostGraphCalculation?.Invoke(graph);
 
-            ScreenBuffer.ReplaceLine($"Building decision tree", 0);
-            ScreenBuffer.AutoFlush = false;
+            Console.WriteLine($"Building decision tree", 0);
 
             long RootChildListOffset = DiskNode.HEADER_BYTES + DiskNode.NODE_SIZE;
 
@@ -270,18 +269,10 @@ namespace Penguin.Analysis
 
             outputStream.Seek(CurrentNodeOffset);
 
-            int DisplayLines = 2;
             int threads = Environment.ProcessorCount * 1;
 
             this.Result.PositiveIndicators = this.Result.RawData.Rows.Where(r => r.MatchesOutput).Count();
             this.Result.TotalRows = this.Result.RawData.RowCount;
-
-            object[] screenLocks = new object[threads];
-
-            for (int i = 0; i < threads; i++)
-            {
-                screenLocks[i] = new object();
-            }
 
             bool generatingNodes = true;
 
@@ -310,112 +301,76 @@ namespace Penguin.Analysis
 
             SerializationResults results = new SerializationResults();
 
+            bool stillRunning = true;
+            Task progress = Task.Run(async () =>
+            {
+                while (stillRunning)
+                {
+#if DEBUG
+                    Debug.WriteLine($"--------Graph: [{graph.RealIndex + 1}/{graph.RealCount}]");
+#endif
+
+#if !DEBUG
+                    Console.WriteLine($"--------Graph: [{graph.RealIndex + 1}/{graph.RealCount}]");
+#endif
+                    await Task.Delay(1000);
+                }
+            });
+
             Parallel.ForEach(graph, new ParallelOptions()
             {
                 MaxDegreeOfParallelism = threads
             }, nodeSetData =>
             {
-                int displaySlot = 0;
-
-                while (!Monitor.TryEnter(screenLocks[displaySlot]))
-                {
-                    displaySlot++;
-                    if (displaySlot == screenLocks.Length)
-                    {
-                        displaySlot = 0;
-                    }
-                }
-
                 int nodeseti = 0;
                 double nodesetc = 0;
-                int RootLine = (displaySlot % threads) * DisplayLines;
 
-                Node thisRoot = new Node(-1, -1, nodeSetData[0].Values.Length, this.Result.RawData.RowCount);
+                MemoryNode thisRoot = new MemoryNode(-1, -1, nodeSetData[0].Values, this.Result.RawData.RowCount);
 
-                IEnumerable<Node> thisRootList = new List<Node> { thisRoot };
+                IEnumerable<MemoryNode> thisRootList = new List<MemoryNode> { thisRoot };
 
                 nodesetc = nodeSetData.Count;
 
-                ScreenBuffer.ReplaceLine($"--------Graph: [{graph.RealIndex + 1}/{graph.RealCount}]", RootLine);
-
-                double dataRowi = 0;
                 double dataRowc = this.Result.RawData.RowCount;
-                double thisProgress = 0;
-                double lastProgress = 0;
-
-                //ScreenBuffer.ReplaceLine($"Seeding...", RootLine + 1);
-                ScreenBuffer.Flush();
 
                 thisRoot.MatchingRows = this.Result.RawData.Rows.ToList();
 
                 for (nodeseti = 0; nodeseti < nodesetc; nodeseti++)
                 {
-                    dataRowi = 0;
                     sbyte ColumnIndex = nodeSetData[nodeseti].ColumnIndex;
-                    int[] Values = nodeSetData[nodeseti].Values;
+                    int Values = nodeSetData[nodeseti].Values;
                     int childCount = 0;
-                    dataRowc = Values.Length * thisRootList.Count();
-                    thisProgress = 0;
-                    lastProgress = 0;
-                    double pruned = 0;
-
-                    //ScreenBuffer.ReplaceLine($"--------Graph: [{graphi + 1}/{graphc}] NodeSet: [{nodeseti + 1}/{nodesetc}] Step: Branching  --------", RootLine);
+                    dataRowc = Values * thisRootList.Count();
 
                     if (nodeseti < nodesetc - 1)
                     {
-                        childCount = nodeSetData[nodeseti + 1].Values.Length;
+                        childCount = nodeSetData[nodeseti + 1].Values;
                     }
 
-                    for (int i = 0; i < Values.Length; i++)
+                    foreach (MemoryNode node in thisRootList)
                     {
-                        foreach (Node node in thisRootList)
+                        for (int i = 0; i < Values; i++)
                         {
-                            thisProgress = Math.Round(dataRowi++ / dataRowc * 100, 2);
+                            MemoryNode n = new MemoryNode(ColumnIndex, i, childCount, node.MatchingRows.Count);
 
-                            if (thisProgress != lastProgress)
-                            {
-                                //string output = $"{string.Format("{0:00.00}", thisProgress)}%; Pruned: {string.Format("{0:00.00}", Math.Round(pruned / dataRowc * 100, 2))}%";
-
-                                //ScreenBuffer.ReplaceLine(output, RootLine + 1);
-
-                                //ScreenBuffer.Flush();
-                                lastProgress = thisProgress;
-                            }
-
-                            Node n = new Node(ColumnIndex,
-                                Values[i],
-                                childCount,
-                                node.MatchingRows.Count);
-
-                            if (!node.AddNext(
-                                this,
-                                n,
-                                i))
-                            {
-                                if (this.Settings.TrimmedNode != null)
-                                {
-                                    n.ParentNode = node;
-                                    this.Settings.TrimmedNode.Invoke(n);
-                                }
-                                pruned++;
-                            }
+                            node.AddNext(n, i);
                         }
+
+                        node.TrimNext(this);
                     }
 
-                    foreach (Node n in thisRootList)
+                    foreach (MemoryNode n in thisRootList)
                     {
-                        n.Trim();
+                        n?.Trim();
                     }
 
-                    thisRootList = thisRootList.Where(n => n.Next != null).SelectMany(n => n.Next);
+                    thisRootList = thisRootList.SelectMany(n => n.next).Where(n => n != null).ToList();
                 }
 
-                foreach (Node n in thisRootList)
+                foreach (MemoryNode n in thisRootList)
                 {
-                    n.Trim();
+                    n?.Trim();
                 }
-
-                //thisRoot.Header = -1;
 
                 thisRoot.FillNodeData(this.Result.PositiveIndicators, this.Result.RawData.RowCount);
 
@@ -423,7 +378,13 @@ namespace Penguin.Analysis
 
                 thisRoot.Trim();
 
-                this.Result.RegisterTree(thisRoot);
+                //no children on the header node. No point keeping it
+                if (thisRoot.next is null || !thisRoot.next.Any(n => n != null))
+                {
+                    return;
+                }
+
+                this.Result.RegisterTree(thisRoot, this);
 
                 MemoryNodeFileStream memCache;
 
@@ -438,13 +399,9 @@ namespace Penguin.Analysis
 
                 memCache.Ready = true;
 
-                Monitor.Exit(screenLocks[displaySlot]);
-
                 thisRoot = null;
 
                 thisRootList = null;
-
-                ScreenBuffer.Flush();
             });
 
             generatingNodes = false;
@@ -473,7 +430,10 @@ namespace Penguin.Analysis
 
             foreach (NodeMeta nm in PreloadResults)
             {
-                outputStream.Write(nm.Offset);
+                if (nm.Offset != 0)
+                {
+                    outputStream.Write(nm.Offset);
+                }
             }
 
             this.Result.RootNode = new DiskNode(outputStream, DiskNode.HEADER_BYTES);
@@ -537,7 +497,7 @@ namespace Penguin.Analysis
                         OnFailure?.Invoke(result);
                     }
 
-                    cKey.TrimRight(1);
+                    cKey.TrimRight();
 
                     if (cKey.Value == 0)
                     {
@@ -772,7 +732,7 @@ namespace Penguin.Analysis
         {
             foreach (string ColumnName in ColumnNames)
             {
-                this.RegisterColumn(ColumnName, (T)Activator.CreateInstance(typeof(T), this));
+                this.RegisterColumn(ColumnName, Activator.CreateInstance<T>());
             }
         }
 
@@ -788,13 +748,18 @@ namespace Penguin.Analysis
         {
             Penguin.Debugging.StaticLogger.Log("Applying transformations");
 
-            this.Result.RawData = this.Transform(this.TempTable);
+            this.Result.RawData = this.Transform(this.TempTable, true);
 
             this.TempTable = null;
         }
 
         public TypelessDataRow Transform(Dictionary<string, string> dataRow) //I really feel like transforms and column transforms should be sequential (interlaced) in order added
         {
+            if (dataRow is null)
+            {
+                throw new ArgumentNullException(nameof(dataRow));
+            }
+
             using DataTable dt = new DataTable();
 
             List<object> values = new List<object>();
@@ -807,7 +772,7 @@ namespace Penguin.Analysis
 
             dt.Rows.Add(values.ToArray());
 
-            return this.Transform(dt).Rows.First();
+            return this.Transform(dt, false).Rows.First();
         }
 
         private IEnumerable<IRouteConstraint> RouteViolations(LongByte Key)
@@ -826,7 +791,7 @@ namespace Penguin.Analysis
             }
         }
 
-        private TypelessDataTable Transform(DataTable dt)
+        private TypelessDataTable Transform(DataTable dt, bool seedRegistrations)
         {
             TypelessDataTable toReturn;
 
@@ -849,13 +814,31 @@ namespace Penguin.Analysis
 
             toReturn = new TypelessDataTable(dt.Rows.Count);
 
+            if (seedRegistrations) // We only want to seed on the initial generation
+            {                      // Seeding on an individual transform would blow away
+                                   // the values since all instances would have a count of 1
+
+                foreach (ColumnRegistration registration in this.Registrations)
+                {
+                    if (registration.Column.SeedMe)
+                    {
+                        foreach (DataRow dr in dt.Rows)
+                        {
+                            registration.Column.Seed(dr[registration.Header].ToString(), Bool.GetValue(dr[TableKey.Header].ToString()) == 1);
+                        }
+
+                        registration.Column.EndSeed();
+                    }
+                }
+            }
+
             foreach (DataRow dr in dt.Rows)
             {
                 List<int> values = new List<int>();
 
                 foreach (ColumnRegistration registration in this.Registrations)
                 {
-                    values.Add(registration.Column.Transform(dr[registration.Header].ToString(), Bool.GetValue(dr[TableKey.Header].ToString()) == 1));
+                    values.Add(registration.Column.Transform(dr[registration.Header].ToString()));
                 }
 
                 values.Add(Bool.GetValue(dr[TableKey.Header].ToString()));

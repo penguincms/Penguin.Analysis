@@ -10,7 +10,7 @@ namespace Penguin.Analysis
     {
         public Accuracy Accuracy { get; set; }
 
-        public Dictionary<string, object> Data { get; set; }
+        public Dictionary<string, object> Data { get; }
 
         public INode Node { get; set; }
 
@@ -25,9 +25,10 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(builder));
             }
 
+            double ColumnInstances = e != null ? e.Scores[node.Key].ColumnInstances : builder.Result.ColumnInstances[node.Key];
             Node = node ?? throw new ArgumentNullException(nameof(node));
             Score = Node.GetScore(builder.Result.BaseRate);
-            Weight = builder.Result.GraphInstances / builder.Result.ColumnInstances[Node.Key];
+            Weight = builder.Result.GraphInstances / ColumnInstances;
             LongByte Key = new LongByte(Node.Key);
 
             Data = new Dictionary<string, object>()
@@ -38,7 +39,7 @@ namespace Penguin.Analysis
                 ["Score"] = Score,
                 ["Weighted Score"] = Score * Weight,
                 ["GraphInstances"] = builder.Result.GraphInstances,
-                ["ColumnInstances"] = builder.Result.ColumnInstances[node.Key],
+                ["ColumnInstances"] = ColumnInstances,
                 ["Match None"] = node[MatchResult.None],
                 ["Match Route"] = node[MatchResult.Route],
                 ["Match Predictor"] = node[MatchResult.Output],

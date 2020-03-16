@@ -8,48 +8,56 @@ using System.Threading.Tasks;
 
 namespace Penguin.Analysis
 {
-    public class OptimizedRootNode : INode<INode>
+    public class OptimizedRootNode : Node
     {
         public List<int> HeaderBreaks = new List<int>() { 0 };
 
         public Dictionary<int, int> ValueJumpList = new Dictionary<int, int>();
 
         private readonly List<INode> next = new List<INode>();
-        public Accuracy Accuracy { get; }
 
-        public int ChildCount { get; internal set; }
+        public override int ChildCount { get; }
 
-        public sbyte ChildHeader => -1;
+        public override sbyte ChildHeader => -1;
 
-        public byte Depth { get; }
+        public override sbyte Header { get; } = -1;
 
-        public sbyte Header { get; } = -1;
+        public override long Key { get; }
 
-        public long Key { get; }
+        public override bool LastNode { get; } = false;
 
-        public bool LastNode { get; } = false;
+        public override int Matched { get; } = 0;
 
-        public int Matched { get; } = 0;
+        public override IEnumerable<INode> Next => this.next;
 
-        public IEnumerable<INode> Next => this.next;
+        public override INode ParentNode { get; }
 
-        public INode ParentNode { get; }
+        public override int[] Results { get; } = new int[4];
 
-        public int[] Results { get; } = new int[4];
-
-        public int Value { get; } = 0;
+        public override int Value { get; } = 0;
 
         public OptimizedRootNode(INode source)
         {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
             foreach (INode n in source.Next)
             {
-                foreach (INode c in n.Next)
+                if (n?.Next != null)
                 {
-                    this.next.Add(c);
+                    foreach (INode c in n.Next)
+                    {
+                        if (c != null)
+                        {
+                            this.next.Add(c);
+                        }
+                    }
                 }
             }
 
-            this.next = this.next.OrderBy(n => n.Header).ThenByDescending(n => n.GetMatched()).ToList();
+            this.next = this.next.OrderBy(n => n.Header).ThenByDescending(n => n.Matched).ToList();
 
             sbyte lastHeader = this.Next.First().Header;
             int lastValue = this.Next.First().Value;
@@ -81,14 +89,13 @@ namespace Penguin.Analysis
             this.HeaderBreaks.Add(this.ChildCount);
         }
 
-        public int this[MatchResult result]
-        {
-            get => this.Results[(int)result];
-            set => this.Results[(int)result] = value;
-        }
-
         public void Evaluate(int headerBreak, Evaluation e, bool MultiThread = true)
         {
+            if (e is null)
+            {
+                throw new ArgumentNullException(nameof(e));
+            }
+
             bool Matched = false;
 
             if (headerBreak == this.HeaderBreaks.Last())
@@ -107,7 +114,7 @@ namespace Penguin.Analysis
                     return;
                 }
 
-                if (!this.next.ElementAt(i).Evaluate(e, MultiThread))
+                if (!this.next.ElementAt(i).Evaluate(e.DataRow))
                 {
                     if (Matched)
                     {
@@ -122,6 +129,7 @@ namespace Penguin.Analysis
                 }
                 else
                 {
+                    this.next.ElementAt(i).Evaluate(e, MultiThread);
                     Matched = true;
                 }
 
@@ -152,38 +160,11 @@ namespace Penguin.Analysis
             return true;
         }
 
-        public void Flush(int depth)
-        {
-        }
-
-        public INode GetNextByValue(int Value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public double GetScore(float BaseRate)
-        {
-            return 0;
-        }
-
-        public void Preload(int depth)
-        {
-        }
-
         #region IDisposable Support
 
-        private bool disposedValue = false; // To detect redundant calls
+        public override INode NextAt(int index) => throw new NotImplementedException();
 
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (!this.disposedValue)
             {

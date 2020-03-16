@@ -9,20 +9,20 @@ namespace Penguin.Analysis
         public sbyte ColumnIndex { get; set; }
 
         public long Key => (long)1 << ColumnIndex;
-        public int[] Values { get; set; }
+        public int Values { get; set; }
 
         #endregion Properties
 
         #region Constructors
 
-        internal NodeSet((sbyte columnIndex, int[] values) r) : this(r.columnIndex, r.values)
+        internal NodeSet((sbyte columnIndex, int values) r) : this(r.columnIndex, r.values)
         {
         }
 
-        internal NodeSet(sbyte columnIndex, int[] values)
+        internal NodeSet(sbyte columnIndex, int values)
         {
             this.ColumnIndex = columnIndex;
-            this.Values = values.ToArray();
+            this.Values = values;
         }
 
         // this is second one '!='

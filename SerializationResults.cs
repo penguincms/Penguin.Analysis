@@ -7,6 +7,45 @@ using System.Linq;
 
 namespace Penguin.Analysis
 {
+    internal struct NodeMeta
+    {
+        public sbyte Header;
+
+        public int Matches;
+
+        public long Offset;
+
+        public bool Root;
+
+        public NodeMeta(INodeFileStream stream, INode node, long parentOffset)
+        {
+            this.Offset = stream.Offset;
+            this.Root = parentOffset == DiskNode.HEADER_BYTES;
+            this.Matches = node.Matched;
+
+            if (node.Header == -1)
+            {
+                if (node.Next != null && node.Next.Any(n => n != null))
+                {
+                    this.Header = node.Next.Where(n => n != null).Select(nc => nc.Header).Distinct().SingleOrDefault();
+                }
+                else
+                {
+                    this.Header = -1;
+                }
+            }
+            else
+            {
+                this.Header = node.Header;
+            }
+        }
+
+        public override string ToString()
+        {
+            return $"@{this.Offset}: {this.Header}x{this.Matches}";
+        }
+    }
+
     internal class SerializationResults : IEnumerable<NodeMeta>
     {
         public ConcurrentBag<NodeMeta> Meta = new ConcurrentBag<NodeMeta>();
@@ -36,45 +75,6 @@ namespace Penguin.Analysis
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ((IEnumerable<NodeMeta>)this.Meta).GetEnumerator();
-        }
-    }
-
-    internal struct NodeMeta
-    {
-        public sbyte Header;
-
-        public int Matches;
-
-        public long Offset;
-
-        public bool Root;
-
-        public NodeMeta(INodeFileStream stream, INode node, long parentOffset)
-        {
-            this.Offset = stream.Offset;
-            this.Root = parentOffset == DiskNode.HEADER_BYTES;
-            this.Matches = node.GetMatched();
-
-            if (node.Header == -1)
-            {
-                if (node.Next != null && node.Next.Any())
-                {
-                    this.Header = node.Next.Select(nc => nc.Header).Distinct().SingleOrDefault();
-                }
-                else
-                {
-                    this.Header = -1;
-                }
-            }
-            else
-            {
-                this.Header = node.Header;
-            }
-        }
-
-        public override string ToString()
-        {
-            return $"@{this.Offset}: {this.Header}x{this.Matches}";
         }
     }
 }

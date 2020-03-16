@@ -6,7 +6,9 @@ namespace Penguin.Analysis.DataColumns
     [Serializable]
     public class NullableBool : BaseColumn
     {
-        public NullableBool(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        public override int OptionCount => 3;
+
+        public NullableBool() : base()
         {
         }
 
@@ -17,19 +19,19 @@ namespace Penguin.Analysis.DataColumns
             return ((NBool)Value).ToString();
         }
 
-        public override IEnumerable<int> GetOptions()
+        public override void EndSeed() => throw new NotImplementedException();
+
+        public override void Seed(string input, bool PositiveIndicator)
         {
-            return new List<int>
-            {
-                0,
-                1,
-                2
-            };
         }
 
-        public override int Transform(string input, bool PositiveIndicator)
+        public override int Transform(string input)
         {
-            if (input.StartsWith("t", StringComparison.OrdinalIgnoreCase) || input.StartsWith("1", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return (int)NBool.Null;
+            }
+            else if (input.StartsWith("t", StringComparison.OrdinalIgnoreCase) || input.StartsWith("1", StringComparison.OrdinalIgnoreCase))
             {
                 return (int)NBool.True;
             }

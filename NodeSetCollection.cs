@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -14,9 +15,9 @@ namespace Penguin.Analysis
 
         internal NodeSetCollection(IEnumerable<NodeSet> set) : this(new LongByte(set.Select(s => s.ColumnIndex)).Value)
         {
-            foreach(NodeSet thisSet in set)
+            foreach (NodeSet thisSet in set)
             {
-                if(NodeSetCache[thisSet.ColumnIndex] is null)
+                if (NodeSetCache[thisSet.ColumnIndex] is null)
                 {
                     NodeSetCache[thisSet.ColumnIndex] = thisSet;
                 }
@@ -25,7 +26,6 @@ namespace Penguin.Analysis
 
         internal NodeSetCollection(IEnumerable<int> set) : this(new LongByte(set))
         {
-
         }
 
         internal NodeSetCollection(LongByte key)
@@ -33,11 +33,11 @@ namespace Penguin.Analysis
             Key = key;
         }
 
-        internal NodeSetCollection(IEnumerable<(sbyte columnIndex, int[] values)> set)
+        internal NodeSetCollection(IEnumerable<(sbyte columnIndex, int values)> set)
         {
             List<NodeSet> localSets = new List<NodeSet>();
 
-            foreach ((sbyte columnIndex, int[] values) x in set)
+            foreach ((sbyte columnIndex, int values) x in set)
             {
                 if (NodeSetCache[x.columnIndex] is null)
                 {
@@ -175,7 +175,7 @@ namespace Penguin.Analysis
 
         public bool Remove(sbyte header) => Remove((long)1 << header);
 
-        public bool Remove(NodeSet item) => Remove(item.Key);
+        public bool Remove(NodeSet item) => Remove(item?.Key ?? throw new ArgumentNullException(nameof(item)));
 
         public void RemoveAt(int index) => Remove((sbyte)index);
 

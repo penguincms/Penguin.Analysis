@@ -13,6 +13,11 @@ namespace Penguin.Analysis.Transformations
             public string Value { get; set; }
         }
 
+        public override string ToString()
+        {
+            return $"({string.Join(", ", this.SourceColumns)}) => {this.ResultColumn}";
+        }
+
         #region Properties
 
         private Func<IEnumerable<ColumnDefinition>, string> Process;
@@ -78,6 +83,11 @@ namespace Penguin.Analysis.Transformations
         /// <returns></returns>
         public DataTable TransformTable(DataTable table)
         {
+            if (table is null)
+            {
+                throw new ArgumentNullException(nameof(table));
+            }
+
             if (!table.Columns.Contains(this.ResultColumn))
             {
                 table.Columns.Add(this.ResultColumn);

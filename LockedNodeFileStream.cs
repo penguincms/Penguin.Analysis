@@ -10,8 +10,8 @@ namespace Penguin.Analysis
         private static readonly object NodeFileLock = new object();
         private static int StreamPointer = 0;
         private static StreamLock[] StreamPool;
-        private FileStream _backingStream;
         private readonly bool PoolStreams;
+        private FileStream _backingStream;
         public long Offset => this._backingStream.Position;
 
         private struct StreamLock : IDisposable
@@ -67,8 +67,6 @@ namespace Penguin.Analysis
 
         public byte[] ReadBlock(long offset)
         {
-            int p = 0;
-
             byte[] bByte = new byte[DiskNode.NODE_SIZE];
 
             FileStream sourceStream;

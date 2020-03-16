@@ -32,6 +32,16 @@
             The minimum number of times an instance has to be seen to be analyzed
             </summary>
         </member>
+        <member name="P:Penguin.Analysis.DataColumns.IDataColumn.OptionCount">
+            <summary>
+            A count of all possible options returned
+            </summary>
+        </member>
+        <member name="P:Penguin.Analysis.DataColumns.IDataColumn.SeedMe">
+            <summary>
+            If false, dont bother seeding this column data
+            </summary>
+        </member>
         <member name="M:Penguin.Analysis.DataColumns.IDataColumn.Display(System.Int32)">
             <summary>
             Allows for converting the value back to a human understandable type
@@ -39,17 +49,20 @@
             <param name="Value"></param>
             <returns></returns>
         </member>
-        <member name="M:Penguin.Analysis.DataColumns.IDataColumn.GetOptions">
+        <member name="M:Penguin.Analysis.DataColumns.IDataColumn.EndSeed">
             <summary>
-            Returns all possible matching and nonmatching values based on this columns logic.
+            When all possible values have been passed in
             </summary>
-            <param name="tableValues"></param>
-            <param name="Result"></param>
-            <returns></returns>
         </member>
-        <member name="M:Penguin.Analysis.DataColumns.IDataColumn.Transform(System.String,System.Boolean)">
+        <member name="M:Penguin.Analysis.DataColumns.IDataColumn.Seed(System.String,System.Boolean)">
             <summary>
-            Optional method to "prewarm" all the values in the row so that they match the expected format
+            Accepts each option one at a time
+            </summary>
+            <param name="input">The option</param>
+        </member>
+        <member name="M:Penguin.Analysis.DataColumns.IDataColumn.Transform(System.String)">
+            <summary>
+            Method to "prewarm" all the values in the row so that they match the expected format
             </summary>
             <param name="input"></param>
             <returns></returns>
@@ -114,20 +127,9 @@
             The record matches the node path, and is a positive indicator of outcome
             </summary>
         </member>
-        <member name="P:Penguin.Analysis.Node.Matched">
-            <summary>
-            The number of times this route has been matched against
-            </summary>
-        </member>
-        <member name="M:Penguin.Analysis.Node.#ctor">
+        <member name="M:Penguin.Analysis.MemoryNode.#ctor">
             <summary>
             Deserialization only. Dont use this unless you're a deserializer
-            </summary>
-        </member>
-        <member name="P:Penguin.Analysis.ScreenBuffer.FlushDelayMs">
-            <summary>
-            Caps the frequency with which the screen can be flushed to help
-            prevent multithread performance degredation
             </summary>
         </member>
         <member name="M:Penguin.Analysis.Transformations.ConcatBits.#ctor(System.Collections.Generic.List{System.String})">
@@ -195,7 +197,7 @@
             <param name="table"></param>
             <returns></returns>
         </member>
-        <member name="M:Penguin.Analysis.Transformations.Replace.#ctor(System.String,System.Func{System.String,System.String})">
+        <member name="M:Penguin.Analysis.Transformations.Replace.#ctor(System.String,System.Func{System.String,System.Object})">
             <summary>
             Generic column transformation for converting/adding additional data columns
             does NOT keep original column so original must be returned if required

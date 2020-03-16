@@ -243,48 +243,48 @@ namespace Penguin.Analysis
 
         public override string ToString() => $"{Convert.ToString(Value, 2).PadLeft(64, '0')} ({Value.ToString()})";
 
-        public bool TrimLeft(int bits = 1)
+        public bool TrimLeft()
         {
             long nKey;
             long mask = -1;
+            bool altered = false;
             do
             {
-                mask >>= 1;
+                mask = (long)((ulong)mask >> 1); //Cant right shift a signed long?
+                                                 //Probably a better way to do this
                 nKey = Value & mask;
-            } while (nKey == Value && mask > 1);
+            } while (nKey == Value && (nKey & mask) != 0);
 
-            if (mask == 0)
+            if (Value != nKey)
             {
-                return false;
+                Value = nKey;
+                altered = true;
+                count -= 1;
             }
 
-            Value = nKey;
-
-            count -= bits;
-
-            return true;
+            return altered;
         }
 
-        public bool TrimRight(int bits = 1)
+        public bool TrimRight()
         {
             long nKey;
             long mask = -1;
+            bool altered = false;
+
             do
             {
                 mask <<= 1;
                 nKey = Value & mask;
-            } while (nKey == Value && (nKey & mask) > 1);
+            } while (nKey == Value && (nKey & mask) != 0);
 
-            if (mask == 0)
+            if (nKey != Value)
             {
-                return false;
+                altered = true;
+                Value = nKey;
+                count -= 1;
             }
 
-            Value = nKey;
-
-            count -= bits;
-
-            return true;
+            return altered;
         }
     }
 }

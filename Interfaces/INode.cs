@@ -23,17 +23,22 @@ namespace Penguin.Analysis.Interfaces
         int Matched { get; }
         IEnumerable<INode> Next { get; }
         INode ParentNode { get; }
+
         int[] Results { get; }
+
         int Value { get; }
+
         int this[MatchResult result] { get; set; }
 
-        bool Evaluate(Evaluation e, bool MultiThread = true);
+        void Evaluate(Evaluation e, bool MultiThread = true);
+
+        bool Evaluate(TypelessDataRow row);
 
         void Flush(int depth);
 
-        INode GetNextByValue(int Value);
-
         double GetScore(float BaseRate);
+
+        INode NextAt(int index);
 
         void Preload(int depth);
 

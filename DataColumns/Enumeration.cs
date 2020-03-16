@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -9,9 +10,13 @@ namespace Penguin.Analysis.DataColumns
     {
         #region Fields
 
-        public Dictionary<string, EnumOption> valuesDict = new Dictionary<string, EnumOption>();
+        protected Dictionary<string, EnumOption> valuesDict = new Dictionary<string, EnumOption>();
 
-        public Enumeration(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        public override int OptionCount => Values.Length;
+        public override bool SeedMe => true;
+        public string[] Values { get; set; }
+
+        public Enumeration() : base()
         {
         }
 
@@ -42,6 +47,8 @@ namespace Penguin.Analysis.DataColumns
             public int Indicators { get; set; }
             public int Instances { get; set; }
 
+            public override string ToString() => $"{Display} ({Instances})";
+
             #endregion Properties
         }
 
@@ -49,56 +56,9 @@ namespace Penguin.Analysis.DataColumns
 
         #region Methods
 
-        public override string Display(int Value)
-        {
-            int i = 0;
-            EnumOption e;
+        public override string Display(int Value) => this.Values[Value];
 
-            //Im too lazy to make this thread safe and dictionary order isn't guaranteed so
-            //since the index is the count we give that a check and just loop through if its wrong;
-            lock (this.valuesDict)
-            {
-                e = this.valuesDict.ElementAt(Value).Value;
-            }
-
-            do
-            {
-                if (e.Index == Value)
-                {
-                    return e.Display;
-                }
-
-                lock (this.valuesDict)
-                {
-                    e = this.valuesDict.ElementAt(i).Value;
-                }
-
-                i++;
-            } while (i < this.valuesDict.Count);
-
-            return Value.ToString();
-        }
-
-        public override IEnumerable<int> GetOptions()
-        {
-            foreach (KeyValuePair<string, EnumOption> kvp in this.valuesDict)
-            {
-                EnumOption thisOption = kvp.Value;
-
-                bool show = true;
-
-                show = show && thisOption.Instances >= GlobalSettings.MinimumInstances;
-
-                show = show && (!this.SourceBuilder.Settings.Results.MatchOnly || thisOption.Indicators > 0);
-
-                if (show)
-                {
-                    yield return kvp.Value.Index;
-                }
-            }
-        }
-
-        public override int Transform(string input, bool PositiveIndicator)
+        public override void Seed(string input, bool PositiveIndicator)
         {
             if (!this.valuesDict.ContainsKey(input))
             {
@@ -107,15 +67,13 @@ namespace Penguin.Analysis.DataColumns
                     Display = input,
                     Instances = 1,
                     Indicators = PositiveIndicator ? 1 : 0,
-                    Index = this.valuesDict.Count
+                    Index = this.valuesDict.Count + 1
                 };
 
                 lock (this.valuesDict)
                 {
                     this.valuesDict.Add(input, option);
                 }
-
-                return this.valuesDict.Count - 1;
             }
             else
             {
@@ -127,9 +85,20 @@ namespace Penguin.Analysis.DataColumns
                 }
 
                 option.Instances++;
-
-                return option.Index;
             }
+        }
+
+        public override int Transform(string input)
+        {
+            for (int i = 1; i < Values.Length; i++)
+            {
+                if (string.Equals(Values[i], input))
+                {
+                    return i;
+                }
+            }
+
+            return 0;
         }
 
         protected override void OnDispose()
@@ -137,6 +106,41 @@ namespace Penguin.Analysis.DataColumns
             this.valuesDict.Clear();
         }
 
-        #endregion Methods
+        public override void EndSeed()
+        {
+            List<EnumOption> options = new List<EnumOption>();
+            EnumOption Other = new EnumOption()
+            {
+                Display = "@OTHER"
+            };
+
+            foreach (KeyValuePair<string, EnumOption> kvp in valuesDict)
+            {
+                EnumOption thisOption = kvp.Value;
+
+                if (thisOption.Instances > GlobalSettings.MinimumInstances)
+                {
+                    options.Add(thisOption);
+                }
+                else
+                {
+                    Other.Instances++;
+                }
+            }
+
+            List<EnumOption> ParsedOptions = new List<EnumOption>
+            {
+                Other.Instances > GlobalSettings.MinimumInstances ? Other : null
+            };
+
+            foreach (EnumOption option in options.OrderByDescending(e => e.Instances))
+            {
+                ParsedOptions.Add(option);
+            }
+
+            Values = ParsedOptions.Select(s => s?.Display).ToArray();
+
+            #endregion Methods
+        }
     }
 }

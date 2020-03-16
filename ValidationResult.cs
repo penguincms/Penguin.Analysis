@@ -8,7 +8,7 @@ namespace Penguin.Analysis
         public LongByte Checked { get; set; }
         public bool IsValid { get; set; }
         public string Message { get; set; }
-        public List<IRouteConstraint> Violations { get; set; } = new List<IRouteConstraint>();
+        public List<IRouteConstraint> Violations { get; } = new List<IRouteConstraint>();
 
         public ValidationResult(string message, LongByte @checked)
         {

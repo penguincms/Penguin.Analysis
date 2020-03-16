@@ -30,14 +30,14 @@ namespace Penguin.Analysis
         public long RealIndex { get; private set; }
         public Action<NodeSetGraphProgress> ReportProgress { get; set; }
 
-        private IEnumerable<(sbyte ColumnIndex, int[] Values)> ColumnsToProcess
+        private IEnumerable<(sbyte ColumnIndex, int Values)> ColumnsToProcess
         {
             get
             {
                 return Builder.Registrations
                               .Select(r => (
                                 ColumnIndex: (sbyte)Builder.Registrations.IndexOf(r),
-                                Values: r.Column.GetOptions().ToArray()
+                                Values: r.Column.OptionCount
                               ));
             }
         }
@@ -114,7 +114,7 @@ namespace Penguin.Analysis
                 }
             }
 
-            foreach ((sbyte ColumnIndex, int[] Values) cv in ColumnsToProcess)
+            foreach ((sbyte ColumnIndex, int Values) cv in ColumnsToProcess)
             {
                 NodeSet ns = new NodeSet(cv);
 
@@ -157,15 +157,8 @@ namespace Penguin.Analysis
 
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 
-        private static IEnumerable<List<(sbyte ColumnIndex, int[] Values)>> BuildComplexTree((sbyte ColumnIndex, int[] Values)[] ColumnData)
+        private static IEnumerable<List<(sbyte ColumnIndex, int Values)>> BuildComplexTree((sbyte ColumnIndex, int Values)[] ColumnData)
         {
-            int[][] data = new int[ColumnData.Length][];
-
-            for (int i = 0; i < ColumnData.Length; i++)
-            {
-                data[i] = ColumnData[i].Values;
-            }
-
             long Hc = (long)Math.Pow(2, ColumnData.Length) - 1;
 
             for (long Hi = Hc; Hi >= 1; Hi -= 2)
@@ -184,13 +177,13 @@ namespace Penguin.Analysis
                     Hb >>= 1;
                 }
 
-                List<(sbyte ColumnIndex, int[] Values)> thisGraph = new List<(sbyte ColumnIndex, int[] Values)>(sbits);
+                List<(sbyte ColumnIndex, int Values)> thisGraph = new List<(sbyte ColumnIndex, int Values)>(sbits);
 
                 for (sbyte Wi = (sbyte)(ColumnData.Length - 1); Wi >= 0; Wi--)
                 {
                     if (((Hi >> Wi) & 1) != 0)
                     {
-                        thisGraph.Add((Wi, data[Wi]));
+                        thisGraph.Add((Wi, ColumnData[Wi].Values));
                     }
                 }
 
@@ -255,7 +248,7 @@ namespace Penguin.Analysis
 
             Index = 0;
             RealIndex = 0;
-            IEnumerable<(sbyte ColumnIndex, int[] Values)> columnsToProcess = ColumnsToProcess;
+            IEnumerable<(sbyte ColumnIndex, int Values)> columnsToProcess = ColumnsToProcess;
             HashSet<long> AlteredNodes = new HashSet<long>();
             bool LastValid = true;
             bool ExistingStream = !(ValidationCache is null);
@@ -297,7 +290,7 @@ namespace Penguin.Analysis
                 }
             }
 
-            IEnumerator<List<(sbyte ColumnIndex, int[] Values)>> TreeEnumerator = BuildComplexTree(columnsToProcess.ToArray()).GetEnumerator();
+            IEnumerator<List<(sbyte ColumnIndex, int Values)>> TreeEnumerator = BuildComplexTree(columnsToProcess.ToArray()).GetEnumerator();
 
             bool hasNext = TreeEnumerator.MoveNext();
 

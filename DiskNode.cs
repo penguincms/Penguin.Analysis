@@ -11,7 +11,7 @@ using System.Threading;
 namespace Penguin.Analysis
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class DiskNode : INode
+    public class DiskNode : Node
     {
         public const int HEADER_BYTES = 16;
         public const int NEXT_SIZE = 12;
@@ -24,70 +24,40 @@ namespace Penguin.Analysis
         internal long Offset;
         private static readonly object clearCacheLock = new object();
 
-        private byte? depth;
-
         private long? key;
 
         private int[] results;
+        public override int ChildCount => this.BackingData.GetInt(DiskNode.NODE_SIZE - 4);
 
-        public Accuracy Accuracy => this.GetAccuracy();
-
-        public int ChildCount => this.BackingData.GetInt(DiskNode.NODE_SIZE - 4);
-
-        public sbyte ChildHeader => unchecked((sbyte)this.BackingData[30]);
+        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[30]);
 
         public OffsetValue[] ChildOffsets { get; set; }
 
-        public byte Depth
-        {
-            get
-            {
-                if (this.depth is null)
-                {
-                    this.depth = this.GetDepth();
-                }
-                return this.depth.Value;
-            }
-        }
-
         [JsonProperty("H", Order = 2)]
-        public sbyte Header => unchecked((sbyte)this.BackingData[24]);
+        public override sbyte Header => unchecked((sbyte)this.BackingData[24]);
 
-        public long Key
+        public override long Key
         {
             get
             {
                 if (this.key is null)
                 {
-                    this.key = this.GetKey();
+                    this.key = GetKey();
                 }
                 return this.key.Value;
             }
         }
 
         [JsonProperty("L", Order = 4)]
-        public bool LastNode => this.BackingData[29] == 1;
+        public override bool LastNode => this.BackingData[29] == 1;
 
-        public int Matched => this.GetMatched();
-
-        public IEnumerable<INode> Next
-        {
-            get
-            {
-                foreach (OffsetValue childOffset in this.ChildOffsets)
-                {
-                    yield return LoadNode(_backingStream, childOffset.Offset);
-                }
-            }
-        }
+        public override IEnumerable<INode> Next => this.ChildOffsets.Select(o => LoadNode(_backingStream, o.Offset));
 
         [JsonProperty("P", Order = 0)]
-        public DiskNode ParentNode => LoadNode(_backingStream, this.ParentOffset);
-
-        INode INode.ParentNode => this.ParentNode;
+        public override INode ParentNode => LoadNode(_backingStream, this.ParentOffset);
 
         [JsonProperty("R", Order = 1)]
-        public int[] Results
+        public override int[] Results
         {
             get
             {
@@ -101,7 +71,7 @@ namespace Penguin.Analysis
         }
 
         [JsonProperty("V", Order = 3)]
-        public int Value => this.BackingData.GetInt(25);
+        public override int Value => this.BackingData.GetInt(25);
 
         private byte[] BackingData { get; set; }
 
@@ -127,12 +97,6 @@ namespace Penguin.Analysis
             }
 
             _backingStream = _backingStream ?? fileStream ?? throw new ArgumentNullException(nameof(fileStream));
-        }
-
-        public int this[MatchResult result]
-        {
-            get => this.Results[(int)result];
-            set => this.Results[(int)result] = value;
         }
 
         public static int ClearCache()
@@ -187,39 +151,9 @@ namespace Penguin.Analysis
             return toReturn;
         }
 
-        public bool Evaluate(Evaluation e, bool MultiThread = true)
-        {
-            return this.StandardEvaluate(e);
-        }
+        public override INode NextAt(int index) => LoadNode(_backingStream, this.ChildOffsets[index].Offset);
 
-        public void Flush(int depth)
-        {
-        }
-
-        public DiskNode GetNextByValue(int Value)
-        {
-            foreach (OffsetValue ov in this.ChildOffsets)
-            {
-                if (ov.Value == Value)
-                {
-                    return LoadNode(_backingStream, ov.Offset);
-                }
-            }
-
-            return null;
-        }
-
-        INode INode.GetNextByValue(int Value)
-        {
-            return this.GetNextByValue(Value);
-        }
-
-        public double GetScore(float BaseRate)
-        {
-            return this.CalculateScore(BaseRate);
-        }
-
-        public void Preload(int depth)
+        public override void Preload(int depth)
         {
             if (this.Header == -1 || depth > 0)
             {
@@ -261,18 +195,7 @@ namespace Penguin.Analysis
 
         #region IDisposable Support
 
-        private bool disposedValue = false; // To detect redundant calls
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (!this.disposedValue)
             {

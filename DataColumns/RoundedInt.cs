@@ -5,19 +5,28 @@ namespace Penguin.Analysis.DataColumns
     [Serializable]
     public class RoundedInt : Enumeration
     {
-        public RoundedInt(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        public RoundedInt() : base()
         {
         }
 
         #region Methods
 
-        public override int Transform(string input, bool PositiveIndicator)
+        public override void Seed(string input, bool PositiveIndicator)
         {
             double d = double.Parse(input);
 
             d = Math.Round(d);
 
-            return base.Transform(d.ToString(), PositiveIndicator);
+            base.Seed(d.ToString(), PositiveIndicator);
+        }
+
+        public override int Transform(string input)
+        {
+            double d = double.Parse(input);
+
+            d = Math.Round(d);
+
+            return base.Transform(d.ToString());
         }
 
         #endregion Methods

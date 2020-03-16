@@ -3,6 +3,7 @@ using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Penguin.Analysis
 {
@@ -14,17 +15,17 @@ namespace Penguin.Analysis
         public float BaseRate => this.PositiveIndicators / this.TotalRows;
 
         [JsonIgnore]
-        public Node BuilderRootNote
+        public MemoryNode BuilderRootNote
         {
             get
             {
-                if (this.RootNode is Node n)
+                if (this.RootNode is MemoryNode n)
                 {
                     return n;
                 }
                 else
                 {
-                    throw new Exception($"Attempt has been made to access root node that is not of type {nameof(Node)}. The node type is {this.RootNode.GetType().ToString()}");
+                    throw new Exception($"Attempt has been made to access root node that is not of type {nameof(MemoryNode)}. The node type is {this.RootNode.GetType().ToString()}");
                 }
             }
             set => this.RootNode = value;
@@ -44,10 +45,9 @@ namespace Penguin.Analysis
 
         #region IDisposable Support
 
-        private static readonly object RegustrationLock = new object();
-        private bool disposedValue = false; // To detect redundant calls
-
+        private static readonly object RegistrationLock = new object();
         private readonly HashSet<long> RegisteredKeys = new HashSet<long>();
+        private bool disposedValue = false; // To detect redundant calls
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
@@ -64,11 +64,13 @@ namespace Penguin.Analysis
         //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
         //   Dispose(false);
         // }
-        internal void RegisterTree(Node thisRoot)
+        internal void RegisterTree(MemoryNode thisRoot, DataSourceBuilder dsb)
         {
-            lock (RegustrationLock)
+            lock (RegistrationLock)
             {
-                foreach (Node n in thisRoot.FullTree())
+                List<MemoryNode> AllNodes = thisRoot.FullTree().ToList();
+
+                foreach (MemoryNode n in AllNodes)
                 {
                     long Key = n.GetKey();
 
@@ -76,16 +78,20 @@ namespace Penguin.Analysis
                     {
                         this.GraphInstances++;
 
-                        for (int i = 0; i < 32; i++)
-                        {
-                            long v = (Key >> i);
+                        LongByte lb = new LongByte(Key);
 
-                            if (!this.ColumnInstances.ContainsKey(v))
+                        while (lb > 0)
+                        {
+                            if (!this.ColumnInstances.ContainsKey(lb.Value))
                             {
-                                this.ColumnInstances.Add(v, 0);
+                                this.ColumnInstances.Add(lb.Value, 1);
+                            }
+                            else
+                            {
+                                this.ColumnInstances[lb.Value]++;
                             }
 
-                            this.ColumnInstances[v]++;
+                            lb.TrimLeft();
                         }
                     }
                 }

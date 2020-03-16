@@ -10,7 +10,7 @@ namespace Penguin.Analysis
     {
         #region Properties
 
-        public Dictionary<string, string> CalculatedData { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> CalculatedData { get; } = new Dictionary<string, string>();
         public TypelessDataRow DataRow { get; set; }
         public Dictionary<string, string> InputData { get; set; } = new Dictionary<string, string>();
         public ConcurrentDictionary<long, INode> MatchedRoutes { get; } = new ConcurrentDictionary<long, INode>();
@@ -19,36 +19,56 @@ namespace Penguin.Analysis
 
         public AnalysisResults Result { get; set; }
 
-        public ConcurrentBag<Score> Scores { get; }
-
-        public double Value
+        public AnalysisScore Score
         {
             get
             {
                 if (!this.MatchedRoutes.Any())
                 {
-                    return 0;
+                    return new AnalysisScore()
+                    {
+                        Value = 0,
+                        OldValue = 0
+                    };
                 }
 
+                AnalysisScore toReturn = new AnalysisScore();
+
+                double oldScore = 0;
+                double oldCounts = 0;
                 double score = 0;
                 double counts = 0;
 
-                foreach (Score Escore in this.Scores)
+                foreach (AnalysisScore Escore in this.Scores.Select(k => k.Value))
                 {
-                    counts += Escore.Count;
+                    oldCounts += Escore.OldCount;
 
-                    score += Escore.Count * Escore.Value;
+                    oldScore += Escore.OldCount * Escore.OldValue;
+
+                    double count = this.Result.GraphInstances / Escore.ColumnInstances;
+
+                    counts += count;
+
+                    score += count * Escore.Value;
                 }
 
-                return score / counts;
+                toReturn.OldCount = oldCounts;
+                toReturn.OldValue = oldScore / oldCounts;
+                toReturn.ColumnInstances = counts;
+                toReturn.Value = score / counts;
+
+                return toReturn;
             }
         }
 
+        public ConcurrentDictionary<long, AnalysisScore> Scores { get; }
         protected AnalysisResults AnalysisResults { get; set; }
 
-        public class Score
+        public class AnalysisScore
         {
-            public double Count { get; set; }
+            public double ColumnInstances { get; set; }
+            public double OldCount { get; set; }
+            public double OldValue { get; set; }
             public double Value { get; set; }
         }
 
@@ -59,7 +79,7 @@ namespace Penguin.Analysis
         public Evaluation(TypelessDataRow dataRow, AnalysisResults BuilderResults)
         {
             this.AnalysisResults = BuilderResults;
-            this.Scores = new ConcurrentBag<Score>();
+            this.Scores = new ConcurrentDictionary<long, AnalysisScore>();
             this.DataRow = dataRow;
         }
 
@@ -76,17 +96,42 @@ namespace Penguin.Analysis
 
             long Key = n.Key;
 
+            if (Key == 0)
+            {
+                throw new ArgumentException("Can not match node with key = 0", nameof(n));
+            }
+
             if (!this.MatchedRoutes.ContainsKey(Key))
             {
                 this.MatchedRoutes.TryAdd(Key, n);
 
                 if (this.AnalysisResults.ColumnInstances.ContainsKey(n.Key))
                 {
-                    this.Scores.Add(new Score()
+                    if (!this.Scores.TryGetValue(n.Key, out AnalysisScore score))
                     {
-                        Value = n.GetScore(this.Result.BaseRate),
-                        Count = this.AnalysisResults.GraphInstances / this.AnalysisResults.ColumnInstances[n.Key]
-                    });
+                        score = new AnalysisScore();
+                        this.Scores.TryAdd(n.Key, score);
+                    }
+
+                    score.Value = n.GetScore(this.Result.BaseRate);
+                    score.OldCount = (double)this.AnalysisResults.GraphInstances / this.AnalysisResults.ColumnInstances[n.Key];
+                    score.OldValue = n.GetScore(this.Result.BaseRate);
+                    score.ColumnInstances++;
+
+                    LongByte lb = new LongByte(n.Key);
+
+                    while (lb > 0)
+                    {
+                        if (!this.Scores.TryGetValue(lb, out AnalysisScore s))
+                        {
+                            s = new AnalysisScore();
+                            this.Scores.TryAdd(lb, s);
+                        }
+
+                        s.ColumnInstances++;
+
+                        lb.TrimLeft();
+                    }
                 }
             }
         }

@@ -6,7 +6,9 @@ namespace Penguin.Analysis.DataColumns
     [Serializable]
     public class Bool : BaseColumn
     {
-        public Bool(DataSourceBuilder sourceBuilder) : base(sourceBuilder)
+        public override int OptionCount => 2;
+
+        public Bool() : base()
         {
         }
 
@@ -29,16 +31,13 @@ namespace Penguin.Analysis.DataColumns
             return Value == 1 ? "true" : "false";
         }
 
-        public override IEnumerable<int> GetOptions()
+        public override void EndSeed()
         {
-            return new List<int>
-            {
-                1,
-                0
-            };
         }
 
-        public override int Transform(string input, bool PositiveIndicator)
+        public override void Seed(string input, bool PositiveIndicator) => throw new NotImplementedException();
+
+        public override int Transform(string input)
         {
             return GetValue(input);
         }

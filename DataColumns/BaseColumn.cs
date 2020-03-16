@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Penguin.Analysis.Interfaces;
+using System;
 using System.Collections.Generic;
 
 namespace Penguin.Analysis.DataColumns
@@ -8,11 +9,11 @@ namespace Penguin.Analysis.DataColumns
     {
         #region Methods
 
-        public DataSourceBuilder SourceBuilder { get; set; }
+        public abstract int OptionCount { get; }
+        public virtual bool SeedMe => false;
 
-        public BaseColumn(DataSourceBuilder sourceBuilder)
+        public BaseColumn()
         {
-            this.SourceBuilder = sourceBuilder;
         }
 
         public virtual string Display(int Value)
@@ -20,9 +21,11 @@ namespace Penguin.Analysis.DataColumns
             return Value.ToString();
         }
 
-        public abstract IEnumerable<int> GetOptions();
+        public abstract void EndSeed();
 
-        public abstract int Transform(string input, bool PositiveIndicator);
+        public abstract void Seed(string input, bool PositiveIndicator);
+
+        public abstract int Transform(string input);
 
         #region IDisposable Support
 

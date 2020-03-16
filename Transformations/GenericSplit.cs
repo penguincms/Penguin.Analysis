@@ -27,9 +27,14 @@ namespace Penguin.Analysis.Transformations
         /// <param name="transformer"></param>
         public GenericSplit(string ColumnName, List<string> NewColumnNames, Func<string, IEnumerable<string>> transformer)
         {
+            if (string.IsNullOrEmpty(ColumnName))
+            {
+                throw new ArgumentException("message", nameof(ColumnName));
+            }
+
             this.TargetColumn = ColumnName;
-            this.Process = transformer;
-            this.ResultColumns = NewColumnNames;
+            this.Process = transformer ?? throw new ArgumentNullException(nameof(transformer));
+            this.ResultColumns = NewColumnNames ?? throw new ArgumentNullException(nameof(NewColumnNames));
         }
 
         #endregion Constructors
@@ -38,6 +43,11 @@ namespace Penguin.Analysis.Transformations
 
         public void Cleanup(DataTable table)
         {
+            if (table is null)
+            {
+                throw new ArgumentNullException(nameof(table));
+            }
+
             if (!this.ResultColumns.Contains(this.TargetColumn))
             {
                 table.Columns.Remove(this.TargetColumn);
@@ -46,6 +56,11 @@ namespace Penguin.Analysis.Transformations
 
         public void TransformRow(DataRow source)
         {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
             string Value = source[this.TargetColumn]?.ToString();
 
             List<string> postTransform = this.Process.Invoke(Value).ToList();
@@ -69,6 +84,11 @@ namespace Penguin.Analysis.Transformations
         /// <returns></returns>
         public DataTable TransformTable(DataTable table)
         {
+            if (table is null)
+            {
+                throw new ArgumentNullException(nameof(table));
+            }
+
             foreach (string newColumn in this.ResultColumns)
             {
                 //Dont add target column again if one target is ALSO source
@@ -92,6 +112,11 @@ namespace Penguin.Analysis.Transformations
             this.Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
+        }
+
+        public override string ToString()
+        {
+            return $"{this.TargetColumn} => ({string.Join(", ", this.ResultColumns)})";
         }
 
         protected virtual void Dispose(bool disposing)

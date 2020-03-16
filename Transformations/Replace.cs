@@ -9,7 +9,7 @@ namespace Penguin.Analysis.Transformations
     {
         #region Properties
 
-        private Func<string, string> Process;
+        private Func<string, object> Process;
         public List<string> ResultColumns => throw new NotImplementedException();
 
         public string TargetColumn { get; internal set; }
@@ -24,7 +24,7 @@ namespace Penguin.Analysis.Transformations
         /// </summary>
         /// <param name="ColumnName"></param>
         /// <param name="transformer"></param>
-        public Replace(string ColumnName, Func<string, string> transformer)
+        public Replace(string ColumnName, Func<string, object> transformer)
         {
             this.TargetColumn = ColumnName;
             this.Process = transformer;
@@ -40,11 +40,19 @@ namespace Penguin.Analysis.Transformations
 
         public void TransformRow(DataRow source)
         {
-            string Value = source[this.TargetColumn]?.ToString();
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
 
-            string postTransform = this.Process.Invoke(Value);
+            if (source.Table.Columns.Contains(this.TargetColumn))
+            {
+                string Value = source[this.TargetColumn]?.ToString();
 
-            source[this.TargetColumn] = postTransform;
+                string postTransform = $"{this.Process.Invoke(Value)}";
+
+                source[this.TargetColumn] = postTransform;
+            }
         }
 
         /// <summary>
@@ -68,6 +76,11 @@ namespace Penguin.Analysis.Transformations
             this.Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
+        }
+
+        public override string ToString()
+        {
+            return "Replace: " + TargetColumn;
         }
 
         protected virtual void Dispose(bool disposing)
