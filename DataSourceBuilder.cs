@@ -254,11 +254,12 @@ namespace Penguin.Analysis
 
             long RootChildListOffset = DiskNode.HEADER_BYTES + DiskNode.NODE_SIZE;
 
-            outputStream.Seek(DiskNode.HEADER_BYTES + 24);
+            outputStream.Seek(DiskNode.HEADER_BYTES + 12);
 
             outputStream.Write((sbyte)-1);
-            outputStream.Write((long)-1);
+            outputStream.Write(ushort.MaxValue);
 
+            //Main list too big for UShort. Wonky logic to handle
             outputStream.Seek(RootChildListOffset - 4);
 
             outputStream.Write(graph.RealCount);
@@ -325,7 +326,7 @@ namespace Penguin.Analysis
                 int nodeseti = 0;
                 double nodesetc = 0;
 
-                MemoryNode thisRoot = new MemoryNode(-1, -1, nodeSetData[0].Values, this.Result.RawData.RowCount);
+                MemoryNode thisRoot = new MemoryNode(-1, ushort.MaxValue, nodeSetData[0].Values, this.Result.RawData.RowCount);
 
                 IEnumerable<MemoryNode> thisRootList = new List<MemoryNode> { thisRoot };
 
@@ -349,9 +350,9 @@ namespace Penguin.Analysis
 
                     foreach (MemoryNode node in thisRootList)
                     {
-                        for (int i = 0; i < Values; i++)
+                        for (ushort i = 0; i < Values; i++)
                         {
-                            MemoryNode n = new MemoryNode(ColumnIndex, i, childCount, node.MatchingRows.Count);
+                            MemoryNode n = new MemoryNode(ColumnIndex, i, childCount, (ushort)node.MatchingRows.Count);
 
                             node.AddNext(n, i);
                         }
@@ -371,8 +372,6 @@ namespace Penguin.Analysis
                 {
                     n?.Trim();
                 }
-
-                thisRoot.FillNodeData(this.Result.PositiveIndicators, this.Result.RawData.RowCount);
 
                 thisRoot.TrimNodesWithNoBearing(this);
 
@@ -408,8 +407,8 @@ namespace Penguin.Analysis
 
             flushToDisk.Wait();
 
-            IEnumerable<NodeMeta> PreloadResults = results.OrderByDescending(n => n.Matches);
-            IEnumerable<NodeMeta> RootOffsets = results.Where(n => n.Root).OrderBy(n => n.Header).ThenByDescending(n => n.Matches);
+            IEnumerable<NodeMeta> PreloadResults = results.OrderByDescending(n => n.Accuracy);
+            IEnumerable<NodeMeta> RootOffsets = results.Where(n => n.Root).OrderBy(n => n.Header).ThenByDescending(n => n.Accuracy);
 
             long sortPos = outputStream.Offset;
 
@@ -578,7 +577,6 @@ namespace Penguin.Analysis
                 return;
             }
 
-            const int Chunks = 15000;
 
             static void Log(string toLog)
             {
@@ -608,7 +606,7 @@ namespace Penguin.Analysis
                     {
                         Log($"Found Free Memory. Filling...");
 
-                        for (int i = 0; i < Chunks / 2; i++)
+                        for (int i = 0; i < this.Settings.PreloadChunkSize / 2; i++)
                         {
                             if (this.Disposing)
                             {
@@ -633,7 +631,7 @@ namespace Penguin.Analysis
 
                 if (freeMem < this.Settings.MinFreeMemory)
                 {
-                    int chunkBytes = Chunks * 8;
+                    int chunkBytes = this.Settings.PreloadChunkSize * 8;
 
                     while (freeMem < this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
                     {
@@ -649,7 +647,7 @@ namespace Penguin.Analysis
                         GC.Collect();
 
                         Log($"Waiting...");
-                        Task.Delay(5000).Wait();
+                        Task.Delay(1000).Wait();
 
                         freeMem = SystemInterop.Memory.Status.ullAvailPhys;
 
@@ -669,7 +667,7 @@ namespace Penguin.Analysis
 
                         stream.Seek(newPos, SeekOrigin.Begin);
 
-                        for (int i = 0; i < Chunks; i++)
+                        for (int i = 0; i < this.Settings.PreloadChunkSize; i++)
                         {
                             if (this.Disposing)
                             {

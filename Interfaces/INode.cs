@@ -19,16 +19,14 @@ namespace Penguin.Analysis.Interfaces
         byte Depth { get; }
         sbyte Header { get; }
         long Key { get; }
-        bool LastNode { get; }
-        int Matched { get; }
         IEnumerable<INode> Next { get; }
         INode ParentNode { get; }
 
-        int[] Results { get; }
+        ushort[] Results { get; }
 
-        int Value { get; }
+        ushort Value { get; }
 
-        int this[MatchResult result] { get; set; }
+        ushort this[MatchResult result] { get; set; }
 
         void Evaluate(Evaluation e, bool MultiThread = true);
 

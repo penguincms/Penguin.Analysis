@@ -42,6 +42,7 @@ namespace Penguin.Analysis
         public Action<DataTable> PostTransform { get; set; }
 
         public ulong RangeFreeMemory { get; set; } = 500_000_000;
+        public int PreloadChunkSize { get; set; } = 150000;
 
         #region Classes
 
@@ -59,7 +60,7 @@ namespace Penguin.Analysis
             /// <summary>
             /// Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
             /// </summary>
-            public float MinimumAccuracy { get; set; } = .2f;
+            public float MinumumScore { get; set; } = .1f;
 
             /// <summary>
             /// The minimum total times a route must be matched to be considered

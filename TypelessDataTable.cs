@@ -68,7 +68,7 @@ namespace Penguin.Analysis
         #region Properties
 
         private readonly List<TypelessDataRow> _rows;
-        public int RowCount { get; internal set; }
+        public ushort RowCount { get; internal set; }
 
         public IEnumerable<TypelessDataRow> Rows
         {

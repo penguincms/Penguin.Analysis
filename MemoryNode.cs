@@ -34,16 +34,17 @@ namespace Penguin.Analysis
         #region Properties
 
         public MemoryNode parentNode;
-        internal bool lastNode;
-        private int value;
+
+        private ushort value;
         public override sbyte Header => header;
 
-        public override bool LastNode => lastNode;
+        public bool LastNode { get; set; }
         public override IEnumerable<INode> Next => next;
         public override INode ParentNode => parentNode;
-        public override int Value => value;
+        public override ushort Value => value;
         internal sbyte header { get; set; }
         internal MemoryNode[] next { get; set; }
+        public int Matched => this[MatchResult.Route] + this[MatchResult.Both];
 
         #endregion Properties
 
@@ -54,7 +55,7 @@ namespace Penguin.Analysis
         /// </summary>
         public MemoryNode() { }
 
-        public MemoryNode(sbyte header, int value, int children, int backingRows)
+        public MemoryNode(sbyte header, ushort value, int children, ushort backingRows)
         {
             this.header = header;
 
@@ -67,14 +68,103 @@ namespace Penguin.Analysis
             if (children != 0)
             {
                 this.next = new MemoryNode[children];
-                this.lastNode = false;
+                this.LastNode = false;
             }
             else
             {
-                this.lastNode = true;
+                this.LastNode = true;
             }
         }
+        internal SerializationResults Serialize(INodeFileStream lockedNodeFileStream, long ParentOffset = 0)
+        {
+            SerializationResults results = new SerializationResults(lockedNodeFileStream, this, ParentOffset);
+            long thisOffset = results.Single().Offset;
+            //parent 0 - 8
 
+            byte[] toWrite = new byte[DiskNode.NODE_SIZE];
+
+            BitConverter.GetBytes(ParentOffset).CopyTo(toWrite, 0);
+
+            for (int i = 0; i < 2; i++)
+            {
+                BitConverter.GetBytes(Results[i]).CopyTo(toWrite, 8 + i * 2);
+            }
+
+            unchecked
+            {
+                toWrite[12] = (byte)Header;
+            }
+
+            BitConverter.GetBytes(Value).CopyTo(toWrite, 13);
+
+            toWrite[15] = (byte)ChildHeader;
+
+            int nCount = ChildCount;
+
+            if (ParentOffset == 0)
+            {
+                BitConverter.GetBytes(nCount).CopyTo(toWrite, toWrite.Length - 4);
+            } else
+            {
+                if(nCount > ushort.MaxValue)
+                {
+                    throw new Exception($"Cant not exceed {ushort.MaxValue} children on non-root node");
+                } else
+                {
+                    ushort usCount = (ushort)nCount;
+                    BitConverter.GetBytes(usCount).CopyTo(toWrite, toWrite.Length - 2);
+                }
+            }
+
+            lockedNodeFileStream.Write(toWrite);
+
+            if (nCount > 0)
+            {
+                int skip = (nCount * DiskNode.NEXT_SIZE);
+
+                long ChildListOffset = lockedNodeFileStream.Offset;
+
+                byte[] skipBytes = new byte[skip];
+
+                lockedNodeFileStream.Write(skipBytes);
+
+                byte[] nextOffsets = new byte[nCount * DiskNode.NEXT_SIZE];
+
+                int i;
+
+                for (i = 0; i < nCount; i++)
+                {
+                    MemoryNode nextn = this.next[i];
+
+                    long offset = 0;
+                    ushort value = ushort.MaxValue;
+
+                    if (nextn != null)
+                    {
+                        offset = lockedNodeFileStream.Offset;
+                        value = nextn.Value;
+                    }
+                    BitConverter.GetBytes(offset).CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE);
+
+                    BitConverter.GetBytes(value).CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE + 8);
+
+                    if (nextn != null)
+                    {
+                        results.AddRange(nextn.Serialize(lockedNodeFileStream, thisOffset));
+                    }
+                }
+
+                long lastOffset = lockedNodeFileStream.Offset;
+
+                lockedNodeFileStream.Seek(ChildListOffset);
+
+                lockedNodeFileStream.Write(nextOffsets);
+
+                lockedNodeFileStream.Seek(lastOffset);
+            }
+
+            return results;
+        }
         public void AddNext(MemoryNode next, int i)
         {
             if (next is null)

@@ -93,7 +93,18 @@ namespace Penguin.Analysis
 
             sourceStream.Read(bByte, 0, DiskNode.NODE_SIZE);
 
-            int childCount = bByte.GetInt(DiskNode.NODE_SIZE - 4);
+
+            int childCount;
+
+            switch(offset)
+            {
+                case DiskNode.HEADER_BYTES:
+                    childCount = bByte.GetInt(DiskNode.NODE_SIZE - 4);
+                    break;
+                default:
+                    childCount = bByte.GetShort(DiskNode.NODE_SIZE - 2);
+                    break;
+            }
 
             if (childCount == 0)
             {
@@ -175,7 +186,10 @@ namespace Penguin.Analysis
         {
             this._backingStream.Write(BitConverter.GetBytes(v), 0, 4);
         }
-
+        public void Write(ushort v)
+        {
+            this._backingStream.Write(BitConverter.GetBytes(v), 0, 2);
+        }
         public void Write(byte v)
         {
             this._backingStream.WriteByte(v);

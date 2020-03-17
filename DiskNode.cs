@@ -14,8 +14,8 @@ namespace Penguin.Analysis
     public class DiskNode : Node
     {
         public const int HEADER_BYTES = 16;
-        public const int NEXT_SIZE = 12;
-        public const int NODE_SIZE = 35;
+        public const int NEXT_SIZE = 10;
+        public const int NODE_SIZE = 16;
         internal static LockedNodeFileStream _backingStream;
         internal static ConcurrentDictionary<long, DiskNode> Cache = new ConcurrentDictionary<long, DiskNode>();
 
@@ -26,15 +26,28 @@ namespace Penguin.Analysis
 
         private long? key;
 
-        private int[] results;
-        public override int ChildCount => this.BackingData.GetInt(DiskNode.NODE_SIZE - 4);
+        private ushort[] results;
+        public override int ChildCount {
+            get
+            {
+                switch(this.Offset)
+                {
+                    case DiskNode.HEADER_BYTES:
+                       return this.BackingData.GetInt(DiskNode.NODE_SIZE - 4); 
+                    default:                       
+                       return this.BackingData.GetShort(DiskNode.NODE_SIZE - 2);
+                        
+                }
+                
+            }
+        }
 
-        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[30]);
+        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[15]);
 
         public OffsetValue[] ChildOffsets { get; set; }
 
-        [JsonProperty("H", Order = 2)]
-        public override sbyte Header => unchecked((sbyte)this.BackingData[24]);
+
+        public override sbyte Header => unchecked((sbyte)this.BackingData[12]);
 
         public override long Key
         {
@@ -48,30 +61,24 @@ namespace Penguin.Analysis
             }
         }
 
-        [JsonProperty("L", Order = 4)]
-        public override bool LastNode => this.BackingData[29] == 1;
-
         public override IEnumerable<INode> Next => this.ChildOffsets.Select(o => LoadNode(_backingStream, o.Offset));
 
-        [JsonProperty("P", Order = 0)]
         public override INode ParentNode => LoadNode(_backingStream, this.ParentOffset);
 
-        [JsonProperty("R", Order = 1)]
-        public override int[] Results
+        public override ushort[] Results
         {
             get
             {
                 if (this.results is null)
                 {
-                    this.results = this.BackingData.GetInts(8, 4).ToArray();
+                    this.results = this.BackingData.GetShorts(8, 2).Concat(new ushort[] { 0, 0 }).ToArray();
                 }
 
                 return this.results;
             }
         }
 
-        [JsonProperty("V", Order = 3)]
-        public override int Value => this.BackingData.GetInt(25);
+        public override ushort Value => this.BackingData.GetShort(13);
 
         private byte[] BackingData { get; set; }
 
@@ -92,7 +99,7 @@ namespace Penguin.Analysis
                 this.ChildOffsets[i] = new OffsetValue()
                 {
                     Offset = this.BackingData.GetLong(oset),
-                    Value = this.BackingData.GetInt(oset + 8)
+                    Value = this.BackingData.GetShort(oset + 8)
                 };
             }
 

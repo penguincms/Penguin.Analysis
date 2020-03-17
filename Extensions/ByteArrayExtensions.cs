@@ -18,11 +18,32 @@ namespace Penguin.Analysis.Extensions
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ushort GetShort(this byte[] source, int offset)
+        {
+            ushort result = 0;
+            for (int i = 0; i < 2; i++)
+            {
+                result <<= 8;
+                result |= (ushort)(source[1 - i + offset] & 0xFF);
+            }
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IEnumerable<int> GetInts(this byte[] source, int offset, int count)
         {
             for (int i = 0; i < count; i++)
             {
                 yield return source.GetInt(offset + (i * 4));
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IEnumerable<ushort> GetShorts(this byte[] source, int offset, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                yield return source.GetShort(offset + (i * 2));
             }
         }
 

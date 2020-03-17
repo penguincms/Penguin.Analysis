@@ -34,19 +34,15 @@ namespace Penguin.Analysis
 
         public abstract long Key { get; }
 
-        public abstract bool LastNode { get; }
-
-        public virtual int Matched => this[MatchResult.Route] + this[MatchResult.Both];
-
         public abstract IEnumerable<INode> Next { get; }
 
         public abstract INode ParentNode { get; }
 
-        public virtual int[] Results { get; } = new int[4];
+        public virtual ushort[] Results { get; } = new ushort[4];
 
-        public abstract int Value { get; }
+        public abstract ushort Value { get; }
 
-        public int this[MatchResult result]
+        public ushort this[MatchResult result]
         {
             get => this.Results[(int)result];
             set => this.Results[(int)result] = value;
@@ -60,6 +56,8 @@ namespace Penguin.Analysis
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
+
+
 
         public virtual void Evaluate(Evaluation e, bool MultiThread = true)
         {

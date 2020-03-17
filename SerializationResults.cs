@@ -11,7 +11,7 @@ namespace Penguin.Analysis
     {
         public sbyte Header;
 
-        public int Matches;
+        public double Accuracy;
 
         public long Offset;
 
@@ -21,7 +21,7 @@ namespace Penguin.Analysis
         {
             this.Offset = stream.Offset;
             this.Root = parentOffset == DiskNode.HEADER_BYTES;
-            this.Matches = node.Matched;
+            this.Accuracy = node.Accuracy.Next;
 
             if (node.Header == -1)
             {
@@ -42,7 +42,7 @@ namespace Penguin.Analysis
 
         public override string ToString()
         {
-            return $"@{this.Offset}: {this.Header}x{this.Matches}";
+            return $"@{this.Offset}: {this.Header}x{this.Accuracy}";
         }
     }
 

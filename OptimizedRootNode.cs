@@ -10,11 +10,8 @@ namespace Penguin.Analysis
 {
     public class OptimizedRootNode : Node
     {
-        public List<int> HeaderBreaks = new List<int>() { 0 };
 
-        public Dictionary<int, int> ValueJumpList = new Dictionary<int, int>();
-
-        private readonly List<INode> next = new List<INode>();
+        private List<INode>[][] next;
 
         public override int ChildCount { get; }
 
@@ -24,17 +21,28 @@ namespace Penguin.Analysis
 
         public override long Key { get; }
 
-        public override bool LastNode { get; } = false;
-
-        public override int Matched { get; } = 0;
-
-        public override IEnumerable<INode> Next => this.next;
+        public override IEnumerable<INode> Next
+        {
+            get
+            {
+                for (int header = 0; header < next.Length; header++)
+                {
+                    for (int value = 0; value < next[header].Length; value++)
+                    {
+                        foreach (INode n in next[header][value])
+                        {
+                            yield return n;
+                        }
+                    }
+                }
+            }
+        }
 
         public override INode ParentNode { get; }
 
-        public override int[] Results { get; } = new int[4];
+        public override ushort[] Results { get; } = new ushort[4];
 
-        public override int Value { get; } = 0;
+        public override ushort Value { get; } = 0;
 
         public OptimizedRootNode(INode source)
         {
@@ -43,121 +51,83 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(source));
             }
 
-            foreach (INode n in source.Next)
+            int MaxHeader = 0;
+
+            IEnumerable<INode> Parents = source.Next.Where(n => !(n is null));
+            IEnumerable<INode> Children = Parents.SelectMany(n => n.Next).Where(n => !(n is null));
+
+            foreach (INode n in Parents)
             {
-                if (n?.Next != null)
+                MaxHeader = Math.Max(MaxHeader, n.ChildHeader);
+            }
+
+            int[] MaxValues = new int[MaxHeader + 1];
+            next = new List<INode>[MaxValues.Length][];
+
+            foreach (INode n in Parents)
+            {
+                MaxValues[n.ChildHeader] = Math.Max(MaxValues[n.ChildHeader], n.ChildCount);
+            }
+
+
+            for (int header = 0; header <= MaxHeader; header++)
+            {
+                next[header] = new List<INode>[MaxValues[header]];
+
+                for (int value = 0; value < MaxValues[header]; value++)
                 {
-                    foreach (INode c in n.Next)
-                    {
-                        if (c != null)
-                        {
-                            this.next.Add(c);
-                        }
-                    }
+                    next[header][value] = new List<INode>();
                 }
             }
 
-            this.next = this.next.OrderBy(n => n.Header).ThenByDescending(n => n.Matched).ToList();
 
-            sbyte lastHeader = this.Next.First().Header;
-            int lastValue = this.Next.First().Value;
 
-            this.ChildCount = this.next.Count;
 
-            int lastValueIndex = 0;
-
-            for (int i = 0; i < this.ChildCount; i++)
+            foreach (INode c in Children)
             {
-                INode thisNode = this.Next.ElementAt(i);
-
-                if (thisNode.Header != lastHeader || thisNode.Value != lastValue)
-                {
-                    if (thisNode.Header != lastHeader)
-                    {
-                        this.HeaderBreaks.Add(i);
-                    }
-
-                    lastHeader = thisNode.Header;
-                    lastValue = thisNode.Value;
-
-                    this.ValueJumpList.Add(lastValueIndex, i);
-                    lastValueIndex = i;
-                }
+                next[c.Header][c.Value].Add(c);
             }
 
-            this.ValueJumpList.Add(lastValueIndex, this.ChildCount);
-            this.HeaderBreaks.Add(this.ChildCount);
         }
 
-        public void Evaluate(int headerBreak, Evaluation e, bool MultiThread = true)
+
+        public override void Evaluate(Evaluation e, bool MultiThread = true)
         {
             if (e is null)
             {
                 throw new ArgumentNullException(nameof(e));
             }
 
-            bool Matched = false;
-
-            if (headerBreak == this.HeaderBreaks.Last())
+            IEnumerable<INode> GetChildren()
             {
-                return;
+                for (int header = 0; header < next.Length; header++)
+                {
+                    int value = e.DataRow[header];
+
+                    if (next[header].Length > value)
+                    {
+                        foreach (INode n in next[header][value])
+                        {
+                            yield return n;
+                        }
+                    }
+                }
             }
 
-            int i = headerBreak;
-
-            int stop = this.HeaderBreaks.Where(h => h > headerBreak).Min();
-            do
-            {
-                if (this.next.Count <= i)
-                {
-                    Debug.WriteLine($"Skipped to far while evaluating root. List ends at {this.next.Count} and we ended up at {i}");
-                    return;
-                }
-
-                if (!this.next.ElementAt(i).Evaluate(e.DataRow))
-                {
-                    if (Matched)
-                    {
-                        Matched = false;
-                        return;
-                    }
-                    else
-                    {
-                        i = this.ValueJumpList[i];
-                    }
-                    continue;
-                }
-                else
-                {
-                    this.next.ElementAt(i).Evaluate(e, MultiThread);
-                    Matched = true;
-                }
-
-                if (++i >= stop)
-                {
-                    return;
-                };
-            } while (true);
-        }
-
-        public bool Evaluate(Evaluation e, bool MultiThread = true)
-        {
             if (MultiThread)
             {
-                Parallel.ForEach(this.HeaderBreaks, (headerBreak) =>
+                Parallel.ForEach(GetChildren(), (n) =>
                 {
-                    Evaluate(headerBreak, e);
+                    n.Evaluate(e, MultiThread);
                 });
             }
             else
             {
-                foreach (int headerBreak in this.HeaderBreaks)
+                foreach (INode n in GetChildren())
                 {
-                    Evaluate(headerBreak, e);
+                    n.Evaluate(e, MultiThread);
                 }
             }
-
-            return true;
         }
 
         #region IDisposable Support
@@ -170,7 +140,7 @@ namespace Penguin.Analysis
             {
                 if (disposing)
                 {
-                    foreach (INode n in this.next)
+                    foreach (INode n in this.Next)
                     {
                         try
                         {
@@ -181,10 +151,7 @@ namespace Penguin.Analysis
                         }
                     }
 
-                    this.next.Clear();
-
-                    this.HeaderBreaks.Clear();
-                    this.ValueJumpList.Clear();
+                    this.next = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.

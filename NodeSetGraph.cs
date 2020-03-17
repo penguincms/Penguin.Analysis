@@ -16,7 +16,7 @@ namespace Penguin.Analysis
         public long Index;
         public long MaxCount;
         public float Progress;
-        public long RealCount;
+        public int RealCount;
     }
 
     public class NodeSetGraph : IEnumerable<NodeSetCollection>, IDisposable
@@ -26,8 +26,8 @@ namespace Penguin.Analysis
         private Stream ValidationCache;
         public long Index { get; private set; } = -1;
         public long MaxCount { get; private set; }
-        public long RealCount { get; private set; } = 0;
-        public long RealIndex { get; private set; }
+        public int RealCount { get; private set; } = 0;
+        public int RealIndex { get; private set; }
         public Action<NodeSetGraphProgress> ReportProgress { get; set; }
 
         private IEnumerable<(sbyte ColumnIndex, int Values)> ColumnsToProcess
@@ -69,10 +69,10 @@ namespace Penguin.Analysis
             {
                 ValidationCache = new FileStream(ValidationCacheFileName, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-                byte[] bytes = new byte[8];
-                ValidationCache.Read(bytes, 0, 8);
+                byte[] bytes = new byte[4];
+                ValidationCache.Read(bytes, 0, 4);
 
-                RealCount = BitConverter.ToInt64(bytes, 0);
+                RealCount = BitConverter.ToInt32(bytes, 0);
 
                 if (RealCount == 0)
                 {
@@ -436,7 +436,7 @@ namespace Penguin.Analysis
                 if (!ExistingStream)
                 {
                     ValidationCache.Seek(0, SeekOrigin.Begin);
-                    ValidationCache.Write(BitConverter.GetBytes(RealCount), 0, 8);
+                    ValidationCache.Write(BitConverter.GetBytes(RealCount), 0, 4);
                 }
                 else
                 {
