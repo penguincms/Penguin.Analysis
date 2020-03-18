@@ -44,6 +44,7 @@ namespace Penguin.Analysis
         public ulong RangeFreeMemory { get; set; } = 500_000_000;
         public int PreloadChunkSize { get; set; } = 15000;
         public int PreloadTimeoutMs { get; set; } = 5000;
+        public int MaxCacheCount { get; set; } = 1_000_000;
         public bool CacheNodes { get; set; } = true;
 
         #region Classes

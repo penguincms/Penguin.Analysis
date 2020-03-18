@@ -594,6 +594,8 @@ namespace Penguin.Analysis
             }
         }
 
+        private int PreloadPointer = 0;
+
         public async void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
         {
             if (stream is null)

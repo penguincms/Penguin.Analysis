@@ -97,7 +97,7 @@
             Only build trees that contain positive output matches
             </summary>
         </member>
-        <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MinimumAccuracy">
+        <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MinumumScore">
             <summary>
             Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
             </summary>
@@ -107,14 +107,14 @@
             The minimum total times a route must be matched to be considered
             </summary>
         </member>
-        <member name="F:Penguin.Analysis.MatchResult.None">
-            <summary>
-            The record matches neither the nodes path, nor is a positive indicator of outcome
-            </summary>
-        </member>
         <member name="F:Penguin.Analysis.MatchResult.Route">
             <summary>
             The record matches the node path, but is not a positive indicator of outcome
+            </summary>
+        </member>
+        <member name="F:Penguin.Analysis.MatchResult.Both">
+            <summary>
+            The record matches the node path, and is a positive indicator of outcome
             </summary>
         </member>
         <member name="F:Penguin.Analysis.MatchResult.Output">
@@ -122,9 +122,9 @@
             The record is a positive indicator of outcome, but does not match the node path
             </summary>
         </member>
-        <member name="F:Penguin.Analysis.MatchResult.Both">
+        <member name="F:Penguin.Analysis.MatchResult.None">
             <summary>
-            The record matches the node path, and is a positive indicator of outcome
+            The record matches neither the nodes path, nor is a positive indicator of outcome
             </summary>
         </member>
         <member name="M:Penguin.Analysis.MemoryNode.#ctor">

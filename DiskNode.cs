@@ -14,6 +14,8 @@ namespace Penguin.Analysis
     public class DiskNode : Node
     {
         public static bool CacheNodes { get; set; } = true;
+        internal static int MaxCacheCount = int.MaxValue;
+        internal static int CurrentCacheCount = 0;
 
         public const int HEADER_BYTES = 16;
         public const int NEXT_SIZE = 10;
