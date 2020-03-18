@@ -42,7 +42,9 @@ namespace Penguin.Analysis
         public Action<DataTable> PostTransform { get; set; }
 
         public ulong RangeFreeMemory { get; set; } = 500_000_000;
-        public int PreloadChunkSize { get; set; } = 150000;
+        public int PreloadChunkSize { get; set; } = 15000;
+        public int PreloadTimeoutMs { get; set; } = 5000;
+        public bool CacheNodes { get; set; } = true;
 
         #region Classes
 

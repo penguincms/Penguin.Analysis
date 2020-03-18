@@ -13,6 +13,8 @@ namespace Penguin.Analysis
     [JsonObject(MemberSerialization.OptIn)]
     public class DiskNode : Node
     {
+        public static bool CacheNodes { get; set; } = true;
+
         public const int HEADER_BYTES = 16;
         public const int NEXT_SIZE = 10;
         public const int NODE_SIZE = 16;
@@ -82,7 +84,7 @@ namespace Penguin.Analysis
 
         private byte[] BackingData { get; set; }
 
-        private long ParentOffset => this.BackingData.GetLong(0);
+        internal long ParentOffset => this.BackingData.GetLong(0);
 
         public DiskNode(LockedNodeFileStream fileStream, long offset)
         {
@@ -130,6 +132,11 @@ namespace Penguin.Analysis
             return CacheSize;
         }
 
+
+        private static Dictionary<long, DiskNode> RootNodes = new Dictionary<long, DiskNode>();
+        private static DiskNode RootNode;
+        private static HashSet<long> SmallCache = new HashSet<long>();
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static DiskNode LoadNode(LockedNodeFileStream backingStream, long offset, bool memoryManaged = false)
         {
@@ -137,6 +144,37 @@ namespace Penguin.Analysis
             {
                 return null;
             }
+
+            if (!CacheNodes)
+            {
+                if (RootNode is null)
+                {
+                    RootNode = new DiskNode(backingStream, DiskNode.HEADER_BYTES);
+                    foreach(long l in RootNode.ChildOffsets.Select(o => o.Offset))
+                    {
+                        SmallCache.Add(l);
+                    }
+                }
+
+                if (offset == DiskNode.HEADER_BYTES)
+                {
+                    return RootNode;
+                }
+
+
+                if (!RootNodes.TryGetValue(offset, out DiskNode thisNode))
+                {
+                    thisNode = new DiskNode(backingStream, offset);
+
+                    if (SmallCache.Contains(offset) || SmallCache.Contains(thisNode.ParentOffset))
+                    {                      
+                        RootNodes.Add(offset, thisNode);
+                    }
+                } 
+
+                return thisNode;               
+            }
+            
 
             if (MemoryManaged.TryGetValue(offset, out DiskNode dn))
             {

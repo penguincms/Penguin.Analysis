@@ -110,6 +110,14 @@ namespace Penguin.Analysis
         {
             DiskNode._backingStream = null;
 
+            if(memoryManagementStyle == MemoryManagementStyle.NoCache)
+            {
+                DiskNode.CacheNodes = false;
+            } else
+            {
+                DiskNode.CacheNodes = true;
+            }
+            
             FileStream fstream = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             LockedNodeFileStream stream = new LockedNodeFileStream(fstream);
 
@@ -143,9 +151,12 @@ namespace Penguin.Analysis
 
             toReturn.Result.RootNode = gNode;
 
-            if (memoryManagementStyle != MemoryManagementStyle.None)
+            if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
             {
                 toReturn.Preload(FilePath, memoryManagementStyle);
+            } else
+            {
+                toReturn.PreloadTask = Task.CompletedTask;
             }
 
             return toReturn;
@@ -573,7 +584,7 @@ namespace Penguin.Analysis
                             Penguin.Debugging.StaticLogger.Log(ex);
                         }
 
-                        Task.Delay(5000).Wait();
+                        Task.Delay(Settings.PreloadTimeoutMs).Wait();
                     } while (true);
                 });
 
@@ -595,7 +606,7 @@ namespace Penguin.Analysis
 
             static void Log(string toLog)
             {
-                string toWrite = $"[{DateTime.Now.ToString("yyyy MM dd HH:mm:ss")}]: {toLog}";
+                string toWrite = $"[{DateTime.Now:yyyy MM dd HH:mm:ss}]: {toLog}";
                 Debug.WriteLine(toWrite);
                 Penguin.Debugging.StaticLogger.Log(toWrite);
                 File.AppendAllLines(MemLog, new List<string>() { toWrite });

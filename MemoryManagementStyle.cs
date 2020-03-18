@@ -5,9 +5,10 @@ namespace Penguin.Analysis
     [Flags]
     public enum MemoryManagementStyle
     {
-        None = 0,
-        Preload = 1,
-        MemoryFlush = 2,
+        NoCache = 0,
+        Standard = 1,
+        Preload = 2,
+        MemoryFlush = 4,
         PreloadAndFlush = Preload | MemoryFlush
     }
 }

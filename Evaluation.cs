@@ -87,6 +87,44 @@ namespace Penguin.Analysis
 
         #region Methods
 
+        ConcurrentDictionary<long, long> CachedKeys = new ConcurrentDictionary<long, long>();
+        public long GetKey(INode startNode)
+        {
+            if (startNode is null)
+            {
+                throw new ArgumentNullException(nameof(startNode));
+            }
+
+            if (startNode is DiskNode dn)
+            {
+                long Key = 0;
+
+                DiskNode n = dn;
+
+                while (n != null && n.Header != -1)
+                {
+                    if (CachedKeys.TryGetValue(n.Offset, out long key))
+                    {
+                        Key |= key;
+
+                        CachedKeys.TryAdd(dn.Offset, Key);
+
+                        return Key;
+                    }
+
+                    Key |= ((long)1 << n.Header);
+
+                    n = n.ParentNode as DiskNode;
+                }
+
+                CachedKeys.TryAdd(dn.Offset, Key);
+
+                return Key;
+            } else
+            {
+                return startNode.Key;
+            }
+        }
         public void MatchRoute(INode n)
         {
             if (n is null)
@@ -94,7 +132,7 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(n));
             }
 
-            long Key = n.Key;
+            long Key = GetKey(n);
 
             if (Key == 0)
             {
