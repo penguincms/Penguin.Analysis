@@ -87,52 +87,12 @@ namespace Penguin.Analysis
 
         #region Methods
 
-        ConcurrentDictionary<long, long> CachedKeys = new ConcurrentDictionary<long, long>();
-        public long GetKey(INode startNode)
-        {
-            if (startNode is null)
-            {
-                throw new ArgumentNullException(nameof(startNode));
-            }
-
-            if (startNode is DiskNode dn)
-            {
-                long Key = 0;
-
-                DiskNode n = dn;
-
-                while (n != null && n.Header != -1)
-                {
-                    if (CachedKeys.TryGetValue(n.Offset, out long key))
-                    {
-                        Key |= key;
-
-                        CachedKeys.TryAdd(dn.Offset, Key);
-
-                        return Key;
-                    }
-
-                    Key |= ((long)1 << n.Header);
-
-                    n = n.ParentNode as DiskNode;
-                }
-
-                CachedKeys.TryAdd(dn.Offset, Key);
-
-                return Key;
-            } else
-            {
-                return startNode.Key;
-            }
-        }
-        public void MatchRoute(INode n)
+        public void MatchRoute(INode n, long Key)
         {
             if (n is null)
             {
                 throw new ArgumentNullException(nameof(n));
             }
-
-            long Key = GetKey(n);
 
             if (Key == 0)
             {
@@ -143,20 +103,20 @@ namespace Penguin.Analysis
             {
                 this.MatchedRoutes.TryAdd(Key, n);
 
-                if (this.AnalysisResults.ColumnInstances.ContainsKey(n.Key))
+                if (this.AnalysisResults.ColumnInstances.ContainsKey(Key))
                 {
-                    if (!this.Scores.TryGetValue(n.Key, out AnalysisScore score))
+                    if (!this.Scores.TryGetValue(Key, out AnalysisScore score))
                     {
                         score = new AnalysisScore();
-                        this.Scores.TryAdd(n.Key, score);
+                        this.Scores.TryAdd(Key, score);
                     }
 
                     score.Value = n.GetScore(this.Result.BaseRate);
-                    score.OldCount = (double)this.AnalysisResults.GraphInstances / this.AnalysisResults.ColumnInstances[n.Key];
+                    score.OldCount = (double)this.AnalysisResults.GraphInstances / this.AnalysisResults.ColumnInstances[Key];
                     score.OldValue = n.GetScore(this.Result.BaseRate);
                     score.ColumnInstances++;
 
-                    LongByte lb = new LongByte(n.Key);
+                    LongByte lb = new LongByte(Key);
 
                     while (lb > 0)
                     {

@@ -28,7 +28,7 @@ namespace Penguin.Analysis.Interfaces
 
         ushort this[MatchResult result] { get; set; }
 
-        void Evaluate(Evaluation e, bool MultiThread = true);
+        void Evaluate(Evaluation e, long routeKey, bool MultiThread = true);
 
         bool Evaluate(TypelessDataRow row);
 

@@ -110,14 +110,15 @@ namespace Penguin.Analysis
         {
             DiskNode._backingStream = null;
 
-            if(memoryManagementStyle == MemoryManagementStyle.NoCache)
+            if (memoryManagementStyle == MemoryManagementStyle.NoCache)
             {
                 DiskNode.CacheNodes = false;
-            } else
+            }
+            else
             {
                 DiskNode.CacheNodes = true;
             }
-            
+
             FileStream fstream = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             LockedNodeFileStream stream = new LockedNodeFileStream(fstream);
 
@@ -154,7 +155,8 @@ namespace Penguin.Analysis
             if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
             {
                 toReturn.Preload(FilePath, memoryManagementStyle);
-            } else
+            }
+            else
             {
                 toReturn.PreloadTask = Task.CompletedTask;
             }
@@ -239,7 +241,7 @@ namespace Penguin.Analysis
 
             INode rootNode = this.Result.RootNode;
 
-            rootNode.Evaluate(evaluation, MultiThread);
+            rootNode.Evaluate(evaluation, 0, MultiThread);
 
             return evaluation;
         }

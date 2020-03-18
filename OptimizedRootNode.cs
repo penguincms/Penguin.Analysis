@@ -10,7 +10,6 @@ namespace Penguin.Analysis
 {
     public class OptimizedRootNode : Node
     {
-
         private List<INode>[][] next;
 
         public override int ChildCount { get; }
@@ -69,7 +68,6 @@ namespace Penguin.Analysis
                 MaxValues[n.ChildHeader] = Math.Max(MaxValues[n.ChildHeader], n.ChildCount);
             }
 
-
             for (int header = 0; header <= MaxHeader; header++)
             {
                 next[header] = new List<INode>[MaxValues[header]];
@@ -80,18 +78,15 @@ namespace Penguin.Analysis
                 }
             }
 
-
-
-
             foreach (INode c in Children)
             {
                 next[c.Header][c.Value].Add(c);
             }
-
         }
 
+        public void Evaluate(Evaluation e, bool MultiThread = true) => this.Evaluate(e, 0, MultiThread);
 
-        public override void Evaluate(Evaluation e, bool MultiThread = true)
+        public override void Evaluate(Evaluation e, long routeKey, bool MultiThread = true)
         {
             if (e is null)
             {
@@ -118,14 +113,14 @@ namespace Penguin.Analysis
             {
                 Parallel.ForEach(GetChildren(), (n) =>
                 {
-                    n.Evaluate(e, MultiThread);
+                    n.Evaluate(e, 0, MultiThread);
                 });
             }
             else
             {
                 foreach (INode n in GetChildren())
                 {
-                    n.Evaluate(e, MultiThread);
+                    n.Evaluate(e, 0, MultiThread);
                 }
             }
         }

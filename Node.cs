@@ -57,9 +57,7 @@ namespace Penguin.Analysis
             // GC.SuppressFinalize(this);
         }
 
-
-
-        public virtual void Evaluate(Evaluation e, bool MultiThread = true)
+        public virtual void Evaluate(Evaluation e, long routeKey, bool MultiThread = true)
         {
             if (e is null)
             {
@@ -72,13 +70,15 @@ namespace Penguin.Analysis
                 {
                     if (child.Evaluate(e.DataRow))
                     {
-                        child.Evaluate(e, MultiThread);
+                        child.Evaluate(e, routeKey, MultiThread);
                     }
                 }
             }
             else
             {
-                e.MatchRoute(this);
+                routeKey |= (1 << this.Header);
+
+                e.MatchRoute(this, routeKey);
 
                 if (ChildCount > 0)
                 {
@@ -86,7 +86,7 @@ namespace Penguin.Analysis
 
                     if (Next != null)
                     {
-                        Next.Evaluate(e);
+                        Next.Evaluate(e, routeKey);
                     }
                 }
             }
