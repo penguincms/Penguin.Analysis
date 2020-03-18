@@ -252,7 +252,7 @@ namespace Penguin.Analysis
 
             Console.WriteLine($"Building decision tree", 0);
 
-            long RootChildListOffset = DiskNode.HEADER_BYTES + DiskNode.NODE_SIZE;
+            long RootChildListOffset = DiskNode.HEADER_BYTES + DiskNode.NODE_SIZE + 4; //4 byte child list size
 
             outputStream.Seek(DiskNode.HEADER_BYTES + 12);
 
@@ -390,7 +390,7 @@ namespace Penguin.Analysis
                 lock (offsetLock)
                 {
                     memCache = new MemoryNodeFileStream(CurrentNodeOffset);
-                    CurrentNodeOffset += thisRoot.GetLength();
+                    CurrentNodeOffset += thisRoot.GetLength(2); //not real root, ushort child list
                     flushCommands.Enqueue(memCache);
                 }
 
@@ -414,7 +414,7 @@ namespace Penguin.Analysis
 
             outputStream.Seek(RootChildListOffset);
 
-            byte[] v = new byte[] { 0, 0, 0, 0 };
+            byte[] v = new byte[] { 0, 0 };
 
             foreach (long l in RootOffsets.Select(n => n.Offset))
             {
@@ -435,7 +435,23 @@ namespace Penguin.Analysis
                 }
             }
 
-            this.Result.RootNode = new DiskNode(outputStream, DiskNode.HEADER_BYTES);
+            try
+            {
+                this.Result.RootNode = new DiskNode(outputStream, DiskNode.HEADER_BYTES);
+            }
+            catch (Exception ex)
+            {
+                if (Debugger.IsAttached)
+                {
+                    Debug.WriteLine(ex.Message);
+                    Debug.WriteLine(ex.StackTrace);
+                    Debugger.Break();
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
 
         public string GetNodeName(INode toCheck)
@@ -576,7 +592,6 @@ namespace Penguin.Analysis
             {
                 return;
             }
-
 
             static void Log(string toLog)
             {

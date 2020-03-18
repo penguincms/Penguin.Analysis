@@ -39,12 +39,12 @@ namespace Penguin.Analysis
         public override sbyte Header => header;
 
         public bool LastNode { get; set; }
+        public int Matched => this[MatchResult.Route] + this[MatchResult.Both];
         public override IEnumerable<INode> Next => next;
         public override INode ParentNode => parentNode;
         public override ushort Value => value;
         internal sbyte header { get; set; }
         internal MemoryNode[] next { get; set; }
-        public int Matched => this[MatchResult.Route] + this[MatchResult.Both];
 
         #endregion Properties
 
@@ -75,13 +75,95 @@ namespace Penguin.Analysis
                 this.LastNode = true;
             }
         }
+
+        public void AddNext(MemoryNode next, int i)
+        {
+            if (next is null)
+            {
+                throw new ArgumentNullException(nameof(next));
+            }
+
+            this.next[i] = next;
+            next.parentNode = this;
+        }
+
+        public void CheckValidity()
+        {
+            if (!LastNode && (next is null || !next.Any(n => n != null)))
+            {
+                parentNode?.RemoveNode(this);
+            }
+        }
+
+        public long GetLength(byte childListSize)
+        {
+            long length = DiskNode.NODE_SIZE + childListSize;
+
+            if (!(next is null))
+            {
+                foreach (MemoryNode cnode in next)
+                {
+                    length += DiskNode.NEXT_SIZE;
+                    length += cnode?.GetLength(2) ?? 0;
+                }
+            }
+
+            return length;
+        }
+
+        public void RemoveNode(MemoryNode n)
+        {
+            for (int i = 0; i < this.next.Length; i++)
+            {
+                if (this.next[i] == n)
+                {
+                    this.next[i] = null;
+                    break;
+                }
+            }
+
+            this.CheckValidity();
+        }
+
+        public void TrimNext(DataSourceBuilder sourceBuilder)
+        {
+            if (sourceBuilder is null)
+            {
+                throw new ArgumentNullException(nameof(sourceBuilder));
+            }
+
+            if (this.ChildHeader < 0)
+            {
+                throw new Exception();
+            }
+
+            foreach (TypelessDataRow row in MatchingRows)
+            {
+                MemoryNode matchNext = next[row[ChildHeader]];
+
+                matchNext?.MatchRow(row);
+            }
+
+            for (int i = 0; i < next.Length; i++)
+            {
+                if (next[i].Matched < sourceBuilder.Settings.Results.MinimumHits)
+                {
+                    sourceBuilder.Settings.TrimmedNode?.Invoke(next[i]);
+
+                    this.next[i] = null;
+                }
+            }
+        }
+
         internal SerializationResults Serialize(INodeFileStream lockedNodeFileStream, long ParentOffset = 0)
         {
             SerializationResults results = new SerializationResults(lockedNodeFileStream, this, ParentOffset);
             long thisOffset = results.Single().Offset;
             //parent 0 - 8
 
-            byte[] toWrite = new byte[DiskNode.NODE_SIZE];
+            byte childListSize = (byte)(ParentOffset == 0 ? 4 : 2);
+
+            byte[] toWrite = new byte[DiskNode.NODE_SIZE + childListSize];
 
             BitConverter.GetBytes(ParentOffset).CopyTo(toWrite, 0);
 
@@ -101,20 +183,26 @@ namespace Penguin.Analysis
 
             int nCount = ChildCount;
 
-            if (ParentOffset == 0)
+            byte[] childBytes;
+
+            if (childListSize == 4)
             {
-                BitConverter.GetBytes(nCount).CopyTo(toWrite, toWrite.Length - 4);
-            } else
+                childBytes = BitConverter.GetBytes(nCount);
+            }
+            else
             {
-                if(nCount > ushort.MaxValue)
+                if (nCount > ushort.MaxValue)
                 {
                     throw new Exception($"Cant not exceed {ushort.MaxValue} children on non-root node");
-                } else
+                }
+                else
                 {
                     ushort usCount = (ushort)nCount;
-                    BitConverter.GetBytes(usCount).CopyTo(toWrite, toWrite.Length - 2);
+                    childBytes = BitConverter.GetBytes(usCount);
                 }
             }
+
+            childBytes.CopyTo(toWrite, DiskNode.NODE_SIZE);
 
             lockedNodeFileStream.Write(toWrite);
 
@@ -164,84 +252,6 @@ namespace Penguin.Analysis
             }
 
             return results;
-        }
-        public void AddNext(MemoryNode next, int i)
-        {
-            if (next is null)
-            {
-                throw new ArgumentNullException(nameof(next));
-            }
-
-            this.next[i] = next;
-            next.parentNode = this;
-        }
-
-        public void CheckValidity()
-        {
-            if (!LastNode && (next is null || !next.Any(n => n != null)))
-            {
-                parentNode?.RemoveNode(this);
-            }
-        }
-
-        public long GetLength()
-        {
-            long length = DiskNode.NODE_SIZE;
-
-            if (!(next is null))
-            {
-                foreach (MemoryNode cnode in next)
-                {
-                    length += DiskNode.NEXT_SIZE;
-                    length += cnode?.GetLength() ?? 0;
-                }
-            }
-
-            return length;
-        }
-
-        public void RemoveNode(MemoryNode n)
-        {
-            for (int i = 0; i < this.next.Length; i++)
-            {
-                if (this.next[i] == n)
-                {
-                    this.next[i] = null;
-                    break;
-                }
-            }
-
-            this.CheckValidity();
-        }
-
-        public void TrimNext(DataSourceBuilder sourceBuilder)
-        {
-            if (sourceBuilder is null)
-            {
-                throw new ArgumentNullException(nameof(sourceBuilder));
-            }
-
-            if (this.ChildHeader < 0)
-            {
-                throw new Exception();
-            }
-
-            foreach (TypelessDataRow row in MatchingRows)
-            {
-                MemoryNode matchNext = next[row[ChildHeader]];
-
-                matchNext?.MatchRow(row);
-            }
-
-            for (int i = 0; i < next.Length; i++)
-            {
-                if (next[i].Matched < sourceBuilder.Settings.Results.MinimumHits)
-                {
-                    sourceBuilder.Settings.TrimmedNode?.Invoke(next[i]);
-
-                    this.next[i] = null;
-                }
-            }
         }
 
         //public bool AddNext(DataSourceBuilder sourceBuilder, MemoryNode next, int i, bool trim = true)
@@ -327,12 +337,7 @@ namespace Penguin.Analysis
                 return;
             }
 
-            MatchResult pool = MatchResult.Route;
-
-            if (dataRow.MatchesOutput)
-            {
-                pool |= MatchResult.Output;
-            }
+            MatchResult pool = dataRow.MatchesOutput ? MatchResult.Both : MatchResult.Route;
 
             MatchingRows.Add(dataRow);
 

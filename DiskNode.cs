@@ -27,25 +27,25 @@ namespace Penguin.Analysis
         private long? key;
 
         private ushort[] results;
-        public override int ChildCount {
+
+        public override int ChildCount
+        {
             get
             {
-                switch(this.Offset)
+                switch (this.Offset)
                 {
                     case DiskNode.HEADER_BYTES:
-                       return this.BackingData.GetInt(DiskNode.NODE_SIZE - 4); 
-                    default:                       
-                       return this.BackingData.GetShort(DiskNode.NODE_SIZE - 2);
-                        
+                        return this.BackingData.GetInt(DiskNode.NODE_SIZE);
+
+                    default:
+                        return this.BackingData.GetShort(DiskNode.NODE_SIZE);
                 }
-                
             }
         }
 
         public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[15]);
 
         public OffsetValue[] ChildOffsets { get; set; }
-
 
         public override sbyte Header => unchecked((sbyte)this.BackingData[12]);
 
@@ -94,7 +94,7 @@ namespace Penguin.Analysis
 
             for (int i = 0; i < this.ChildOffsets.Length; i++)
             {
-                int oset = NODE_SIZE + (i * NEXT_SIZE);
+                int oset = NODE_SIZE + (i * NEXT_SIZE) + (offset == 16 ? 4 : 2);
 
                 this.ChildOffsets[i] = new OffsetValue()
                 {

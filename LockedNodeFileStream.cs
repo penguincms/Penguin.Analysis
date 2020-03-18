@@ -67,7 +67,7 @@ namespace Penguin.Analysis
 
         public byte[] ReadBlock(long offset)
         {
-            byte[] bByte = new byte[DiskNode.NODE_SIZE];
+            byte[] bByte;
 
             FileStream sourceStream;
             StreamLock sl = default;
@@ -91,18 +91,20 @@ namespace Penguin.Analysis
 
             sourceStream.Seek(offset, SeekOrigin.Begin);
 
-            sourceStream.Read(bByte, 0, DiskNode.NODE_SIZE);
-
-
             int childCount;
 
-            switch(offset)
+            switch (offset)
             {
                 case DiskNode.HEADER_BYTES:
-                    childCount = bByte.GetInt(DiskNode.NODE_SIZE - 4);
+                    bByte = new byte[DiskNode.NODE_SIZE + 4];
+                    sourceStream.Read(bByte, 0, bByte.Length);
+                    childCount = bByte.GetInt(DiskNode.NODE_SIZE);
                     break;
+
                 default:
-                    childCount = bByte.GetShort(DiskNode.NODE_SIZE - 2);
+                    bByte = new byte[DiskNode.NODE_SIZE + 2];
+                    sourceStream.Read(bByte, 0, bByte.Length);
+                    childCount = bByte.GetShort(DiskNode.NODE_SIZE);
                     break;
             }
 
@@ -129,7 +131,7 @@ namespace Penguin.Analysis
 
             bByte.CopyTo(toReturn, 0);
 
-            cByte.CopyTo(toReturn, DiskNode.NODE_SIZE);
+            cByte.CopyTo(toReturn, DiskNode.NODE_SIZE + (offset == DiskNode.HEADER_BYTES ? 4 : 2));
 
             return toReturn;
         }
@@ -186,10 +188,12 @@ namespace Penguin.Analysis
         {
             this._backingStream.Write(BitConverter.GetBytes(v), 0, 4);
         }
+
         public void Write(ushort v)
         {
             this._backingStream.Write(BitConverter.GetBytes(v), 0, 2);
         }
+
         public void Write(byte v)
         {
             this._backingStream.WriteByte(v);
