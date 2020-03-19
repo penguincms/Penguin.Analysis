@@ -23,7 +23,7 @@ namespace Penguin.Analysis
             public StreamLock(FileStream source)
             {
                 this.LockObject = new object();
-                this.Stream = new FileStream(source.Name, FileMode.Open, FileAccess.Read, FileShare.Read);
+                this.Stream = new FileStream(source.Name, FileMode.Open, FileAccess.Read, FileShare.Read, 10000);
             }
 
             public void Dispose()
@@ -76,13 +76,15 @@ namespace Penguin.Analysis
             {
                 while (!Monitor.TryEnter((sl = StreamPool[StreamPointer++ % StreamPool.Length]).LockObject))
                 {
-                    if (StreamPointer >= StreamPool.Length)
-                    {
-                        StreamPointer = 0;
-                    }
-                }
 
+                }
+                if (StreamPointer >= StreamPool.Length)
+                {
+                    StreamPointer = 0;
+                }
                 sourceStream = sl.Stream;
+
+                //sourceStream = new FileStream(StreamPool[0].Stream.Name, FileMode.Open, FileAccess.Read, FileShare.Read);
             }
             else
             {
@@ -115,6 +117,11 @@ namespace Penguin.Analysis
                     Monitor.Exit(sl.LockObject);
                 }
 
+                //if (this.PoolStreams)
+                //{
+                //    sourceStream.Dispose();
+                //}
+
                 return bByte;
             }
 
@@ -132,6 +139,11 @@ namespace Penguin.Analysis
             bByte.CopyTo(toReturn, 0);
 
             cByte.CopyTo(toReturn, DiskNode.NODE_SIZE + (offset == DiskNode.HEADER_BYTES ? 4 : 2));
+
+            //if (this.PoolStreams)
+            //{
+            //    sourceStream.Dispose();
+            //}
 
             return toReturn;
         }

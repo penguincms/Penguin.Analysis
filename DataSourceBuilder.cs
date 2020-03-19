@@ -106,7 +106,7 @@ namespace Penguin.Analysis
         public Task PreloadTask { get; private set; }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "<Pending>")]
-        public static DataSourceBuilder Deserialize(string FilePath, MemoryManagementStyle memoryManagementStyle = MemoryManagementStyle.MemoryFlush, JsonSerializerSettings jsonSerializerSettings = null)
+        public static DataSourceBuilder Deserialize(string FilePath, MemoryManagementStyle memoryManagementStyle = MemoryManagementStyle.MemoryFlush, int maxCacheCount = 10_000_000, JsonSerializerSettings jsonSerializerSettings = null)
         {
             DiskNode._backingStream = null;
 
@@ -118,6 +118,9 @@ namespace Penguin.Analysis
             {
                 DiskNode.CacheNodes = true;
             }
+
+            DiskNode.MaxCacheCount = maxCacheCount;
+
 
             FileStream fstream = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             LockedNodeFileStream stream = new LockedNodeFileStream(fstream);
@@ -151,6 +154,7 @@ namespace Penguin.Analysis
             OptimizedRootNode gNode = new OptimizedRootNode(virtualRoot);
 
             toReturn.Result.RootNode = gNode;
+            toReturn.Settings.MaxCacheCount = maxCacheCount;
 
             if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
             {
@@ -632,7 +636,7 @@ namespace Penguin.Analysis
 
                 if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
                 {
-                    while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                    while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory && DiskNode.CurrentCacheCount < DiskNode.MaxCacheCount)
                     {
                         Log($"Found Free Memory. Filling...");
 
@@ -653,6 +657,11 @@ namespace Penguin.Analysis
                             stream.Read(thisNodeBytes, 0, thisNodeBytes.Length);
 
                             DiskNode _ = DiskNode.LoadNode(DiskNode._backingStream, thisNodeBytes.GetLong(0), true);
+
+                            if(DiskNode.CurrentCacheCount >= DiskNode.MaxCacheCount)
+                            {
+                                break;
+                            }
                         }
 
                         freeMem = SystemInterop.Memory.Status.ullAvailPhys;
@@ -712,7 +721,10 @@ namespace Penguin.Analysis
 
                             if (DiskNode.MemoryManaged.TryGetValue(offset, out DiskNode dn))
                             {
-                                DiskNode.MemoryManaged.Remove(offset);
+                                if (DiskNode.MemoryManaged.Remove(offset))
+                                {
+                                    DiskNode.CurrentCacheCount--;
+                                }
                             }
 
                             if (stream.Position >= stream.Length || stream.Position >= oldPost)

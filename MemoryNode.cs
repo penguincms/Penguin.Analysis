@@ -244,7 +244,9 @@ namespace Penguin.Analysis
 
                 long lastOffset = lockedNodeFileStream.Offset;
 
-                lockedNodeFileStream.Seek(ChildListOffset);
+                lockedNodeFileStream.Seek(ChildListOffset - 8);
+
+                lockedNodeFileStream.Write(lastOffset);
 
                 lockedNodeFileStream.Write(nextOffsets);
 

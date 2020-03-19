@@ -15,16 +15,16 @@ namespace Penguin.Analysis
     {
         public static bool CacheNodes { get; set; } = true;
         internal static int MaxCacheCount = int.MaxValue;
-        internal static int CurrentCacheCount = 0;
+        internal static int CurrentCacheCount { get; set; } = 0;
 
         public const int HEADER_BYTES = 16;
         public const int NEXT_SIZE = 10;
-        public const int NODE_SIZE = 16;
+        public const int NODE_SIZE = 24;
         internal static LockedNodeFileStream _backingStream;
         internal static ConcurrentDictionary<long, DiskNode> Cache = new ConcurrentDictionary<long, DiskNode>();
 
         internal static Dictionary<long, DiskNode> MemoryManaged = new Dictionary<long, DiskNode>();
-
+        internal long NextOffset => this.BackingData.GetInt(NODE_SIZE - 8);
         internal long Offset;
         private static readonly object clearCacheLock = new object();
 
@@ -38,11 +38,11 @@ namespace Penguin.Analysis
             {
                 switch (this.Offset)
                 {
-                    case DiskNode.HEADER_BYTES:
-                        return this.BackingData.GetInt(DiskNode.NODE_SIZE);
+                    case HEADER_BYTES:
+                        return this.BackingData.GetInt(NODE_SIZE);
 
                     default:
-                        return this.BackingData.GetShort(DiskNode.NODE_SIZE);
+                        return this.BackingData.GetShort(NODE_SIZE);
                 }
             }
         }
@@ -120,11 +120,15 @@ namespace Penguin.Analysis
 
                 Cache.Clear();
 
+                CurrentCacheCount -= CachedNodes.Count;
+
                 foreach (DiskNode n in CachedNodes)
                 {
-                    if (n.Header == -1)
+                    if (n.Header == -1 && Cache.TryAdd(n.Offset, n))
                     {
-                        Cache.TryAdd(n.Offset, n);
+
+                        CurrentCacheCount++;
+                        
                     }
                 }
 
@@ -135,7 +139,7 @@ namespace Penguin.Analysis
         }
 
 
-        private static Dictionary<long, DiskNode> RootNodes = new Dictionary<long, DiskNode>();
+        private static readonly Dictionary<long, DiskNode> RootNodes = new Dictionary<long, DiskNode>();
         private static DiskNode RootNode;
         private static HashSet<long> SmallCache = new HashSet<long>();
 
@@ -182,9 +186,10 @@ namespace Penguin.Analysis
             {
                 return dn;
             }
-            else if (memoryManaged)
+            else if (memoryManaged && CurrentCacheCount < MaxCacheCount)
             {
                 dn = new DiskNode(_backingStream, offset);
+                CurrentCacheCount++;
                 MemoryManaged.Add(offset, dn);
                 return dn;
             }
@@ -192,10 +197,14 @@ namespace Penguin.Analysis
             if (!Cache.TryGetValue(offset, out DiskNode toReturn))
             {
                 toReturn = new DiskNode(backingStream, offset);
-                Cache.TryAdd(offset, toReturn);
+                
+                if (CurrentCacheCount < MaxCacheCount && Cache.TryAdd(offset, toReturn))
+                {
+                    CurrentCacheCount++;
+                }
             }
 
-            return toReturn;
+            return toReturn ?? new DiskNode(_backingStream, offset);
         }
 
         public override INode NextAt(int index) => LoadNode(_backingStream, this.ChildOffsets[index].Offset);
