@@ -12,6 +12,7 @@ namespace Penguin.Analysis
         private static StreamLock[] StreamPool;
         private readonly bool PoolStreams;
         private FileStream _backingStream;
+        public string FilePath => this._backingStream.Name;
         public long Offset => this._backingStream.Position;
 
         private struct StreamLock : IDisposable
@@ -76,7 +77,6 @@ namespace Penguin.Analysis
             {
                 while (!Monitor.TryEnter((sl = StreamPool[StreamPointer++ % StreamPool.Length]).LockObject))
                 {
-
                 }
                 if (StreamPointer >= StreamPool.Length)
                 {

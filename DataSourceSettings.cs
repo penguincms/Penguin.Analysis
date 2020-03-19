@@ -26,10 +26,13 @@ namespace Penguin.Analysis
         [JsonIgnore]
         public Action<INode> TrimmedNode = null;
 
+        public bool CacheNodes { get; set; } = true;
+        public int MaxCacheCount { get; set; } = 1_000_000;
         public ulong MinFreeMemory { get; set; } = 1_000_000_000;
 
         [JsonIgnore]
         public Action<NodeSetGraphProgress> NodeEnumProgress { get; set; }
+
         public int NodeFlushDepth { get; set; } = 0;
 
         /// <summary>
@@ -41,11 +44,9 @@ namespace Penguin.Analysis
         [JsonIgnore]
         public Action<DataTable> PostTransform { get; set; }
 
-        public ulong RangeFreeMemory { get; set; } = 500_000_000;
         public int PreloadChunkSize { get; set; } = 15000;
         public int PreloadTimeoutMs { get; set; } = 5000;
-        public int MaxCacheCount { get; set; } = 1_000_000;
-        public bool CacheNodes { get; set; } = true;
+        public ulong RangeFreeMemory { get; set; } = 500_000_000;
 
         #region Classes
 
@@ -61,14 +62,14 @@ namespace Penguin.Analysis
             public bool MatchOnly { get; set; } = false;
 
             /// <summary>
-            /// Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
-            /// </summary>
-            public float MinumumScore { get; set; } = .1f;
-
-            /// <summary>
             /// The minimum total times a route must be matched to be considered
             /// </summary>
             public int MinimumHits { get; set; } = 5;
+
+            /// <summary>
+            /// Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
+            /// </summary>
+            public float MinumumScore { get; set; } = .1f;
 
             #endregion Properties
         }

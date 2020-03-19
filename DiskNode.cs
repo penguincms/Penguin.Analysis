@@ -13,24 +13,22 @@ namespace Penguin.Analysis
     [JsonObject(MemberSerialization.OptIn)]
     public class DiskNode : Node
     {
-        public static bool CacheNodes { get; set; } = true;
-        internal static int MaxCacheCount = int.MaxValue;
-        internal static int CurrentCacheCount { get; set; } = 0;
-
         public const int HEADER_BYTES = 16;
         public const int NEXT_SIZE = 10;
         public const int NODE_SIZE = 24;
         internal static LockedNodeFileStream _backingStream;
         internal static ConcurrentDictionary<long, DiskNode> Cache = new ConcurrentDictionary<long, DiskNode>();
-
+        internal static int MaxCacheCount = int.MaxValue;
         internal static Dictionary<long, DiskNode> MemoryManaged = new Dictionary<long, DiskNode>();
-        internal long NextOffset => this.BackingData.GetInt(NODE_SIZE - 8);
         internal long Offset;
         private static readonly object clearCacheLock = new object();
-
+        private static readonly Dictionary<long, DiskNode> RootNodes = new Dictionary<long, DiskNode>();
+        private static DiskNode RootNode;
+        private static HashSet<long> SmallCache = new HashSet<long>();
+        private bool BackingDataSet = false;
         private long? key;
-
         private ushort[] results;
+        public static bool CacheNodes { get; set; } = true;
 
         public override int ChildCount
         {
@@ -39,19 +37,17 @@ namespace Penguin.Analysis
                 switch (this.Offset)
                 {
                     case HEADER_BYTES:
-                        return this.BackingData.GetInt(NODE_SIZE);
+                        return this.BackingData.GetInt((NODE_SIZE + BackingDataOffset));
 
                     default:
-                        return this.BackingData.GetShort(NODE_SIZE);
+                        return this.BackingData.GetShort((NODE_SIZE + BackingDataOffset));
                 }
             }
         }
 
-        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[15]);
-
+        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[15 + BackingDataOffset]);
         public OffsetValue[] ChildOffsets { get; set; }
-
-        public override sbyte Header => unchecked((sbyte)this.BackingData[12]);
+        public override sbyte Header => unchecked((sbyte)this.BackingData[12 + BackingDataOffset]);
 
         public override long Key
         {
@@ -65,7 +61,18 @@ namespace Penguin.Analysis
             }
         }
 
-        public override IEnumerable<INode> Next => this.ChildOffsets.Select(o => LoadNode(_backingStream, o.Offset));
+        public override IEnumerable<INode> Next
+        {
+            get
+            {
+                foreach (OffsetValue o in this.ChildOffsets)
+                {
+                    DiskNode dn = LoadNode(_backingStream, o.Offset);
+
+                    yield return dn;
+                }
+            }
+        }
 
         public override INode ParentNode => LoadNode(_backingStream, this.ParentOffset);
 
@@ -75,21 +82,48 @@ namespace Penguin.Analysis
             {
                 if (this.results is null)
                 {
-                    this.results = this.BackingData.GetShorts(8, 2).Concat(new ushort[] { 0, 0 }).ToArray();
+                    this.results = this.BackingData.GetShorts(8 + BackingDataOffset, 2).Concat(new ushort[] { 0, 0 }).ToArray();
                 }
 
                 return this.results;
             }
         }
 
-        public override ushort Value => this.BackingData.GetShort(13);
-
+        public override ushort Value => this.BackingData.GetShort(13 + BackingDataOffset);
+        internal static int CurrentCacheCount { get; set; } = 0;
+        internal long NextOffset => this.BackingData.GetLong((NODE_SIZE + BackingDataOffset) - 8);
+        internal long ParentOffset => this.BackingData.GetLong(BackingDataOffset);
         private byte[] BackingData { get; set; }
+        private long BackingDataOffset { get; set; } = 0;
 
-        internal long ParentOffset => this.BackingData.GetLong(0);
+        public DiskNode(byte[] backingData, long backingDataOffset, long offset)
+        {
+            BackingData = backingData;
+            BackingDataOffset = backingDataOffset;
+            Offset = offset;
+            BackingDataSet = true;
+
+            this.ChildOffsets = new OffsetValue[this.ChildCount];
+
+            for (int i = 0; i < this.ChildOffsets.Length; i++)
+            {
+                int oset = NODE_SIZE + (i * NEXT_SIZE) + (offset == 16 ? 4 : 2);
+
+                this.ChildOffsets[i] = new OffsetValue()
+                {
+                    Offset = this.BackingData.GetLong(oset + BackingDataOffset),
+                    Value = this.BackingData.GetShort(oset + 8 + BackingDataOffset)
+                };
+            }
+        }
 
         public DiskNode(LockedNodeFileStream fileStream, long offset)
         {
+            if (fileStream is null)
+            {
+                throw new ArgumentNullException(nameof(fileStream));
+            }
+
             this.Offset = offset;
 
             this.BackingData = fileStream.ReadBlock(offset);
@@ -126,9 +160,7 @@ namespace Penguin.Analysis
                 {
                     if (n.Header == -1 && Cache.TryAdd(n.Offset, n))
                     {
-
                         CurrentCacheCount++;
-                        
                     }
                 }
 
@@ -137,11 +169,6 @@ namespace Penguin.Analysis
 
             return CacheSize;
         }
-
-
-        private static readonly Dictionary<long, DiskNode> RootNodes = new Dictionary<long, DiskNode>();
-        private static DiskNode RootNode;
-        private static HashSet<long> SmallCache = new HashSet<long>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static DiskNode LoadNode(LockedNodeFileStream backingStream, long offset, bool memoryManaged = false)
@@ -156,7 +183,7 @@ namespace Penguin.Analysis
                 if (RootNode is null)
                 {
                     RootNode = new DiskNode(backingStream, DiskNode.HEADER_BYTES);
-                    foreach(long l in RootNode.ChildOffsets.Select(o => o.Offset))
+                    foreach (long l in RootNode.ChildOffsets.Select(o => o.Offset))
                     {
                         SmallCache.Add(l);
                     }
@@ -167,20 +194,18 @@ namespace Penguin.Analysis
                     return RootNode;
                 }
 
-
                 if (!RootNodes.TryGetValue(offset, out DiskNode thisNode))
                 {
                     thisNode = new DiskNode(backingStream, offset);
 
                     if (SmallCache.Contains(offset) || SmallCache.Contains(thisNode.ParentOffset))
-                    {                      
+                    {
                         RootNodes.Add(offset, thisNode);
                     }
-                } 
+                }
 
-                return thisNode;               
+                return thisNode;
             }
-            
 
             if (MemoryManaged.TryGetValue(offset, out DiskNode dn))
             {
@@ -197,7 +222,7 @@ namespace Penguin.Analysis
             if (!Cache.TryGetValue(offset, out DiskNode toReturn))
             {
                 toReturn = new DiskNode(backingStream, offset);
-                
+
                 if (CurrentCacheCount < MaxCacheCount && Cache.TryAdd(offset, toReturn))
                 {
                     CurrentCacheCount++;
@@ -207,7 +232,17 @@ namespace Penguin.Analysis
             return toReturn ?? new DiskNode(_backingStream, offset);
         }
 
-        public override INode NextAt(int index) => LoadNode(_backingStream, this.ChildOffsets[index].Offset);
+        public override INode NextAt(int index)
+        {
+            if (!BackingDataSet)
+            {
+                return LoadNode(_backingStream, this.ChildOffsets[index].Offset);
+            }
+            else
+            {
+                return new DiskNode(BackingData, this.ChildOffsets[index].Offset - this.Offset, this.ChildOffsets[index].Offset);
+            }
+        }
 
         public override void Preload(int depth)
         {
@@ -218,6 +253,13 @@ namespace Penguin.Analysis
                     n.Preload(depth - 1);
                 }
             }
+        }
+
+        public void SetBackingData(byte[] backingData)
+        {
+            BackingData = backingData;
+            BackingDataOffset = Offset;
+            BackingDataSet = true;
         }
 
         internal static void DisposeAll()
