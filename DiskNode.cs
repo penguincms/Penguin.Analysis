@@ -37,17 +37,17 @@ namespace Penguin.Analysis
                 switch (this.Offset)
                 {
                     case HEADER_BYTES:
-                        return this.BackingData.GetInt((NODE_SIZE + BackingDataOffset));
+                        return this.BackingData.GetInt((NODE_SIZE + LookupOffset));
 
                     default:
-                        return this.BackingData.GetShort((NODE_SIZE + BackingDataOffset));
+                        return this.BackingData.GetShort((NODE_SIZE + LookupOffset));
                 }
             }
         }
 
-        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[15 + BackingDataOffset]);
+        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[15 + LookupOffset]);
         public OffsetValue[] ChildOffsets { get; set; }
-        public override sbyte Header => unchecked((sbyte)this.BackingData[12 + BackingDataOffset]);
+        public override sbyte Header => unchecked((sbyte)this.BackingData[12 + LookupOffset]);
 
         public override long Key
         {
@@ -82,19 +82,20 @@ namespace Penguin.Analysis
             {
                 if (this.results is null)
                 {
-                    this.results = this.BackingData.GetShorts(8 + BackingDataOffset, 2).Concat(new ushort[] { 0, 0 }).ToArray();
+                    this.results = this.BackingData.GetShorts(8 + LookupOffset, 2).Concat(new ushort[] { 0, 0 }).ToArray();
                 }
 
                 return this.results;
             }
         }
 
-        public override ushort Value => this.BackingData.GetShort(13 + BackingDataOffset);
+        public override ushort Value => this.BackingData.GetShort(13 + LookupOffset);
         internal static int CurrentCacheCount { get; set; } = 0;
-        internal long NextOffset => this.BackingData.GetLong((NODE_SIZE + BackingDataOffset) - 8);
-        internal long ParentOffset => this.BackingData.GetLong(BackingDataOffset);
+        internal long NextOffset => this.BackingData.GetLong((NODE_SIZE + LookupOffset) - 8);
+        internal long ParentOffset => this.BackingData.GetLong(LookupOffset);
         private byte[] BackingData { get; set; }
         private long BackingDataOffset { get; set; } = 0;
+        private long LookupOffset => this.Offset - this.BackingDataOffset;
 
         public DiskNode(byte[] backingData, long backingDataOffset, long offset)
         {
@@ -102,19 +103,6 @@ namespace Penguin.Analysis
             BackingDataOffset = backingDataOffset;
             Offset = offset;
             BackingDataSet = true;
-
-            this.ChildOffsets = new OffsetValue[this.ChildCount];
-
-            for (int i = 0; i < this.ChildOffsets.Length; i++)
-            {
-                int oset = NODE_SIZE + (i * NEXT_SIZE) + (offset == 16 ? 4 : 2);
-
-                this.ChildOffsets[i] = new OffsetValue()
-                {
-                    Offset = this.BackingData.GetLong(oset + BackingDataOffset),
-                    Value = this.BackingData.GetShort(oset + 8 + BackingDataOffset)
-                };
-            }
         }
 
         public DiskNode(LockedNodeFileStream fileStream, long offset)
@@ -125,6 +113,7 @@ namespace Penguin.Analysis
             }
 
             this.Offset = offset;
+            this.BackingDataOffset = offset;
 
             this.BackingData = fileStream.ReadBlock(offset);
 
@@ -236,11 +225,22 @@ namespace Penguin.Analysis
         {
             if (!BackingDataSet)
             {
+                if (this.ChildOffsets[index].Offset == 0)
+                {
+                    return null;
+                }
                 return LoadNode(_backingStream, this.ChildOffsets[index].Offset);
             }
             else
             {
-                return new DiskNode(BackingData, this.ChildOffsets[index].Offset - this.Offset, this.ChildOffsets[index].Offset);
+                long coffset = this.BackingData.GetLong(NODE_SIZE + (index * NEXT_SIZE) + (this.Offset == 16 ? 4 : 2) + LookupOffset);
+
+                if (coffset == 0)
+                {
+                    return null;
+                }
+
+                return new DiskNode(BackingData, this.BackingDataOffset, coffset);
             }
         }
 
@@ -297,7 +297,7 @@ namespace Penguin.Analysis
         {
             if (!this.disposedValue)
             {
-                if (disposing)
+                if (disposing && !this.BackingDataSet)
                 {
                     try
                     {

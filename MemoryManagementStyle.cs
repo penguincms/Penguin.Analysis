@@ -9,6 +9,7 @@ namespace Penguin.Analysis
         Standard = 1,
         Preload = 2,
         MemoryFlush = 4,
+        Unmanaged = 8,
         PreloadAndFlush = Preload | MemoryFlush
     }
 }

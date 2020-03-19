@@ -96,48 +96,52 @@ namespace Penguin.Analysis
 
             string FilePath = DiskNode._backingStream.FilePath;
 
-            IEnumerable<DiskNode> GetChildren()
+            using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
             {
-                for (int header = 0; header < next.Length; header++)
+                IEnumerable<DiskNode> GetChildren()
                 {
-                    int value = e.DataRow[header];
-
-                    if (next[header].Length > value)
+                    for (int header = 0; header < next.Length; header++)
                     {
-                        foreach (DiskNode n in next[header][value])
+                        int value = e.DataRow[header];
+
+                        if (next[header].Length > value)
                         {
-                            yield return n;
+                            foreach (DiskNode n in next[header][value])
+                            {
+                                if (n.NextOffset != 0)
+                                {
+                                    byte[] backingData = new byte[n.NextOffset - n.Offset];
+
+                                    fs.Seek(n.Offset, SeekOrigin.Begin);
+
+                                    fs.Read(backingData, 0, backingData.Length);
+
+                                    yield return new DiskNode(backingData, n.Offset, n.Offset);
+                                }
+                                else
+                                {
+                                    yield return n;
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            void Evaluate(DiskNode n)
-            {
-                using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                void Evaluate(DiskNode n)
                 {
-                    byte[] backingData = new byte[n.NextOffset - n.Offset];
-
-                    fs.Seek(n.Offset, SeekOrigin.Begin);
-
-                    fs.Read(backingData, 0, backingData.Length);
-
-                    using (DiskNode nRoot = new DiskNode(backingData, 0, n.Offset))
-                    {
-                        nRoot.Evaluate(e, 0, MultiThread);
-                    }
+                    n.Evaluate(e, 0, MultiThread);
                 }
-            }
 
-            if (MultiThread)
-            {
-                Parallel.ForEach(GetChildren(), Evaluate);
-            }
-            else
-            {
-                foreach (DiskNode n in GetChildren())
+                if (MultiThread)
                 {
-                    Evaluate(n);
+                    Parallel.ForEach(GetChildren(), Evaluate);
+                }
+                else
+                {
+                    foreach (DiskNode n in GetChildren())
+                    {
+                        Evaluate(n);
+                    }
                 }
             }
         }

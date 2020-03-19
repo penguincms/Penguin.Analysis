@@ -106,11 +106,11 @@ namespace Penguin.Analysis
         public Task PreloadTask { get; private set; }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "<Pending>")]
-        public static DataSourceBuilder Deserialize(string FilePath, MemoryManagementStyle memoryManagementStyle = MemoryManagementStyle.MemoryFlush, int maxCacheCount = 10_000_000, JsonSerializerSettings jsonSerializerSettings = null)
+        public static DataSourceBuilder Deserialize(string FilePath, MemoryManagementStyle memoryManagementStyle = MemoryManagementStyle.Unmanaged, int maxCacheCount = 10_000_000, JsonSerializerSettings jsonSerializerSettings = null)
         {
             DiskNode._backingStream = null;
 
-            if (memoryManagementStyle == MemoryManagementStyle.NoCache)
+            if (memoryManagementStyle == MemoryManagementStyle.NoCache || memoryManagementStyle == MemoryManagementStyle.Unmanaged)
             {
                 DiskNode.CacheNodes = false;
             }
@@ -120,7 +120,6 @@ namespace Penguin.Analysis
             }
 
             DiskNode.MaxCacheCount = maxCacheCount;
-
 
             FileStream fstream = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             LockedNodeFileStream stream = new LockedNodeFileStream(fstream);
@@ -658,7 +657,7 @@ namespace Penguin.Analysis
 
                             DiskNode _ = DiskNode.LoadNode(DiskNode._backingStream, thisNodeBytes.GetLong(0), true);
 
-                            if(DiskNode.CurrentCacheCount >= DiskNode.MaxCacheCount)
+                            if (DiskNode.CurrentCacheCount >= DiskNode.MaxCacheCount)
                             {
                                 break;
                             }
