@@ -243,7 +243,7 @@ namespace Penguin.Analysis
 
                                             CachedBytes.TryAdd(dn.Offset, cachedBytes);
 
-                                            freeMem += (ulong)cachedBytes.Data.Length;
+                                            freeMem -= (ulong)cachedBytes.Data.Length;
                                         }
                                     }
                                 }
