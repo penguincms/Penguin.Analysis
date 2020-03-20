@@ -1,6 +1,7 @@
 ﻿using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -11,8 +12,14 @@ namespace Penguin.Analysis
 {
     public class OptimizedRootNode : Node
     {
+        public static int ExecutingEvaluations = 0;
+        private static ConcurrentQueue<Byte[]> ArrayPool = new ConcurrentQueue<byte[]>();
+        private static ConcurrentDictionary<long, ByteCache> CachedBytes = new ConcurrentDictionary<long, ByteCache>();
+
+        private static int LastMatchAmount = 0;
         private List<DiskNode>[][] next;
 
+        public static Task FlushTask { get; set; } = Task.CompletedTask;
         public override int ChildCount { get; }
 
         public override sbyte ChildHeader => -1;
@@ -44,12 +51,16 @@ namespace Penguin.Analysis
 
         public override ushort Value { get; } = 0;
 
-        public OptimizedRootNode(INode source)
+        private DataSourceSettings Settings { get; set; }
+
+        public OptimizedRootNode(INode source, DataSourceSettings settings)
         {
             if (source is null)
             {
                 throw new ArgumentNullException(nameof(source));
             }
+
+            Settings = settings;
 
             int MaxHeader = 0;
 
@@ -89,59 +100,203 @@ namespace Penguin.Analysis
 
         public override void Evaluate(Evaluation e, long routeKey, bool MultiThread = true)
         {
-            if (e is null)
-            {
-                throw new ArgumentNullException(nameof(e));
-            }
+            ExecutingEvaluations++;
 
-            string FilePath = DiskNode._backingStream.FilePath;
-
-            using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+            try
             {
-                IEnumerable<DiskNode> GetChildren()
+                if (e is null)
                 {
+                    throw new ArgumentNullException(nameof(e));
+                }
+
+                string FilePath = DiskNode._backingStream.FilePath;
+
+                object streamLock = new object();
+
+                using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+                {
+                    List<DiskNode> matchingNodes = new List<DiskNode>(LastMatchAmount);
+
                     for (int header = 0; header < next.Length; header++)
                     {
                         int value = e.DataRow[header];
 
                         if (next[header].Length > value)
                         {
-                            foreach (DiskNode n in next[header][value])
-                            {
-                                if (n.NextOffset != 0)
-                                {
-                                    byte[] backingData = new byte[n.NextOffset - n.Offset];
+                            matchingNodes.AddRange(next[header][value]);
+                        }
+                    }
 
+                    LastMatchAmount = Math.Max(LastMatchAmount, matchingNodes.Count);
+
+                    Parallel.ForEach(matchingNodes, (n) =>
+                    {
+                        if (n.NextOffset != 0)
+                        {
+                            long bLength = n.NextOffset - n.Offset;
+
+                            if (!ArrayPool.TryDequeue(out byte[] backingData) || backingData.Length < bLength)
+                            {
+                                backingData = new byte[bLength];
+                            }
+
+                            if (!CachedBytes.TryGetValue(n.Offset, out ByteCache cachedBytes))
+                            {
+                                cachedBytes = new ByteCache()
+                                {
+                                    Data = new byte[bLength]
+                                };
+
+                                lock (streamLock)
+                                {
                                     fs.Seek(n.Offset, SeekOrigin.Begin);
 
-                                    fs.Read(backingData, 0, backingData.Length);
-
-                                    yield return new DiskNode(backingData, n.Offset, n.Offset);
+                                    fs.Read(cachedBytes.Data, 0, (int)bLength);
                                 }
-                                else
+
+                                CachedBytes.TryAdd(n.Offset, cachedBytes);
+                            }
+
+                            cachedBytes.LastUse = DateTime.Now;
+
+                            cachedBytes.Data.CopyTo(backingData, 0);
+
+                            DiskNode nn = new DiskNode(backingData, n.Offset, n.Offset);
+
+                            nn.Evaluate(e, 0, MultiThread);
+                        }
+                        else
+                        {
+                            n.Evaluate(e, 0, MultiThread);
+                        }
+                    });
+                }
+            }
+            finally
+            {
+                ExecutingEvaluations--;
+                FlushMemory();
+            }
+        }
+
+        public async Task Preload(string FilePath)
+        {
+            try
+            {
+                using (LockedNodeFileStream ns = new LockedNodeFileStream(new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess)))
+                {
+                    using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+                    {
+                        using (FileStream fsn = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+                        {
+                            byte[] offsetBytes = new byte[DiskNode.HEADER_BYTES];
+
+                            fs.Read(offsetBytes, 0, offsetBytes.Length);
+
+                            long JsonOffset = offsetBytes.GetLong(0);
+                            long SortOffset = offsetBytes.GetLong(8);
+
+                            fs.Seek(SortOffset, SeekOrigin.Begin);
+
+                            ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                            while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                            {
+                                for (int i = 0; i < this.Settings.PreloadChunkSize / 2; i++)
                                 {
-                                    yield return n;
+                                    if (fs.Position >= JsonOffset)
+                                    {
+                                        return;
+                                    }
+
+                                    byte[] thisNodeBytes = new byte[8];
+
+                                    fs.Read(thisNodeBytes, 0, thisNodeBytes.Length);
+
+                                    long offset = thisNodeBytes.GetLong();
+
+                                    if (!CachedBytes.ContainsKey(offset))
+                                    {
+                                        DiskNode dn = new DiskNode(ns, offset);
+
+                                        if (dn.NextOffset != 0)
+                                        {
+                                            long bLength = dn.NextOffset - dn.Offset;
+
+                                            ByteCache cachedBytes = new ByteCache()
+                                            {
+                                                Data = new byte[bLength]
+                                            };
+
+                                            fsn.Seek(dn.Offset, SeekOrigin.Begin);
+
+                                            fsn.Read(cachedBytes.Data, 0, (int)bLength);
+
+                                            CachedBytes.TryAdd(dn.Offset, cachedBytes);
+
+                                            freeMem += (ulong)cachedBytes.Data.Length;
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-
-                void Evaluate(DiskNode n)
+            }
+            catch (Exception ex)
+            {
+                if (Debugger.IsAttached)
                 {
-                    n.Evaluate(e, 0, MultiThread);
+                    Debugger.Break();
                 }
+            }
+        }
 
-                if (MultiThread)
+        private void FlushMemory()
+        {
+            try
+            {
+                if (ExecutingEvaluations == 0 && (FlushTask is null || FlushTask.IsCompleted))
                 {
-                    Parallel.ForEach(GetChildren(), Evaluate);
+                    FlushTask = Task.Run(() =>
+                    {
+                        ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                        if (freeMem < Settings.MinFreeMemory)
+                        {
+                            List<KeyValuePair<long, ByteCache>> cachedBytes = CachedBytes.OrderBy(v => v.Value.LastUse).ToList();
+
+                            foreach (KeyValuePair<long, ByteCache> kvp in cachedBytes)
+                            {
+                                if (CachedBytes.TryRemove(kvp.Key, out _))
+                                {
+                                    freeMem -= (ulong)kvp.Value.Data.Length;
+                                }
+
+                                if (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                                {
+                                    break;
+                                }
+                            }
+
+                            cachedBytes.Clear();
+
+                            GC.Collect();
+
+                            Task.Delay(1000).Wait();
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Debugger.IsAttached)
+                {
+                    Debugger.Break();
                 }
                 else
                 {
-                    foreach (DiskNode n in GetChildren())
-                    {
-                        Evaluate(n);
-                    }
+                    throw;
                 }
             }
         }

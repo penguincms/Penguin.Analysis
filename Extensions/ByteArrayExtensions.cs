@@ -69,7 +69,7 @@ namespace Penguin.Analysis.Extensions
 
         [System.Security.SecuritySafeCritical]  // auto-generated
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe long GetLong(this byte[] value, long startIndex)
+        public static unsafe long GetLong(this byte[] value, long startIndex = 0)
         {
             fixed (byte* pbyte = &value[startIndex])
             {

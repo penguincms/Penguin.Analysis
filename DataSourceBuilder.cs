@@ -150,7 +150,7 @@ namespace Penguin.Analysis
 
             DiskNode virtualRoot = new DiskNode(stream, DiskNode.HEADER_BYTES);
 
-            OptimizedRootNode gNode = new OptimizedRootNode(virtualRoot);
+            OptimizedRootNode gNode = new OptimizedRootNode(virtualRoot, toReturn.Settings);
 
             toReturn.Result.RootNode = gNode;
             toReturn.Settings.MaxCacheCount = maxCacheCount;
@@ -161,7 +161,7 @@ namespace Penguin.Analysis
             }
             else
             {
-                toReturn.PreloadTask = Task.CompletedTask;
+                toReturn.PreloadTask = gNode.Preload(FilePath);
             }
 
             return toReturn;
@@ -303,7 +303,9 @@ namespace Penguin.Analysis
                         MemoryNodeFileStream command;
 
                         while (!flushCommands.TryDequeue(out command))
-                        { }
+                        {
+                        }
+
                         while (!command.Ready)
                         {
                             Thread.Sleep(50);
@@ -435,7 +437,6 @@ namespace Penguin.Analysis
             foreach (long l in RootOffsets.Select(n => n.Offset))
             {
                 outputStream.Write(l);
-                outputStream.Write(v);
             }
 
             outputStream.Seek(8);
@@ -596,8 +597,6 @@ namespace Penguin.Analysis
                 this.MemoryManagementTask.Start();
             }
         }
-
-        private int PreloadPointer = 0;
 
         public async void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
         {

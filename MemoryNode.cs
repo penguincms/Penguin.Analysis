@@ -225,16 +225,13 @@ namespace Penguin.Analysis
                     MemoryNode nextn = this.next[i];
 
                     long offset = 0;
-                    ushort value = ushort.MaxValue;
 
                     if (nextn != null)
                     {
                         offset = lockedNodeFileStream.Offset;
-                        value = nextn.Value;
                     }
-                    BitConverter.GetBytes(offset).CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE);
 
-                    BitConverter.GetBytes(value).CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE + 8);
+                    BitConverter.GetBytes(offset).CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE);
 
                     if (nextn != null)
                     {
