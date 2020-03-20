@@ -246,7 +246,14 @@ namespace Penguin.Analysis
                                             freeMem -= (ulong)cachedBytes.Data.Length;
                                         }
                                     }
+
+                                    if (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                                    {
+                                        return;
+                                    }
                                 }
+
+                                freeMem = SystemInterop.Memory.Status.ullAvailPhys;
                             }
                         }
                     }
