@@ -433,11 +433,10 @@ namespace Penguin.Analysis
 
             outputStream.Seek(RootChildListOffset);
 
-            byte[] v = new byte[] { 0, 0 };
 
             foreach (long l in RootOffsets.Select(n => n.Offset))
             {
-                outputStream.Write(l);
+                outputStream.Write(l.ToInt40Array());
             }
 
             outputStream.Seek(8);
@@ -449,7 +448,7 @@ namespace Penguin.Analysis
             {
                 if (nm.Offset != 0)
                 {
-                    outputStream.Write(nm.Offset);
+                    outputStream.Write(nm.Offset.ToInt40Array());
                 }
             }
 

@@ -23,8 +23,26 @@ namespace Penguin.Analysis.Extensions
                 throw new ArgumentNullException(nameof(target));
             }
 
-            if (target.next != null)
+            
+
+            if (target.next != null && target.next.Any())
             {
+                int lastGoodNode = 0;
+
+                for(int i = target.next.Length; i > 0; i--)
+                {
+                    if(target.next[i - 1] != null)
+                    {
+                        lastGoodNode = i;
+                        break;
+                    }
+                }
+
+                if(lastGoodNode != target.next.Length)
+                {
+                    target.next = target.next.Take(lastGoodNode).ToArray();
+                }
+
                 foreach (MemoryNode next in target.next)
                 {
                     if (next != null)

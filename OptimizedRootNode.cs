@@ -14,10 +14,10 @@ namespace Penguin.Analysis
     {
         public static int ExecutingEvaluations = 0;
         private static ConcurrentQueue<Byte[]> ArrayPool = new ConcurrentQueue<byte[]>();
-        private static ConcurrentDictionary<long, ByteCache> CachedBytes = new ConcurrentDictionary<long, ByteCache>();
+        private static ByteCache[] CachedBytes;
 
         private static int LastMatchAmount = 0;
-        private List<DiskNode>[][] next;
+        private List<INodeBlock>[][] next;
 
         public static Task FlushTask { get; set; } = Task.CompletedTask;
         public override int ChildCount { get; }
@@ -28,22 +28,7 @@ namespace Penguin.Analysis
 
         public override long Key { get; }
 
-        public override IEnumerable<INode> Next
-        {
-            get
-            {
-                for (int header = 0; header < next.Length; header++)
-                {
-                    for (int value = 0; value < next[header].Length; value++)
-                    {
-                        foreach (INode n in next[header][value])
-                        {
-                            yield return n;
-                        }
-                    }
-                }
-            }
-        }
+        public override IEnumerable<INode> Next => throw new NotImplementedException();
 
         public override INode ParentNode { get; }
 
@@ -73,7 +58,7 @@ namespace Penguin.Analysis
             }
 
             int[] MaxValues = new int[MaxHeader + 1];
-            next = new List<DiskNode>[MaxValues.Length][];
+            next = new List<INodeBlock>[MaxValues.Length][];
 
             foreach (INode n in Parents)
             {
@@ -82,23 +67,40 @@ namespace Penguin.Analysis
 
             for (int header = 0; header <= MaxHeader; header++)
             {
-                next[header] = new List<DiskNode>[MaxValues[header]];
+                next[header] = new List<INodeBlock>[MaxValues[header]];
 
                 for (int value = 0; value < MaxValues[header]; value++)
                 {
-                    next[header][value] = new List<DiskNode>();
+                    next[header][value] = new List<INodeBlock>();
                 }
             }
 
+            int cbCount = 0;
             foreach (DiskNode c in Children)
             {
-                next[c.Header][c.Value].Add(c);
+                if (c.NextOffset == 0)
+                {
+                    next[c.Header][c.Value].Add(c);
+                    NoCache.Add(c.Offset);
+                }
+                else
+                {
+                    next[c.Header][c.Value].Add(new NodeBlock() { NextOffset = c.NextOffset, Offset = c.Offset, Index = cbCount++ });
+                    c.Clear();
+                }
             }
+
+            CachedBytes = new ByteCache[cbCount];
+
+            DiskNode.FlushCache();
+
+            GC.Collect();
         }
+        HashSet<long> NoCache = new HashSet<long>();
 
         public static void Flush()
         {
-            CachedBytes.Clear();
+            CachedBytes = Array.Empty<ByteCache>();
             ArrayPool = new ConcurrentQueue<byte[]>();
             ExecutingEvaluations = 0;
             FlushTask = Task.CompletedTask;
@@ -124,7 +126,7 @@ namespace Penguin.Analysis
 
                 using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
                 {
-                    List<DiskNode> matchingNodes = new List<DiskNode>(LastMatchAmount);
+                    List<INodeBlock> matchingNodes = new List<INodeBlock>(LastMatchAmount);
 
                     for (int header = 0; header < next.Length; header++)
                     {
@@ -140,7 +142,11 @@ namespace Penguin.Analysis
 
                     Parallel.ForEach(matchingNodes, (n) =>
                     {
-                        if (n.NextOffset != 0)
+                        if (n is DiskNode dn)
+                        {
+                            dn.Evaluate(e, 0, MultiThread);
+                        }
+                        else if (n is NodeBlock nb)
                         {
                             long bLength = n.NextOffset - n.Offset;
 
@@ -149,7 +155,9 @@ namespace Penguin.Analysis
                                 backingData = new byte[bLength];
                             }
 
-                            if (!CachedBytes.TryGetValue(n.Offset, out ByteCache cachedBytes))
+                            ByteCache cachedBytes = CachedBytes[nb.Index];
+
+                            if (cachedBytes.Data is null)
                             {
                                 cachedBytes = new ByteCache()
                                 {
@@ -163,20 +171,16 @@ namespace Penguin.Analysis
                                     fs.Read(cachedBytes.Data, 0, (int)bLength);
                                 }
 
-                                CachedBytes.TryAdd(n.Offset, cachedBytes);
+                                CachedBytes[nb.Index] = cachedBytes;
                             }
 
-                            cachedBytes.LastUse = DateTime.Now;
+                            cachedBytes.SetLast();
 
                             cachedBytes.Data.CopyTo(backingData, 0);
 
                             DiskNode nn = new DiskNode(backingData, n.Offset, n.Offset);
 
                             nn.Evaluate(e, 0, MultiThread);
-                        }
-                        else
-                        {
-                            n.Evaluate(e, 0, MultiThread);
                         }
                     });
                 }
@@ -192,6 +196,21 @@ namespace Penguin.Analysis
         {
             try
             {
+                Dictionary<long, NodeBlock> nodeblocks = new Dictionary<long, NodeBlock>();
+
+                for (int header = 0; header < next.Length; header++)
+                {
+                    for (int value = 0; value < next[header].Length; value++)
+                    {
+                        foreach (INodeBlock inb in next[header][value])
+                        {
+                            if (inb is NodeBlock nb)
+                            {
+                                nodeblocks.Add(nb.Offset, nb);
+                            }
+                        }
+                    }
+                }
                 using (LockedNodeFileStream ns = new LockedNodeFileStream(new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess)))
                 {
                     using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
@@ -218,14 +237,19 @@ namespace Penguin.Analysis
                                         return;
                                     }
 
-                                    byte[] thisNodeBytes = new byte[8];
+                                    byte[] thisNodeBytes = new byte[5];
 
                                     fs.Read(thisNodeBytes, 0, thisNodeBytes.Length);
 
-                                    long offset = thisNodeBytes.GetLong();
+                                    long offset = thisNodeBytes.GetInt40();
 
-                                    if (!CachedBytes.ContainsKey(offset))
+                                    if (!NoCache.Contains(offset))
                                     {
+                                        if (!nodeblocks.TryGetValue(offset, out NodeBlock nb))
+                                        {
+                                            continue;
+                                        }
+
                                         DiskNode dn = new DiskNode(ns, offset);
 
                                         if (dn.NextOffset != 0)
@@ -241,13 +265,13 @@ namespace Penguin.Analysis
 
                                             fsn.Read(cachedBytes.Data, 0, (int)bLength);
 
-                                            CachedBytes.TryAdd(dn.Offset, cachedBytes);
+                                            CachedBytes[nb.Index] = cachedBytes;
 
                                             freeMem -= (ulong)cachedBytes.Data.Length;
                                         }
                                     }
 
-                                    if (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                                    if (freeMem < this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
                                     {
                                         return;
                                     }
@@ -270,6 +294,29 @@ namespace Penguin.Analysis
 
         private void FlushMemory()
         {
+            IEnumerable<(int Index, ByteCache byteCache)> CheckCache()
+            {
+                HashSet<ushort> Times = new HashSet<ushort>();
+
+                for (int i = 0; i < CachedBytes.Length; i++)
+                {
+                    if (CachedBytes[i].Data != null)
+                    {
+                        Times.Add(CachedBytes[i].LastUse);
+                    }
+                }
+
+                foreach (ushort t in Times.OrderByDescending(t => t))
+                {
+                    for (int i = 0; i < CachedBytes.Length; i++)
+                    {
+                        if (CachedBytes[i].Data != null && CachedBytes[i].LastUse == t)
+                        {
+                            yield return (i, CachedBytes[i]);
+                        }
+                    }
+                }
+            }
             try
             {
                 if (ExecutingEvaluations == 0 && (FlushTask is null || FlushTask.IsCompleted))
@@ -280,22 +327,20 @@ namespace Penguin.Analysis
 
                         if (freeMem < Settings.MinFreeMemory)
                         {
-                            List<KeyValuePair<long, ByteCache>> cachedBytes = CachedBytes.OrderBy(v => v.Value.LastUse).ToList();
+                            IEnumerable<ByteCache> cachedBytes = CachedBytes.Where(b => b.Data != null).OrderByDescending(b => b.LastUse);
 
-                            foreach (KeyValuePair<long, ByteCache> kvp in cachedBytes)
+                            foreach ((int Index, ByteCache byteCache) in CheckCache())
                             {
-                                if (CachedBytes.TryRemove(kvp.Key, out _))
-                                {
-                                    freeMem -= (ulong)kvp.Value.Data.Length;
-                                }
 
+                                freeMem += (ulong)CachedBytes[Index].Data.Length;
+
+                                CachedBytes[Index].Data = null;
                                 if (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
                                 {
                                     break;
                                 }
                             }
 
-                            cachedBytes.Clear();
 
                             GC.Collect();
 

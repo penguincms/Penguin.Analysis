@@ -42,7 +42,7 @@ namespace Penguin.Analysis
 
         public abstract ushort Value { get; }
 
-        public ushort this[MatchResult result]
+        public virtual ushort this[MatchResult result]
         {
             get => this.Results[(int)result];
             set => this.Results[(int)result] = value;

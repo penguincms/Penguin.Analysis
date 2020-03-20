@@ -11,18 +11,29 @@ using System.Threading;
 namespace Penguin.Analysis
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class DiskNode : Node
+    public class DiskNode : Node, INodeBlock
     {
+        public override ushort this[MatchResult result]
+        {
+            get
+            {
+                return (((int)result > 2) ? (ushort)0 : this.Results[(int)result]);
+            }
+            set
+            {
+                throw new NotImplementedException();
+            }
+        }
         public const int HEADER_BYTES = 16;
-        public const int NEXT_SIZE = 8;
-        public const int NODE_SIZE = 24;
+        public const int NEXT_SIZE = 5;
+        public const int NODE_SIZE = 18;
         internal static LockedNodeFileStream _backingStream;
         internal static ConcurrentDictionary<long, DiskNode> Cache = new ConcurrentDictionary<long, DiskNode>();
         internal static int MaxCacheCount = int.MaxValue;
         internal static Dictionary<long, DiskNode> MemoryManaged = new Dictionary<long, DiskNode>();
-        internal long Offset;
+        public long Offset { get; internal set; }
         private static readonly object clearCacheLock = new object();
-        private static readonly Dictionary<long, DiskNode> RootNodes = new Dictionary<long, DiskNode>();
+        private static ConcurrentDictionary<long, DiskNode> RootNodes = new ConcurrentDictionary<long, DiskNode>();
         private static DiskNode RootNode;
         private static HashSet<long> SmallCache = new HashSet<long>();
         private bool BackingDataSet = false;
@@ -45,9 +56,9 @@ namespace Penguin.Analysis
             }
         }
 
-        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[15 + LookupOffset]);
+        public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[12 + LookupOffset]);
         public long[] ChildOffsets { get; set; }
-        public override sbyte Header => unchecked((sbyte)this.BackingData[12 + LookupOffset]);
+        public override sbyte Header => unchecked((sbyte)this.BackingData[9 + LookupOffset]);
 
         public override long Key
         {
@@ -82,18 +93,25 @@ namespace Penguin.Analysis
             {
                 if (this.results is null)
                 {
-                    this.results = this.BackingData.GetShorts(8 + LookupOffset, 2).Concat(new ushort[] { 0, 0 }).ToArray();
+                    this.results = this.BackingData.GetShorts(5 + LookupOffset, 2).ToArray();
                 }
 
                 return this.results;
             }
         }
 
-        public override ushort Value => this.BackingData.GetShort(13 + LookupOffset);
+        internal void Clear()
+        {
+            results = Array.Empty<ushort>();
+            BackingData = null;
+            ChildOffsets = Array.Empty<long>();
+        }
+        public override ushort Value => this.BackingData.GetShort(10 + LookupOffset);
         internal static int CurrentCacheCount { get; set; } = 0;
         internal byte[] BackingData { get; set; }
-        internal long NextOffset => this.BackingData.GetLong((NODE_SIZE + LookupOffset) - 8);
-        internal long ParentOffset => this.BackingData.GetLong(LookupOffset);
+        public long NextOffset => this.BackingData.GetInt40((NODE_SIZE + LookupOffset) - 5);
+
+        internal long ParentOffset => this.BackingData.GetInt40(LookupOffset);
         private long BackingDataOffset { get; set; } = 0;
         private long LookupOffset => this.Offset - this.BackingDataOffset;
 
@@ -155,6 +173,14 @@ namespace Penguin.Analysis
             return CacheSize;
         }
 
+        internal static void FlushCache()
+        {
+            SmallCache = new HashSet<long>();
+            RootNodes = new ConcurrentDictionary<long, DiskNode>();
+            Cache = new ConcurrentDictionary<long, DiskNode>();
+            MemoryManaged = new Dictionary<long, DiskNode>();
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static DiskNode LoadNode(LockedNodeFileStream backingStream, long offset, bool memoryManaged = false)
         {
@@ -185,7 +211,7 @@ namespace Penguin.Analysis
 
                     if (SmallCache.Contains(offset) || SmallCache.Contains(thisNode.ParentOffset))
                     {
-                        RootNodes.Add(offset, thisNode);
+                        RootNodes.TryAdd(offset, thisNode);
                     }
                 }
 

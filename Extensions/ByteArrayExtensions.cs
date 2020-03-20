@@ -86,6 +86,20 @@ namespace Penguin.Analysis.Extensions
             }
         }
 
+        [System.Security.SecuritySafeCritical]  // auto-generated
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe long GetInt40(this byte[] value, long startIndex = 0)
+        {
+            fixed (byte* pbyte = &value[startIndex])
+            {
+
+                int i1 = (*pbyte) | (*(pbyte + 1) << 8) | (*(pbyte + 2) << 16) | (*(pbyte + 3) << 24);
+                int i2 = (*(pbyte + 4)) | (*(pbyte + 5) << 8);
+                return (uint)i1 | ((long)i2 << 32);
+
+            }
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IEnumerable<long> GetLongs(this byte[] source, int offset, int count)
         {

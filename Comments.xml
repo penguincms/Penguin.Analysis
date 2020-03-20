@@ -97,14 +97,14 @@
             Only build trees that contain positive output matches
             </summary>
         </member>
-        <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MinumumScore">
-            <summary>
-            Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
-            </summary>
-        </member>
         <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MinimumHits">
             <summary>
             The minimum total times a route must be matched to be considered
+            </summary>
+        </member>
+        <member name="P:Penguin.Analysis.DataSourceSettings.ResultSettings.MinumumScore">
+            <summary>
+            Anything with a variance off the base rate below this amount will not be considered a predictor and will be left off the tree
             </summary>
         </member>
         <member name="F:Penguin.Analysis.MatchResult.Route">

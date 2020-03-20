@@ -165,7 +165,7 @@ namespace Penguin.Analysis
 
             byte[] toWrite = new byte[DiskNode.NODE_SIZE + childListSize];
 
-            BitConverter.GetBytes(ParentOffset).CopyTo(toWrite, 0);
+            ParentOffset.ToInt40Array().CopyTo(toWrite, 0);
 
             for (int i = 0; i < 2; i++)
             {
@@ -174,12 +174,12 @@ namespace Penguin.Analysis
 
             unchecked
             {
-                toWrite[12] = (byte)Header;
+                toWrite[9] = (byte)Header;
             }
 
-            BitConverter.GetBytes(Value).CopyTo(toWrite, 13);
+            BitConverter.GetBytes(Value).CopyTo(toWrite, 10);
 
-            toWrite[15] = (byte)ChildHeader;
+            toWrite[12] = (byte)ChildHeader;
 
             int nCount = ChildCount;
 
@@ -224,14 +224,17 @@ namespace Penguin.Analysis
                 {
                     MemoryNode nextn = this.next[i];
 
-                    long offset = 0;
+                    byte[] offsetBytes;
 
                     if (nextn != null)
                     {
-                        offset = lockedNodeFileStream.Offset;
+                        offsetBytes = lockedNodeFileStream.Offset.ToInt40Array();
+                    } else
+                    {
+                        offsetBytes = new byte[] { 0, 0, 0, 0, 0 };
                     }
 
-                    BitConverter.GetBytes(offset).CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE);
+                    offsetBytes.CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE);
 
                     if (nextn != null)
                     {
@@ -241,9 +244,9 @@ namespace Penguin.Analysis
 
                 long lastOffset = lockedNodeFileStream.Offset;
 
-                lockedNodeFileStream.Seek(ChildListOffset - childBytes.Length - 8);
+                lockedNodeFileStream.Seek(ChildListOffset - childBytes.Length - 5);
 
-                lockedNodeFileStream.Write(lastOffset);
+                lockedNodeFileStream.Write(lastOffset.ToInt40Array());
 
                 lockedNodeFileStream.Seek(ChildListOffset);
 
