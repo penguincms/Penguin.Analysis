@@ -26,7 +26,8 @@ namespace Penguin.Analysis
         }
         public const int HEADER_BYTES = 16;
         public const int NEXT_SIZE = 5;
-        public const int NODE_SIZE = 18;
+        public const int NODE_SIZE = 20;
+
         internal static LockedNodeFileStream _backingStream;
         internal static ConcurrentDictionary<long, DiskNode> Cache = new ConcurrentDictionary<long, DiskNode>();
         internal static int MaxCacheCount = int.MaxValue;
@@ -57,6 +58,7 @@ namespace Penguin.Analysis
         }
 
         public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[12 + LookupOffset]);
+        public ushort SkipChildren => this.BackingData.GetShort((13 + LookupOffset));
         public long[] ChildOffsets { get; set; }
         public override sbyte Header => unchecked((sbyte)this.BackingData[9 + LookupOffset]);
 
@@ -245,6 +247,8 @@ namespace Penguin.Analysis
 
         public override INode NextAt(int index)
         {
+            index -= SkipChildren;
+
             if (!BackingDataSet)
             {
                 if (this.ChildOffsets[index] == 0)

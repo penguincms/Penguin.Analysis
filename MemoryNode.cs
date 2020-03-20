@@ -37,7 +37,7 @@ namespace Penguin.Analysis
 
         private ushort value;
         public override sbyte Header => header;
-
+        public ushort SkipChildren { get; set; }
         public bool LastNode { get; set; }
         public int Matched => this[MatchResult.Route] + this[MatchResult.Both];
         public override IEnumerable<INode> Next => next;
@@ -87,12 +87,79 @@ namespace Penguin.Analysis
             next.parentNode = this;
         }
 
-        public void CheckValidity()
+        public bool Trim(DataSourceBuilder sourceBuilder)
         {
-            if (!LastNode && (next is null || !next.Any(n => n != null)))
+            int lastGoodNode = 0;
+            ushort firstGoodNode = 0;
+
+            bool trimmed = false;
+
+            if (Header != -1 && (next is null || !next.Where(n => n != null).Any()))
             {
-                parentNode?.RemoveNode(this);
+                if (GetScore(sourceBuilder.Result.BaseRate) < sourceBuilder.Settings.Results.MinumumScore && ParentNode != null)
+                {
+                    sourceBuilder.Settings.TrimmedNode?.Invoke(this);
+
+                    parentNode.RemoveNode(this);
+
+                    return true;
+                }
+#if DEBUG
+                else
+                {
+                }
+#endif
+                LastNode = true;
             }
+
+            if (this.next != null)
+            {
+                foreach (MemoryNode mn in this.next)
+                {
+                    if (mn != null)
+                    {
+                        trimmed = trimmed || mn.Trim(sourceBuilder);
+                    }
+                }
+
+
+                for (int i = next.Length; i > 0; i--)
+                {
+                    if (next[i - 1] != null)
+                    {
+                        lastGoodNode = i;
+                        break;
+                    }
+                }
+
+                for(ushort i = 0; i < next.Length; i++)
+                {
+                    if (next[i] != null)
+                    {
+                        firstGoodNode = i;
+                        break;
+                    }
+                }
+
+
+                if (lastGoodNode != next.Length)
+                {
+                    trimmed = true;
+
+                    next = next.Take(lastGoodNode).ToArray();
+                }
+
+                if(firstGoodNode != 0)
+                {
+                    trimmed = true;
+                    SkipChildren += firstGoodNode;
+                    next = next.Skip(firstGoodNode).ToArray();
+
+                }
+            }
+
+            return trimmed;
+
         }
 
         public long GetLength(byte childListSize)
@@ -121,8 +188,6 @@ namespace Penguin.Analysis
                     break;
                 }
             }
-
-            this.CheckValidity();
         }
 
         public void TrimNext(DataSourceBuilder sourceBuilder)
@@ -181,6 +246,8 @@ namespace Penguin.Analysis
 
             toWrite[12] = (byte)ChildHeader;
 
+            BitConverter.GetBytes(SkipChildren).CopyTo(toWrite, 13);
+
             int nCount = ChildCount;
 
             byte[] childBytes;
@@ -229,7 +296,8 @@ namespace Penguin.Analysis
                     if (nextn != null)
                     {
                         offsetBytes = lockedNodeFileStream.Offset.ToInt40Array();
-                    } else
+                    }
+                    else
                     {
                         offsetBytes = new byte[] { 0, 0, 0, 0, 0 };
                     }
@@ -348,6 +416,7 @@ namespace Penguin.Analysis
             this[MatchResult.None]--;
             this[pool]++;
         }
+
 
         public override INode NextAt(int index) => next[index];
 

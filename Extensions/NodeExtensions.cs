@@ -11,64 +11,6 @@ namespace Penguin.Analysis.Extensions
         #region Methods
 
 
-        public static void TrimNodesWithNoBearing(this MemoryNode target, DataSourceBuilder sourceBuilder)
-        {
-            if (sourceBuilder is null)
-            {
-                throw new ArgumentNullException(nameof(sourceBuilder));
-            }
-
-            if (target is null)
-            {
-                throw new ArgumentNullException(nameof(target));
-            }
-
-            
-
-            if (target.next != null && target.next.Any())
-            {
-                int lastGoodNode = 0;
-
-                for(int i = target.next.Length; i > 0; i--)
-                {
-                    if(target.next[i - 1] != null)
-                    {
-                        lastGoodNode = i;
-                        break;
-                    }
-                }
-
-                if(lastGoodNode != target.next.Length)
-                {
-                    target.next = target.next.Take(lastGoodNode).ToArray();
-                }
-
-                foreach (MemoryNode next in target.next)
-                {
-                    if (next != null)
-                    {
-                        next.TrimNodesWithNoBearing(sourceBuilder);
-                    }
-                }
-            }
-
-            if (target.Header != -1 && (target.next is null || !target.next.Where(n => n != null).Any()))
-            {
-                if (target.GetScore(sourceBuilder.Result.BaseRate) < sourceBuilder.Settings.Results.MinumumScore && target.ParentNode != null)
-                {
-                    sourceBuilder.Settings.TrimmedNode?.Invoke(target);
-
-                    target.parentNode.RemoveNode(target);
-                }
-#if DEBUG
-                else
-                {
-                }
-#endif
-                target.LastNode = true;
-            }
-        }
-
 
 
         public static int Depth(this MemoryNode tnode)
@@ -123,18 +65,6 @@ namespace Penguin.Analysis.Extensions
                     }
                 }
             }
-        }
-
-        public static void Trim(this MemoryNode tnode)
-        {
-            if (tnode is null)
-            {
-                throw new ArgumentNullException(nameof(tnode));
-            }
-
-            tnode.CheckValidity();
-
-            tnode.MatchingRows = null;
         }
 
         #endregion Methods

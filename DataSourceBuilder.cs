@@ -379,22 +379,13 @@ namespace Penguin.Analysis
                         node.TrimNext(this);
                     }
 
-                    foreach (MemoryNode n in thisRootList)
-                    {
-                        n?.Trim();
-                    }
-
                     thisRootList = thisRootList.SelectMany(n => n.next).Where(n => n != null).ToList();
                 }
 
-                foreach (MemoryNode n in thisRootList)
+                while (thisRoot.Trim(this))
                 {
-                    n?.Trim();
+
                 }
-
-                thisRoot.TrimNodesWithNoBearing(this);
-
-                thisRoot.Trim();
 
                 //no children on the header node. No point keeping it
                 if (thisRoot.next is null || !thisRoot.next.Any(n => n != null))
