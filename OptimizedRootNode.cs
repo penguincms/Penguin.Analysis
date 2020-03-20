@@ -96,6 +96,15 @@ namespace Penguin.Analysis
             }
         }
 
+        public static void Flush()
+        {
+            CachedBytes.Clear();
+            ArrayPool = new ConcurrentQueue<byte[]>();
+            ExecutingEvaluations = 0;
+            FlushTask = Task.CompletedTask;
+            LastMatchAmount = 0;
+        }
+
         public void Evaluate(Evaluation e, bool MultiThread = true) => this.Evaluate(e, 0, MultiThread);
 
         public override void Evaluate(Evaluation e, long routeKey, bool MultiThread = true)

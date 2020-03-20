@@ -150,6 +150,7 @@ namespace Penguin.Analysis
 
             DiskNode virtualRoot = new DiskNode(stream, DiskNode.HEADER_BYTES);
 
+            OptimizedRootNode.Flush();
             OptimizedRootNode gNode = new OptimizedRootNode(virtualRoot, toReturn.Settings);
 
             toReturn.Result.RootNode = gNode;
