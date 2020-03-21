@@ -141,55 +141,13 @@ namespace Penguin.Analysis
 
             IEnumerator<long> cEnum = BuildNodeDefinitions().GetEnumerator();
 
-            Monitor.Enter(collectionLock);
-
             while (cEnum.MoveNext())
             {
-                Monitor.Exit(collectionLock);
-
                 yield return new NodeSetCollection(cEnum.Current);
-
-                Monitor.Enter(collectionLock);
             }
-
-            Monitor.Exit(collectionLock);
         }
 
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
-
-        private static IEnumerable<List<(sbyte ColumnIndex, int Values)>> BuildComplexTree((sbyte ColumnIndex, int Values)[] ColumnData)
-        {
-            long Hc = (long)Math.Pow(2, ColumnData.Length) - 1;
-
-            for (long Hi = Hc; Hi >= 1; Hi -= 2)
-            {
-                byte sbits = 0;
-
-                long Hb = Hi;
-
-                while (Hb != 0)
-                {
-                    if ((Hb & 1) != 0)
-                    {
-                        sbits++;
-                    }
-
-                    Hb >>= 1;
-                }
-
-                List<(sbyte ColumnIndex, int Values)> thisGraph = new List<(sbyte ColumnIndex, int Values)>(sbits);
-
-                for (sbyte Wi = (sbyte)(ColumnData.Length - 1); Wi >= 0; Wi--)
-                {
-                    if (((Hi >> Wi) & 1) != 0)
-                    {
-                        thisGraph.Add((Wi, ColumnData[Wi].Values));
-                    }
-                }
-
-                yield return thisGraph;
-            }
-        }
 
         private static long ValidateNode(LongByte key, HashSet<long> AlteredNodes, DataSourceBuilder Builder, Action<ValidationResult> OnFailure = null, Action<LongByte> OnSuccess = null)
         {
@@ -241,11 +199,6 @@ namespace Penguin.Analysis
 
         private IEnumerable<long> BuildNodeDefinitions(Action<ValidationResult> OnFailure = null, Action<LongByte> OnSuccess = null, Action<NodeSetGraphProgress> reportProgress = null)
         {
-            //string jumpListFname = DateTime.Now.ToString("yyyyMMddHHmmss") + "_NodeCacheGeneration.log";
-            //string jumpListLoadFname = DateTime.Now.ToString("yyyyMMddHHmmss") + "_NodeCacheLoad.log";
-
-            //long SkipMask = new LongByte(Builder.Registrations.OfType<Exclusive>().Select(e => e.Key));
-
             Index = 0;
             RealIndex = 0;
             IEnumerable<(sbyte ColumnIndex, int Values)> columnsToProcess = ColumnsToProcess;
@@ -290,7 +243,9 @@ namespace Penguin.Analysis
                 }
             }
 
-            IEnumerator<List<(sbyte ColumnIndex, int Values)>> TreeEnumerator = BuildComplexTree(columnsToProcess.ToArray()).GetEnumerator();
+            ComplexTree complexTree = new ComplexTree(columnsToProcess);
+
+            IEnumerator<List<(sbyte ColumnIndex, int Values)>> TreeEnumerator = complexTree.Build().GetEnumerator();
 
             bool hasNext = TreeEnumerator.MoveNext();
 
@@ -310,30 +265,6 @@ namespace Penguin.Analysis
 
                     if (write)
                     {
-                        //List<string> lines = new List<string>
-                        //{
-                        //    $"{thisKey}:"
-                        //};
-
-                        //if (stateChange)
-                        //{
-                        //    lines.Add($"\tNew State: {(newKey != 0)}");
-                        //}
-
-                        //if (keyChange)
-                        //{
-                        //    lines.Add($"\tNew Key: {new LongByte(newKey)}");
-                        //}
-
-                        //lines.Add($"\t\tWriting: {Index}, {newKey}");
-
-                        //File.AppendAllLines(jumpListFname, lines);
-
-                        //foreach (string s in lines)
-                        //{
-                        //    Console.WriteLine(s);
-                        //}
-
                         ValidationCache.Write(BitConverter.GetBytes(Index), 0, 8);
                         ValidationCache.Write(BitConverter.GetBytes(newKey), 0, 8);
 
@@ -352,34 +283,20 @@ namespace Penguin.Analysis
                 {
                     if (Index == NextFlip)
                     {
-                        //File.AppendAllText(jumpListLoadFname, $"{new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex))}:" + System.Environment.NewLine);
-
                         if (NextKey != 0)
                         {
-                            //if(!LastValid)
-                            //{
-                            //    File.AppendAllText(jumpListLoadFname, $"\tNew State: {true}" + System.Environment.NewLine);
-                            //}
-
-                            //if (new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex)) != new LongByte(NextKey))
-                            //{
-                            //    File.AppendAllText(jumpListLoadFname, $"\tNew Key: {new LongByte(NextKey)}" + System.Environment.NewLine);
-                            //}
-
                             LastValid = true;
                             key = NextKey;
                         }
                         else
                         {
-                            //File.AppendAllText(jumpListLoadFname, $"\tNew State: {!LastValid}" + System.Environment.NewLine);
-
                             LastValid = !LastValid;
                             if (LastValid)
                             {
                                 key = new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex));
                             }
                         }
-                        //File.AppendAllText(jumpListLoadFname, $"\t\tRead: {NextFlip}, {NextKey}" + System.Environment.NewLine);
+
                         ReadNextFlip();
                     }
                     else
@@ -413,11 +330,11 @@ namespace Penguin.Analysis
 
                 if (ExistingStream && !LastValid)
                 {
-                    for (; Index < NextFlip; Index++)
-                    {
-                        hasNext = TreeEnumerator.MoveNext();
-                        CheckReportProgress();
-                    }
+                    complexTree.JumpToIndex(NextFlip - 1);
+                    Index = NextFlip;
+                    hasNext = TreeEnumerator.MoveNext();
+
+                    CheckReportProgress();
                 }
                 else
                 {

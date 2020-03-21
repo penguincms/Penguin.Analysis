@@ -3,6 +3,7 @@ using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Penguin.Analysis
@@ -11,6 +12,27 @@ namespace Penguin.Analysis
     [JsonObject(MemberSerialization.OptIn)]
     public class MemoryNode : Node
     {
+        public bool HasValidChild
+        {
+            get
+            {
+                if (next is null)
+                {
+                    return false;
+                }
+
+                foreach (MemoryNode mn in next)
+                {
+                    if (mn != null)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+
         #region Fields
 
         private long? key;
@@ -89,14 +111,19 @@ namespace Penguin.Analysis
 
         public bool Trim(DataSourceBuilder sourceBuilder)
         {
+            if (sourceBuilder is null)
+            {
+                throw new ArgumentNullException(nameof(sourceBuilder));
+            }
+
             int lastGoodNode = 0;
             ushort firstGoodNode = 0;
 
             bool trimmed = false;
 
-            if (Header != -1 && (next is null || !next.Where(n => n != null).Any()))
+            if (Header != -1 && !HasValidChild)
             {
-                if (GetScore(sourceBuilder.Result.BaseRate) < sourceBuilder.Settings.Results.MinumumScore && ParentNode != null)
+                if (Math.Abs(GetScore(sourceBuilder.Result.BaseRate)) < sourceBuilder.Settings.Results.MinumumScore && ParentNode != null)
                 {
                     sourceBuilder.Settings.TrimmedNode?.Invoke(this);
 
@@ -112,7 +139,15 @@ namespace Penguin.Analysis
                 LastNode = true;
             }
 
-            if (this.next != null)
+            if (!HasValidChild)
+            {
+                if (this.next != null && this.ChildCount > 0)
+                {
+                    this.next = new MemoryNode[0];
+                    trimmed = true;
+                }
+            }
+            else
             {
                 foreach (MemoryNode mn in this.next)
                 {
@@ -121,7 +156,6 @@ namespace Penguin.Analysis
                         trimmed = trimmed || mn.Trim(sourceBuilder);
                     }
                 }
-
 
                 for (int i = next.Length; i > 0; i--)
                 {
@@ -132,7 +166,7 @@ namespace Penguin.Analysis
                     }
                 }
 
-                for(ushort i = 0; i < next.Length; i++)
+                for (ushort i = 0; i < next.Length; i++)
                 {
                     if (next[i] != null)
                     {
@@ -141,7 +175,6 @@ namespace Penguin.Analysis
                     }
                 }
 
-
                 if (lastGoodNode != next.Length)
                 {
                     trimmed = true;
@@ -149,17 +182,15 @@ namespace Penguin.Analysis
                     next = next.Take(lastGoodNode).ToArray();
                 }
 
-                if(firstGoodNode != 0)
+                if (firstGoodNode != 0)
                 {
                     trimmed = true;
                     SkipChildren += firstGoodNode;
                     next = next.Skip(firstGoodNode).ToArray();
-
                 }
             }
 
             return trimmed;
-
         }
 
         public long GetLength(byte childListSize)
@@ -234,7 +265,7 @@ namespace Penguin.Analysis
 
             for (int i = 0; i < 2; i++)
             {
-                BitConverter.GetBytes(Results[i]).CopyTo(toWrite, 8 + i * 2);
+                BitConverter.GetBytes(Results[i]).CopyTo(toWrite, 5 + i * 2);
             }
 
             unchecked
@@ -375,7 +406,24 @@ namespace Penguin.Analysis
 
         public override int ChildCount => this.next?.Length ?? 0;
 
-        public override sbyte ChildHeader => (sbyte)(this.ChildCount > 0 ? this.next.Where(n => n != null).Select(n => n.Header).Distinct().Single() : -1);
+        public override sbyte ChildHeader
+        {
+            get
+            {
+                if (this.ChildCount != 0)
+                {
+                    foreach (MemoryNode mn in this.next)
+                    {
+                        if (mn != null)
+                        {
+                            return mn.header;
+                        }
+                    }
+                }
+
+                return -1;
+            }
+        }
 
         public override string ToString()
         {
@@ -416,7 +464,6 @@ namespace Penguin.Analysis
             this[MatchResult.None]--;
             this[pool]++;
         }
-
 
         public override INode NextAt(int index) => next[index];
 

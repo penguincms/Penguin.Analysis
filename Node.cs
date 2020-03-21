@@ -80,7 +80,7 @@ namespace Penguin.Analysis
 
                 e.MatchRoute(this, routeKey);
 
-                if (ChildCount > 0)
+                if (ChildCount > 0 && ChildHeader >= 0)
                 {
                     INode Next = NextAt(e.DataRow[ChildHeader]);
 

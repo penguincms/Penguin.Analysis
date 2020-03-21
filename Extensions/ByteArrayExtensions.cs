@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Penguin.Analysis.Extensions
@@ -27,6 +28,18 @@ namespace Penguin.Analysis.Extensions
                 result |= (source[3 - i + offset] & 0xFF);
             }
             return result;
+        }
+
+        [System.Security.SecuritySafeCritical]  // auto-generated
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe long GetInt40(this byte[] value, long startIndex = 0)
+        {
+            fixed (byte* pbyte = &value[startIndex])
+            {
+                int i1 = (*pbyte) | (*(pbyte + 1) << 8) | (*(pbyte + 2) << 16) | (*(pbyte + 3) << 24);
+                int i2 = (*(pbyte + 4));
+                return (uint)i1 | ((long)i2 << 32);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -83,20 +96,6 @@ namespace Penguin.Analysis.Extensions
                     int i2 = (*(pbyte + 4)) | (*(pbyte + 5) << 8) | (*(pbyte + 6) << 16) | (*(pbyte + 7) << 24);
                     return (uint)i1 | ((long)i2 << 32);
                 }
-            }
-        }
-
-        [System.Security.SecuritySafeCritical]  // auto-generated
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe long GetInt40(this byte[] value, long startIndex = 0)
-        {
-            fixed (byte* pbyte = &value[startIndex])
-            {
-
-                int i1 = (*pbyte) | (*(pbyte + 1) << 8) | (*(pbyte + 2) << 16) | (*(pbyte + 3) << 24);
-                int i2 = (*(pbyte + 4)) | (*(pbyte + 5) << 8);
-                return (uint)i1 | ((long)i2 << 32);
-
             }
         }
 

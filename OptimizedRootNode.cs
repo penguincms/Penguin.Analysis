@@ -19,6 +19,7 @@ namespace Penguin.Analysis
         private static int LastMatchAmount = 0;
         private List<INodeBlock>[][] next;
 
+        private HashSet<long> NoCache = new HashSet<long>();
         public static Task FlushTask { get; set; } = Task.CompletedTask;
         public override int ChildCount { get; }
 
@@ -38,7 +39,7 @@ namespace Penguin.Analysis
 
         private DataSourceSettings Settings { get; set; }
 
-        public OptimizedRootNode(INode source, DataSourceSettings settings)
+        public OptimizedRootNode(DiskNode source, DataSourceSettings settings)
         {
             if (source is null)
             {
@@ -49,10 +50,10 @@ namespace Penguin.Analysis
 
             int MaxHeader = 0;
 
-            IEnumerable<INode> Parents = source.Next.Where(n => !(n is null));
-            IEnumerable<INode> Children = Parents.SelectMany(n => n.Next).Where(n => !(n is null));
+            IEnumerable<DiskNode> Parents = source.Next.Cast<DiskNode>().Where(n => !(n is null));
+            IEnumerable<DiskNode> Children = Parents.SelectMany(n => n.Next.Cast<DiskNode>()).Where(n => !(n is null));
 
-            foreach (INode n in Parents)
+            foreach (DiskNode n in Parents)
             {
                 MaxHeader = Math.Max(MaxHeader, n.ChildHeader);
             }
@@ -60,9 +61,9 @@ namespace Penguin.Analysis
             int[] MaxValues = new int[MaxHeader + 1];
             next = new List<INodeBlock>[MaxValues.Length][];
 
-            foreach (INode n in Parents)
+            foreach (DiskNode n in Parents)
             {
-                MaxValues[n.ChildHeader] = Math.Max(MaxValues[n.ChildHeader], n.ChildCount);
+                MaxValues[n.ChildHeader] = Math.Max(MaxValues[n.ChildHeader], n.ChildCount + n.SkipChildren);
             }
 
             for (int header = 0; header <= MaxHeader; header++)
@@ -96,7 +97,6 @@ namespace Penguin.Analysis
 
             GC.Collect();
         }
-        HashSet<long> NoCache = new HashSet<long>();
 
         public static void Flush()
         {
@@ -140,7 +140,7 @@ namespace Penguin.Analysis
 
                     LastMatchAmount = Math.Max(LastMatchAmount, matchingNodes.Count);
 
-                    Parallel.ForEach(matchingNodes, (n) =>
+                    void Evaluate(INodeBlock n)
                     {
                         if (n is DiskNode dn)
                         {
@@ -182,7 +182,19 @@ namespace Penguin.Analysis
 
                             nn.Evaluate(e, 0, MultiThread);
                         }
-                    });
+                    }
+
+                    if (MultiThread)
+                    {
+                        Parallel.ForEach(matchingNodes, Evaluate);
+                    }
+                    else
+                    {
+                        foreach (INodeBlock nb in matchingNodes)
+                        {
+                            Evaluate(nb);
+                        }
+                    }
                 }
             }
             finally
@@ -331,7 +343,6 @@ namespace Penguin.Analysis
 
                             foreach ((int Index, ByteCache byteCache) in CheckCache())
                             {
-
                                 freeMem += (ulong)CachedBytes[Index].Data.Length;
 
                                 CachedBytes[Index].Data = null;
@@ -340,7 +351,6 @@ namespace Penguin.Analysis
                                     break;
                                 }
                             }
-
 
                             GC.Collect();
 

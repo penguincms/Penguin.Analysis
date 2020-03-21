@@ -4,6 +4,7 @@ using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -13,33 +14,34 @@ namespace Penguin.Analysis
     [JsonObject(MemberSerialization.OptIn)]
     public class DiskNode : Node, INodeBlock
     {
-        public override ushort this[MatchResult result]
-        {
-            get
-            {
-                return (((int)result > 2) ? (ushort)0 : this.Results[(int)result]);
-            }
-            set
-            {
-                throw new NotImplementedException();
-            }
-        }
         public const int HEADER_BYTES = 16;
+
         public const int NEXT_SIZE = 5;
+
         public const int NODE_SIZE = 20;
 
         internal static LockedNodeFileStream _backingStream;
+
         internal static ConcurrentDictionary<long, DiskNode> Cache = new ConcurrentDictionary<long, DiskNode>();
+
         internal static int MaxCacheCount = int.MaxValue;
+
         internal static Dictionary<long, DiskNode> MemoryManaged = new Dictionary<long, DiskNode>();
-        public long Offset { get; internal set; }
+
         private static readonly object clearCacheLock = new object();
-        private static ConcurrentDictionary<long, DiskNode> RootNodes = new ConcurrentDictionary<long, DiskNode>();
+
         private static DiskNode RootNode;
+
+        private static ConcurrentDictionary<long, DiskNode> RootNodes = new ConcurrentDictionary<long, DiskNode>();
+
         private static HashSet<long> SmallCache = new HashSet<long>();
+
         private bool BackingDataSet = false;
+
         private long? key;
+
         private ushort[] results;
+
         public static bool CacheNodes { get; set; } = true;
 
         public override int ChildCount
@@ -58,8 +60,9 @@ namespace Penguin.Analysis
         }
 
         public override sbyte ChildHeader => unchecked((sbyte)this.BackingData[12 + LookupOffset]);
-        public ushort SkipChildren => this.BackingData.GetShort((13 + LookupOffset));
+
         public long[] ChildOffsets { get; set; }
+
         public override sbyte Header => unchecked((sbyte)this.BackingData[9 + LookupOffset]);
 
         public override long Key
@@ -87,6 +90,10 @@ namespace Penguin.Analysis
             }
         }
 
+        public long NextOffset => this.BackingData.GetInt40((NODE_SIZE + LookupOffset) - 5);
+
+        public long Offset { get; internal set; }
+
         public override INode ParentNode => LoadNode(_backingStream, this.ParentOffset);
 
         public override ushort[] Results
@@ -102,19 +109,18 @@ namespace Penguin.Analysis
             }
         }
 
-        internal void Clear()
-        {
-            results = Array.Empty<ushort>();
-            BackingData = null;
-            ChildOffsets = Array.Empty<long>();
-        }
+        public ushort SkipChildren => this.BackingData.GetShort((13 + LookupOffset));
+
         public override ushort Value => this.BackingData.GetShort(10 + LookupOffset);
+
         internal static int CurrentCacheCount { get; set; } = 0;
+
         internal byte[] BackingData { get; set; }
-        public long NextOffset => this.BackingData.GetInt40((NODE_SIZE + LookupOffset) - 5);
 
         internal long ParentOffset => this.BackingData.GetInt40(LookupOffset);
+
         private long BackingDataOffset { get; set; } = 0;
+
         private long LookupOffset => this.Offset - this.BackingDataOffset;
 
         public DiskNode(byte[] backingData, long backingDataOffset, long offset)
@@ -143,10 +149,22 @@ namespace Penguin.Analysis
             {
                 int oset = NODE_SIZE + (i * NEXT_SIZE) + (offset == 16 ? 4 : 2);
 
-                this.ChildOffsets[i] = this.BackingData.GetLong(oset);
+                this.ChildOffsets[i] = this.BackingData.GetInt40(oset);
             }
 
             _backingStream = _backingStream ?? fileStream ?? throw new ArgumentNullException(nameof(fileStream));
+        }
+
+        public override ushort this[MatchResult result]
+        {
+            get
+            {
+                return (((int)result > 2) ? (ushort)0 : this.Results[(int)result]);
+            }
+            set
+            {
+                throw new NotImplementedException();
+            }
         }
 
         public static int ClearCache()
@@ -173,14 +191,6 @@ namespace Penguin.Analysis
             }
 
             return CacheSize;
-        }
-
-        internal static void FlushCache()
-        {
-            SmallCache = new HashSet<long>();
-            RootNodes = new ConcurrentDictionary<long, DiskNode>();
-            Cache = new ConcurrentDictionary<long, DiskNode>();
-            MemoryManaged = new Dictionary<long, DiskNode>();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -249,6 +259,11 @@ namespace Penguin.Analysis
         {
             index -= SkipChildren;
 
+            if (index < 0 || index > (ChildCount - 1))
+            {
+                return null;
+            }
+
             if (!BackingDataSet)
             {
                 if (this.ChildOffsets[index] == 0)
@@ -259,7 +274,7 @@ namespace Penguin.Analysis
             }
             else
             {
-                long coffset = this.BackingData.GetLong(NODE_SIZE + (index * NEXT_SIZE) + (this.Offset == 16 ? 4 : 2) + LookupOffset);
+                long coffset = this.BackingData.GetInt40(NODE_SIZE + (index * NEXT_SIZE) + (this.Offset == 16 ? 4 : 2) + LookupOffset);
 
                 if (coffset == 0)
                 {
@@ -315,6 +330,21 @@ namespace Penguin.Analysis
             }
 
             _backingStream = null;
+        }
+
+        internal static void FlushCache()
+        {
+            SmallCache = new HashSet<long>();
+            RootNodes = new ConcurrentDictionary<long, DiskNode>();
+            Cache = new ConcurrentDictionary<long, DiskNode>();
+            MemoryManaged = new Dictionary<long, DiskNode>();
+        }
+
+        internal void Clear()
+        {
+            results = Array.Empty<ushort>();
+            BackingData = null;
+            ChildOffsets = Array.Empty<long>();
         }
 
         #region IDisposable Support
