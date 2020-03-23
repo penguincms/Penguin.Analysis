@@ -206,102 +206,106 @@ namespace Penguin.Analysis
 
         public async Task Preload(string FilePath)
         {
-            try
+
+            await Task.Run(() =>
             {
-                Dictionary<long, NodeBlock> nodeblocks = new Dictionary<long, NodeBlock>();
-
-                for (int header = 0; header < next.Length; header++)
+                try
                 {
-                    for (int value = 0; value < next[header].Length; value++)
+                    Dictionary<long, NodeBlock> nodeblocks = new Dictionary<long, NodeBlock>();
+
+                    for (int header = 0; header < next.Length; header++)
                     {
-                        foreach (INodeBlock inb in next[header][value])
+                        for (int value = 0; value < next[header].Length; value++)
                         {
-                            if (inb is NodeBlock nb)
+                            foreach (INodeBlock inb in next[header][value])
                             {
-                                nodeblocks.Add(nb.Offset, nb);
-                            }
-                        }
-                    }
-                }
-                using (LockedNodeFileStream ns = new LockedNodeFileStream(new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess)))
-                {
-                    using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
-                    {
-                        using (FileStream fsn = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
-                        {
-                            byte[] offsetBytes = new byte[DiskNode.HEADER_BYTES];
-
-                            fs.Read(offsetBytes, 0, offsetBytes.Length);
-
-                            long JsonOffset = offsetBytes.GetLong(0);
-                            long SortOffset = offsetBytes.GetLong(8);
-
-                            fs.Seek(SortOffset, SeekOrigin.Begin);
-
-                            ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
-
-                            while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
-                            {
-                                for (int i = 0; i < this.Settings.PreloadChunkSize / 2; i++)
+                                if (inb is NodeBlock nb)
                                 {
-                                    if (fs.Position >= JsonOffset)
-                                    {
-                                        return;
-                                    }
-
-                                    byte[] thisNodeBytes = new byte[5];
-
-                                    fs.Read(thisNodeBytes, 0, thisNodeBytes.Length);
-
-                                    long offset = thisNodeBytes.GetInt40();
-
-                                    if (!NoCache.Contains(offset))
-                                    {
-                                        if (!nodeblocks.TryGetValue(offset, out NodeBlock nb))
-                                        {
-                                            continue;
-                                        }
-
-                                        DiskNode dn = new DiskNode(ns, offset);
-
-                                        if (dn.NextOffset != 0)
-                                        {
-                                            long bLength = dn.NextOffset - dn.Offset;
-
-                                            ByteCache cachedBytes = new ByteCache()
-                                            {
-                                                Data = new byte[bLength]
-                                            };
-
-                                            fsn.Seek(dn.Offset, SeekOrigin.Begin);
-
-                                            fsn.Read(cachedBytes.Data, 0, (int)bLength);
-
-                                            CachedBytes[nb.Index] = cachedBytes;
-
-                                            freeMem -= (ulong)cachedBytes.Data.Length;
-                                        }
-                                    }
-
-                                    if (freeMem < this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
-                                    {
-                                        return;
-                                    }
+                                    nodeblocks.Add(nb.Offset, nb);
                                 }
+                            }
+                        }
+                    }
+                    using (LockedNodeFileStream ns = new LockedNodeFileStream(new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess)))
+                    {
+                        using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+                        {
+                            using (FileStream fsn = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+                            {
+                                byte[] offsetBytes = new byte[DiskNode.HEADER_BYTES];
 
-                                freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+                                fs.Read(offsetBytes, 0, offsetBytes.Length);
+
+                                long JsonOffset = offsetBytes.GetLong(0);
+                                long SortOffset = offsetBytes.GetLong(8);
+
+                                fs.Seek(SortOffset, SeekOrigin.Begin);
+
+                                ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                                while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                                {
+                                    for (int i = 0; i < this.Settings.PreloadChunkSize / 2; i++)
+                                    {
+                                        if (fs.Position >= JsonOffset)
+                                        {
+                                            return;
+                                        }
+
+                                        byte[] thisNodeBytes = new byte[5];
+
+                                        fs.Read(thisNodeBytes, 0, thisNodeBytes.Length);
+
+                                        long offset = thisNodeBytes.GetInt40();
+
+                                        if (!NoCache.Contains(offset))
+                                        {
+                                            if (!nodeblocks.TryGetValue(offset, out NodeBlock nb))
+                                            {
+                                                continue;
+                                            }
+
+                                            DiskNode dn = new DiskNode(ns, offset);
+
+                                            if (dn.NextOffset != 0)
+                                            {
+                                                long bLength = dn.NextOffset - dn.Offset;
+
+                                                ByteCache cachedBytes = new ByteCache()
+                                                {
+                                                    Data = new byte[bLength]
+                                                };
+
+                                                fsn.Seek(dn.Offset, SeekOrigin.Begin);
+
+                                                fsn.Read(cachedBytes.Data, 0, (int)bLength);
+
+                                                CachedBytes[nb.Index] = cachedBytes;
+
+                                                freeMem -= (ulong)cachedBytes.Data.Length;
+                                            }
+                                        }
+
+                                        if (freeMem < this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                                        {
+                                            return;
+                                        }
+                                    }
+
+                                    freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+                                }
                             }
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                if (Debugger.IsAttached)
+                catch (Exception ex)
                 {
-                    Debugger.Break();
+                    if (Debugger.IsAttached)
+                    {
+                        Debugger.Break();
+                    }
                 }
-            }
+            });
         }
 
         private void FlushMemory()
