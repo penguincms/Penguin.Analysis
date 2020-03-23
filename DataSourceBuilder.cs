@@ -324,7 +324,7 @@ namespace Penguin.Analysis
             bool stillRunning = true;
             Task progress = Task.Run(async () =>
             {
-                while (stillRunning)
+                while (generatingNodes)
                 {
 #if DEBUG
                     Debug.WriteLine($"--------Graph: [{graph.RealIndex + 1}/{graph.RealCount}]");
