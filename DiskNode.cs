@@ -159,7 +159,7 @@ namespace Penguin.Analysis
         {
             get
             {
-                return (((int)result > 2) ? (ushort)0 : this.Results[(int)result]);
+                return (((int)result > 1) ? (ushort)0 : this.Results[(int)result]);
             }
             set
             {

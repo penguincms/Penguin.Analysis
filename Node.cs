@@ -1,6 +1,7 @@
 ﻿using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -86,6 +87,8 @@ namespace Penguin.Analysis
 
                     if (Next != null)
                     {
+
+
                         Next.Evaluate(e, routeKey);
                     }
                 }
@@ -114,22 +117,27 @@ namespace Penguin.Analysis
             return depth;
         }
 
+        private static IEnumerable<INode> GetTree(INode np)
+        {
+            INode n = np;
+            while (n != null)
+            {
+                yield return n;
+                
+                if(n is DiskNode dn && dn.ParentOffset == DiskNode.HEADER_BYTES)
+                {
+                    yield break;
+                }
+
+                n = n.ParentNode;
+            }
+        }
+
         public long GetKey()
         {
             long Key = 0;
 
             INode n = this;
-
-            static IEnumerable<INode> GetTree(INode np)
-            {
-                INode n = np;
-                while (n != null)
-                {
-                    yield return n;
-
-                    n = n.ParentNode;
-                }
-            }
 
             foreach (INode tn in GetTree(n).Where(tnn => tnn.Header != -1))
             {

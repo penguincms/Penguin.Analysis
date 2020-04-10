@@ -271,8 +271,10 @@ namespace Penguin.Analysis
 
             long RootChildListOffset = DiskNode.HEADER_BYTES + DiskNode.NODE_SIZE + 4; //4 byte child list size
 
-            outputStream.Seek(DiskNode.HEADER_BYTES + 12);
+            outputStream.Seek(DiskNode.HEADER_BYTES + 9);
 
+            outputStream.Write((sbyte)-1);
+            outputStream.Write((ushort)0);
             outputStream.Write((sbyte)-1);
             outputStream.Write(ushort.MaxValue);
 
