@@ -9,9 +9,9 @@ namespace Penguin.Analysis
     {
         private static readonly object NodeFileLock = new object();
         private static int StreamPointer = 0;
-        private static StreamLock[] StreamPool;
         private readonly bool PoolStreams;
         private FileStream _backingStream;
+        private StreamLock[] StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
         public string FilePath => this._backingStream.Name;
         public long Offset => this._backingStream.Position;
 
@@ -32,11 +32,6 @@ namespace Penguin.Analysis
                 this.Stream?.Dispose();
                 this.Stream = null;
             }
-        }
-
-        static LockedNodeFileStream()
-        {
-            StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
         }
 
         public LockedNodeFileStream(FileStream backingStream, bool poolStreams = true)
@@ -117,11 +112,6 @@ namespace Penguin.Analysis
                     Monitor.Exit(sl.LockObject);
                 }
 
-                //if (this.PoolStreams)
-                //{
-                //    sourceStream.Dispose();
-                //}
-
                 return bByte;
             }
 
@@ -139,11 +129,6 @@ namespace Penguin.Analysis
             bByte.CopyTo(toReturn, 0);
 
             cByte.CopyTo(toReturn, DiskNode.NODE_SIZE + (offset == DiskNode.HEADER_BYTES ? 4 : 2));
-
-            //if (this.PoolStreams)
-            //{
-            //    sourceStream.Dispose();
-            //}
 
             return toReturn;
         }
