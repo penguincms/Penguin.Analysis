@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <PackageProjectUrl>https://github.com/penguincms/Penguin.Analysis</PackageProjectUrl>
+    <Version>1.0.0</Version>
+    <AssemblyName>Penguin.Analysis</AssemblyName>
+    <RootNamespace>Penguin.Analysis</RootNamespace>
+    <Description>Not Available</Description>
+    <DocumentationFile>Penguin.Analysis.xml</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove=".gitattributes" />
+    <None Remove=".gitignore" />
+    <None Remove=".gitmodules" />
+    <None Remove=".meta" />
+    <None Remove=".metaOne" />
+    <None Remove="README.md" />
+    <ProjectReference Include="..\Penguin.Debugging\Penguin.Debugging.Local.csproj" />
+    <ProjectReference Include="..\Penguin.Extensions.Collections\Penguin.Extensions.Collections.Local.csproj" />
+    <ProjectReference Include="..\Penguin.Extensions.Exceptions\Penguin.Extensions.Exceptions.Local.csproj" />
+    <ProjectReference Include="..\Penguin.Extensions.String\Penguin.Extensions.String.Local.csproj" />
+    <ProjectReference Include="..\Penguin.IO\Penguin.IO.Local.csproj" />
+    <ProjectReference Include="..\Penguin.Reflection.Abstractions\Penguin.Reflection.Abstractions.Local.csproj" />
+    <ProjectReference Include="..\Penguin.Reflection.Extensions\Penguin.Reflection.Extensions.Local.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+  <Import Project="Penguin.Projects.Shared\Penguin.Projects.Shared.csproj" />
+</Project>
