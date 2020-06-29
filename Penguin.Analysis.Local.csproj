@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <PackageProjectUrl>https://github.com/penguincms/Penguin.Analysis</PackageProjectUrl>
-    <Version>1.0.0</Version>
+    <Version>5.0.0</Version>
     <AssemblyName>Penguin.Analysis</AssemblyName>
     <RootNamespace>Penguin.Analysis</RootNamespace>
     <Description>Not Available</Description>
