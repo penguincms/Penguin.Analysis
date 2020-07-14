@@ -10,6 +10,12 @@ namespace Penguin.Analysis
 {
     public abstract class Node : INode
     {
+        public virtual ushort this[MatchResult result]
+        {
+            get => this.Results[(int)result];
+            set => this.Results[(int)result] = value;
+        }
+
         protected bool disposedValue = false;
 
         private byte? depth;
@@ -42,12 +48,6 @@ namespace Penguin.Analysis
         public virtual ushort[] Results { get; } = new ushort[4];
 
         public abstract ushort Value { get; }
-
-        public virtual ushort this[MatchResult result]
-        {
-            get => this.Results[(int)result];
-            set => this.Results[(int)result] = value;
-        }
 
         // To detect redundant calls
         public virtual void Dispose()
@@ -87,15 +87,21 @@ namespace Penguin.Analysis
 
                     if (Next != null)
                     {
-
-
                         Next.Evaluate(e, routeKey);
                     }
                 }
             }
         }
 
-        public virtual bool Evaluate(TypelessDataRow row) => row.Equals(Header, Value);
+        public virtual bool Evaluate(TypelessDataRow row)
+        {
+            if (row is null)
+            {
+                throw new ArgumentNullException(nameof(row));
+            }
+
+            return row.Equals(Header, Value);
+        }
 
         public virtual void Flush(int depth)
         {
@@ -115,22 +121,6 @@ namespace Penguin.Analysis
             }
 
             return depth;
-        }
-
-        private static IEnumerable<INode> GetTree(INode np)
-        {
-            INode n = np;
-            while (n != null)
-            {
-                yield return n;
-                
-                if(n is DiskNode dn && dn.ParentOffset == DiskNode.HEADER_BYTES)
-                {
-                    yield break;
-                }
-
-                n = n.ParentNode;
-            }
         }
 
         public long GetKey()
@@ -167,5 +157,21 @@ namespace Penguin.Analysis
         }
 
         protected abstract void Dispose(bool disposing);
+
+        private static IEnumerable<INode> GetTree(INode np)
+        {
+            INode n = np;
+            while (n != null)
+            {
+                yield return n;
+
+                if (n is DiskNode dn && dn.ParentOffset == DiskNode.HEADER_BYTES)
+                {
+                    yield break;
+                }
+
+                n = n.ParentNode;
+            }
+        }
     }
 }

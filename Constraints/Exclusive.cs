@@ -51,6 +51,11 @@ namespace Penguin.Analysis.Constraints
 
         public void SetKey(ColumnRegistration[] registrations)
         {
+            if (registrations is null)
+            {
+                throw new ArgumentNullException(nameof(registrations));
+            }
+
             LongByte lb = 0;
 
             for (int x = 0; x < registrations.Length; x++)

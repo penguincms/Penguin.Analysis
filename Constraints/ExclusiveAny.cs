@@ -52,6 +52,11 @@ namespace Penguin.Analysis.Constraints
 
         public void SetKey(ColumnRegistration[] registrations)
         {
+            if (registrations is null)
+            {
+                throw new ArgumentNullException(nameof(registrations));
+            }
+
             LongByte lb = 0;
 
             MaxBit = registrations.Length;

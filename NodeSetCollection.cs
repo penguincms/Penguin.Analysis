@@ -7,6 +7,25 @@ namespace Penguin.Analysis
 {
     public class NodeSetCollection : IList<NodeSet>
     {
+        public NodeSet this[int index]
+        {
+            get => NodeSetCache[Key.ElementAt(index)];
+            set
+            {
+                if (value is null)
+                {
+                    throw new ArgumentNullException(nameof(value));
+                }
+
+                if (NodeSetCache[value.ColumnIndex] is null)
+                {
+                    NodeSetCache[value.ColumnIndex] = value;
+                }
+
+                Key = LongByte.SetBit(Key, index, value != null);
+            }
+        }
+
         internal static readonly NodeSet[] NodeSetCache = new NodeSet[256];
 
         public int Count => Key.Count;
@@ -54,26 +73,17 @@ namespace Penguin.Analysis
         {
         }
 
-        public NodeSet this[int index]
-        {
-            get => NodeSetCache[Key.ElementAt(index)];
-            set
-            {
-                if (NodeSetCache[value.ColumnIndex] is null)
-                {
-                    NodeSetCache[value.ColumnIndex] = value;
-                }
-
-                Key = LongByte.SetBit(Key, index, value != null);
-            }
-        }
-
         public static implicit operator NodeSetCollection(LongByte b) => new NodeSetCollection(b.Value);
 
         public static implicit operator NodeSetCollection(long b) => new NodeSetCollection(b);
 
         public static implicit operator NodeSetCollection(List<NodeSet> n)
         {
+            if (n is null)
+            {
+                throw new ArgumentNullException(nameof(n));
+            }
+
             return new NodeSetCollection(n);
         }
 
@@ -100,6 +110,11 @@ namespace Penguin.Analysis
 
         public void Add(NodeSet item)
         {
+            if (item is null)
+            {
+                throw new ArgumentNullException(nameof(item));
+            }
+
             this.Key |= item.Key;
         }
 
@@ -110,6 +125,11 @@ namespace Penguin.Analysis
 
         public bool Contains(NodeSet item)
         {
+            if (item is null)
+            {
+                throw new ArgumentNullException(nameof(item));
+            }
+
             return (this.Key & item.Key) != 0;
         }
 
@@ -154,10 +174,23 @@ namespace Penguin.Analysis
 
         public override int GetHashCode() => unchecked((int)Key);
 
-        public int IndexOf(NodeSet item) => (this.Key & item.Key) != 0 ? item.ColumnIndex : -1;
+        public int IndexOf(NodeSet item)
+        {
+            if (item is null)
+            {
+                throw new ArgumentNullException(nameof(item));
+            }
+
+            return (this.Key & item.Key) != 0 ? item.ColumnIndex : -1;
+        }
 
         public void Insert(int index, NodeSet item)
         {
+            if (item is null)
+            {
+                throw new ArgumentNullException(nameof(item));
+            }
+
             this.Key &= item.Key;
         }
 

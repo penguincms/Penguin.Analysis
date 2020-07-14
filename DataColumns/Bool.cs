@@ -16,6 +16,11 @@ namespace Penguin.Analysis.DataColumns
 
         public static int GetValue(string input)
         {
+            if (input is null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
+
             if (input.StartsWith("t", StringComparison.OrdinalIgnoreCase) || input.StartsWith("1", StringComparison.OrdinalIgnoreCase))
             {
                 return 1;

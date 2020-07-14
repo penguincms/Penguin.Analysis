@@ -28,6 +28,11 @@ namespace Penguin.Analysis
 
         public void Write(byte[] toWrite)
         {
+            if (toWrite is null)
+            {
+                throw new ArgumentNullException(nameof(toWrite));
+            }
+
             this.stream.Write(toWrite, 0, toWrite.Length);
         }
 

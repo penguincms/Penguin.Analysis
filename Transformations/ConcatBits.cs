@@ -35,6 +35,11 @@ namespace Penguin.Analysis.Transformations
 
         public void Cleanup(DataTable table)
         {
+            if (table is null)
+            {
+                throw new ArgumentNullException(nameof(table));
+            }
+
             foreach (string ColumnName in this.ColumnNames)
             {
                 table.Columns.Remove(ColumnName);
@@ -43,6 +48,11 @@ namespace Penguin.Analysis.Transformations
 
         public void TransformRow(DataRow source)
         {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
             int v = 0;
 
             for (int i = 0; i < this.ColumnNames.Count; i++)
@@ -60,6 +70,11 @@ namespace Penguin.Analysis.Transformations
         /// <returns></returns>
         public DataTable TransformTable(DataTable table)
         {
+            if (table is null)
+            {
+                throw new ArgumentNullException(nameof(table));
+            }
+
             table.Columns.Add(this.TargetColumn);
 
             return table;

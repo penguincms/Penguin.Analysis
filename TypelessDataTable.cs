@@ -107,6 +107,11 @@ namespace Penguin.Analysis
 
         public void AddRow(TypelessDataRow row)
         {
+            if (row is null)
+            {
+                throw new ArgumentNullException(nameof(row));
+            }
+
             row.Table = this;
             this._rows.Add(row);
             this.RowCount++;

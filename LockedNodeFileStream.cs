@@ -7,14 +7,6 @@ namespace Penguin.Analysis
 {
     public class LockedNodeFileStream : INodeFileStream, IDisposable
     {
-        private static readonly object NodeFileLock = new object();
-        private static int StreamPointer = 0;
-        private readonly bool PoolStreams;
-        private FileStream _backingStream;
-        private StreamLock[] StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
-        public string FilePath => this._backingStream.Name;
-        public long Offset => this._backingStream.Position;
-
         private struct StreamLock : IDisposable
         {
             public object LockObject;
@@ -34,10 +26,23 @@ namespace Penguin.Analysis
             }
         }
 
+        private static readonly object NodeFileLock = new object();
+        private static int StreamPointer = 0;
+        private readonly bool PoolStreams;
+        private FileStream _backingStream;
+        private StreamLock[] StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
+        public string FilePath => this._backingStream.Name;
+        public long Offset => this._backingStream.Position;
+
         public LockedNodeFileStream(FileStream backingStream, bool poolStreams = true)
         {
             if (this._backingStream is null)
             {
+                if (backingStream is null)
+                {
+                    throw new ArgumentNullException(nameof(backingStream));
+                }
+
                 this._backingStream = backingStream;
 
                 if (poolStreams)
@@ -206,6 +211,11 @@ namespace Penguin.Analysis
 
         public void Write(byte[] v)
         {
+            if (v is null)
+            {
+                throw new ArgumentNullException(nameof(v));
+            }
+
             this._backingStream.Write(v, 0, v.Length);
         }
 

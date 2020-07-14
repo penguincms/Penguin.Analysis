@@ -30,6 +30,11 @@ namespace Penguin.Analysis
 
         public LongByte(IEnumerable<int> indexes)
         {
+            if (indexes is null)
+            {
+                throw new ArgumentNullException(nameof(indexes));
+            }
+
             count = 0;
             Value = 0;
             foreach (int index in indexes)
@@ -41,6 +46,11 @@ namespace Penguin.Analysis
 
         public LongByte(IEnumerable<LongByte> indexes)
         {
+            if (indexes is null)
+            {
+                throw new ArgumentNullException(nameof(indexes));
+            }
+
             count = 0;
             Value = 0;
             foreach (LongByte index in indexes)
@@ -52,6 +62,11 @@ namespace Penguin.Analysis
 
         public LongByte(IEnumerable<sbyte> indexes)
         {
+            if (indexes is null)
+            {
+                throw new ArgumentNullException(nameof(indexes));
+            }
+
             count = 0;
             Value = 0;
             foreach (int index in indexes)

@@ -222,7 +222,7 @@ namespace Penguin.Analysis
             if (!ExistingStream)
             {
                 ValidationCache = new FileStream(ValidationCacheFileName, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
-                ValidationCache.Write(BitConverter.GetBytes((long)0), 0, 8);
+                ValidationCache.Write(BitConverter.GetBytes((int)0), 0, 4);
             }
             else
             {

@@ -211,6 +211,11 @@ namespace Penguin.Analysis
 
         public Evaluation Evaluate(DataRow dr, bool MultiThread = true)
         {
+            if (dr is null)
+            {
+                throw new ArgumentNullException(nameof(dr));
+            }
+
             Dictionary<string, string> toEvaluate = new Dictionary<string, string>();
 
             foreach (DataColumn dc in dr.Table.Columns)
@@ -386,7 +391,6 @@ namespace Penguin.Analysis
 
                 while (thisRoot.Trim(this))
                 {
-
                 }
 
                 //no children on the header node. No point keeping it
@@ -425,7 +429,6 @@ namespace Penguin.Analysis
             long sortPos = outputStream.Offset;
 
             outputStream.Seek(RootChildListOffset);
-
 
             foreach (long l in RootOffsets.Select(n => n.Offset))
             {

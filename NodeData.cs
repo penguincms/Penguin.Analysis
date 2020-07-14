@@ -25,6 +25,11 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(builder));
             }
 
+            if (node is null)
+            {
+                throw new ArgumentNullException(nameof(node));
+            }
+
             double ColumnInstances = e != null ? e.Scores[node.Key].ColumnInstances : builder.Result.ColumnInstances[node.Key];
             Node = node ?? throw new ArgumentNullException(nameof(node));
             Score = Node.GetScore(builder.Result.BaseRate);
