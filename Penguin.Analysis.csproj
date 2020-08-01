@@ -24,8 +24,8 @@
     <None Remove=".meta" />
     <None Remove=".metaOne" />
     <None Remove="README.md" />
-    <PackageReference Include="Penguin.Debugging" Version="5.0.1-T9ZCSSJ" />
-    <PackageReference Include="Penguin.IO" Version="5.0.1-T9ZCSSJ" />
+    <PackageReference Include="Penguin.Debugging" Version="5.0.1-T9ZTQVZ" />
+    <PackageReference Include="Penguin.IO" Version="5.0.1-T9ZTQVZ" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
