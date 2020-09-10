@@ -69,8 +69,8 @@ namespace Penguin.Analysis
             {
                 ValidationCache = new FileStream(ValidationCacheFileName, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-                byte[] bytes = new byte[4];
-                ValidationCache.Read(bytes, 0, 4);
+                byte[] bytes = new byte[8];
+                ValidationCache.Read(bytes, 0, 8);
 
                 RealCount = BitConverter.ToInt32(bytes, 0);
 
@@ -222,7 +222,7 @@ namespace Penguin.Analysis
             if (!ExistingStream)
             {
                 ValidationCache = new FileStream(ValidationCacheFileName, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
-                ValidationCache.Write(BitConverter.GetBytes((int)0), 0, 4);
+                ValidationCache.Write(BitConverter.GetBytes((int)0), 0, 8);
             }
             else
             {
@@ -353,7 +353,7 @@ namespace Penguin.Analysis
                 if (!ExistingStream)
                 {
                     ValidationCache.Seek(0, SeekOrigin.Begin);
-                    ValidationCache.Write(BitConverter.GetBytes(RealCount), 0, 4);
+                    ValidationCache.Write(BitConverter.GetBytes(RealCount), 0, 8);
                 }
                 else
                 {
