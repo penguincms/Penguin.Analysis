@@ -764,6 +764,11 @@ namespace Penguin.Analysis
 
         public void RegisterColumn<T>(params string[] ColumnNames) where T : IDataColumn
         {
+            if (ColumnNames is null)
+            {
+                throw new ArgumentNullException(nameof(ColumnNames));
+            }
+
             foreach (string ColumnName in ColumnNames)
             {
                 this.RegisterColumn(ColumnName, Activator.CreateInstance<T>());

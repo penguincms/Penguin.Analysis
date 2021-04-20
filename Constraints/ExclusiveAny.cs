@@ -21,6 +21,11 @@ namespace Penguin.Analysis.Constraints
 
         public ExclusiveAny(params string[] headers)
         {
+            if (headers is null)
+            {
+                throw new ArgumentNullException(nameof(headers));
+            }
+
             foreach (string h in headers)
             {
                 Headers.Add(h);

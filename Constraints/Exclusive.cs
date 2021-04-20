@@ -23,7 +23,7 @@ namespace Penguin.Analysis.Constraints
 
         public Exclusive(params string[] headers)
         {
-            if (headers.Length > 0)
+            if (headers != null && headers.Length > 0)
             {
                 this.Headers = headers.ToList();
             }
