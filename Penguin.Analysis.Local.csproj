@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <PackageProjectUrl>https://github.com/penguincms/Penguin.Analysis</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/PenguinCMS/Penguin.Analysis</PackageProjectUrl>
     <Version>5.0.5</Version>
     <AssemblyName>Penguin.Analysis</AssemblyName>
     <RootNamespace>Penguin.Analysis</RootNamespace>
@@ -28,6 +28,7 @@
     <ProjectReference Include="..\Penguin.Extensions.Collections\Penguin.Extensions.Collections.Local.csproj" />
     <ProjectReference Include="..\Penguin.Extensions.Exceptions\Penguin.Extensions.Exceptions.Local.csproj" />
     <ProjectReference Include="..\Penguin.Extensions.String\Penguin.Extensions.String.Local.csproj" />
+    <ProjectReference Include="..\Penguin.FileStreams\Penguin.FileStreams.Local.csproj" />
     <ProjectReference Include="..\Penguin.IO\Penguin.IO.Local.csproj" />
     <ProjectReference Include="..\Penguin.Reflection.Abstractions\Penguin.Reflection.Abstractions.Local.csproj" />
     <ProjectReference Include="..\Penguin.Reflection.Extensions\Penguin.Reflection.Extensions.Local.csproj" />
