@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace Penguin.Analysis
 {
@@ -20,7 +20,6 @@ namespace Penguin.Analysis
         /// The record matches neither the nodes path, nor is a positive indicator of outcome
         /// </summary>
         None = 3,
-
 
     }
 }

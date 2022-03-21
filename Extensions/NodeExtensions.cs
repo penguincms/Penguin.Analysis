@@ -1,4 +1,4 @@
-﻿using Penguin.Analysis.Interfaces;
+using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,9 +9,6 @@ namespace Penguin.Analysis.Extensions
     public static class NodeExtensions
     {
         #region Methods
-
-
-
 
         public static int Depth(this MemoryNode tnode)
         {
