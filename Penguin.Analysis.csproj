@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net5.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <PackageProjectUrl>https://github.com/PenguinCMS/Penguin.Analysis</PackageProjectUrl>
     <Version>5.0.5</Version>
@@ -24,8 +24,8 @@
     <None Remove=".meta" />
     <None Remove=".metaOne" />
     <None Remove="README.md" />
-    <PackageReference Include="Penguin.Debugging" Version="5.0.6-TAVV3GD" />
-    <PackageReference Include="Penguin.IO" Version="5.0.6-TAVV3GD" />
+    <PackageReference Include="Penguin.Debugging" Version="5.0.6-TAW5FE4" />
+    <PackageReference Include="Penguin.IO" Version="5.0.6-TAW5FE4" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
