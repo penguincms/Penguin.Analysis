@@ -13,7 +13,7 @@ namespace Penguin.Analysis
     public class OptimizedRootNode : Node
     {
         public static int ExecutingEvaluations = 0;
-        private static ConcurrentQueue<Byte[]> ArrayPool = new ConcurrentQueue<byte[]>();
+        private static ConcurrentQueue<byte[]> ArrayPool = new ConcurrentQueue<byte[]>();
         private static ByteCache[] CachedBytes;
 
         private static int LastMatchAmount = 0;

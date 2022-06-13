@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1;net5.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
-    <PackageProjectUrl>https://github.com/PenguinCms/Penguin.Analysis</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/PenguinCMS/Penguin.Analysis</PackageProjectUrl>
     <Version>5.0.5</Version>
     <AssemblyName>Penguin.Analysis</AssemblyName>
     <RootNamespace>Penguin.Analysis</RootNamespace>
@@ -24,8 +24,8 @@
     <None Remove=".meta" />
     <None Remove=".metaOne" />
     <None Remove="README.md" />
-    <PackageReference Include="Penguin.Debugging" Version="5.0.6-TAX9354" />
-    <PackageReference Include="Penguin.IO" Version="5.0.6-TAXOY70" />
+    <PackageReference Include="Penguin.Debugging" Version="5.0.6-TAZCES9" />
+    <PackageReference Include="Penguin.IO" Version="5.0.6-TAZCES9" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />

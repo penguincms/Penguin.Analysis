@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Penguin.Extensions.Strings.Security;
-using Penguin.Extensions.Strings;
+using Penguin.Extensions.String.Security;
+using Penguin.Extensions.String;
 using System.Threading;
 using Penguin.Analysis.Constraints;
 
