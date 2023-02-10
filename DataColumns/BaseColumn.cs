@@ -12,7 +12,7 @@ namespace Penguin.Analysis.DataColumns
         public abstract int OptionCount { get; }
         public virtual bool SeedMe => false;
 
-        public BaseColumn()
+        protected BaseColumn()
         {
         }
 

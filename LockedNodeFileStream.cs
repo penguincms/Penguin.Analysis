@@ -5,29 +5,11 @@ using System.Threading;
 
 namespace Penguin.Analysis
 {
-    public class LockedNodeFileStream : INodeFileStream, IDisposable
+    public partial class LockedNodeFileStream : INodeFileStream, IDisposable
     {
-        private struct StreamLock : IDisposable
-        {
-            public object LockObject;
-
-            public FileStream Stream;
-
-            public StreamLock(FileStream source)
-            {
-                this.LockObject = new object();
-                this.Stream = new FileStream(source.Name, FileMode.Open, FileAccess.Read, FileShare.Read, 10000);
-            }
-
-            public void Dispose()
-            {
-                this.Stream?.Dispose();
-                this.Stream = null;
-            }
-        }
 
         private static readonly object NodeFileLock = new object();
-        private static int StreamPointer = 0;
+        private static int StreamPointer;
         private readonly bool PoolStreams;
         private FileStream _backingStream;
         private StreamLock[] StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];

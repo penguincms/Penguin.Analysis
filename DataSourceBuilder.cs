@@ -360,7 +360,7 @@ namespace Penguin.Analysis
 
                 double dataRowc = this.Result.RawData.RowCount;
 
-                thisRoot.MatchingRows = this.Result.RawData.Rows.ToList();
+                thisRoot.MatchingRows.AddRange(this.Result.RawData.Rows);
 
                 for (nodeseti = 0; nodeseti < nodesetc; nodeseti++)
                 {
@@ -594,7 +594,8 @@ namespace Penguin.Analysis
             }
         }
 
-        public async void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "<Pending>")]
+        public void PreloadFunc(FileStream stream, long SortOffset, long JsonOffset, MemoryManagementStyle memoryManagementStyle)
         {
             if (stream is null)
             {

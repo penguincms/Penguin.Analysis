@@ -300,6 +300,8 @@ namespace Penguin.Analysis
                 }
                 catch (Exception ex)
                 {
+                    Debug.WriteLine(ex);
+
                     if (Debugger.IsAttached)
                     {
                         Debugger.Break();

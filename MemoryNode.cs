@@ -49,13 +49,13 @@ namespace Penguin.Analysis
             }
         }
 
-        public IList<TypelessDataRow> MatchingRows { get; set; }
+        public List<TypelessDataRow> MatchingRows { get; }
 
         #endregion Fields
 
         #region Properties
 
-        public MemoryNode parentNode;
+        internal MemoryNode parentNode;
 
         private ushort value;
         public override sbyte Header => header;
@@ -65,8 +65,8 @@ namespace Penguin.Analysis
         public override IEnumerable<INode> Next => next;
         public override INode ParentNode => parentNode;
         public override ushort Value => value;
-        internal sbyte header { get; set; }
-        internal MemoryNode[] next { get; set; }
+        internal sbyte header;
+        internal MemoryNode[] next;
 
         #endregion Properties
 

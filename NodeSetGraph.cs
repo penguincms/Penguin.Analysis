@@ -360,16 +360,10 @@ namespace Penguin.Analysis
                     ValidationCache.Seek(8, SeekOrigin.Begin);
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when(Debugger.IsAttached)
             {
-                if (Debugger.IsAttached)
-                {
-                    Debugger.Break();
-                }
-                else
-                {
-                    throw;
-                }
+                Debug.WriteLine(ex);
+                Debugger.Break();
             }
         }
     }
