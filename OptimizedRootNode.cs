@@ -20,7 +20,9 @@ namespace Penguin.Analysis
         private List<INodeBlock>[][] next;
 
         private readonly HashSet<long> NoCache = new();
+
         public static Task FlushTask { get; set; } = Task.CompletedTask;
+
         public override int ChildCount { get; }
 
         public override sbyte ChildHeader => -1;

@@ -11,6 +11,7 @@ namespace Penguin.Analysis
         #region Properties
 
         private readonly int[] _Items;
+
         public bool MatchesOutput { get; set; }
 
         public TypelessDataTable Table { get; set; }
@@ -68,6 +69,7 @@ namespace Penguin.Analysis
         #region Properties
 
         private readonly List<TypelessDataRow> _rows;
+
         public ushort RowCount { get; internal set; }
 
         public IEnumerable<TypelessDataRow> Rows

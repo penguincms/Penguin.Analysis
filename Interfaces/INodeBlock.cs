@@ -3,6 +3,7 @@
     public interface INodeBlock
     {
         long Offset { get; }
+
         long NextOffset { get; }
     }
 }

@@ -24,7 +24,9 @@ namespace Penguin.Analysis
         }
 
         public Dictionary<long, int> ColumnInstances { get; set; } = new Dictionary<long, int>();
+
         public int GraphInstances { get; set; }
+
         public float PositiveIndicators { get; set; }
 
         [JsonIgnore]

@@ -27,7 +27,9 @@ namespace Penguin.Analysis
         public Action<INode> TrimmedNode = null;
 
         public bool CacheNodes { get; set; } = true;
+
         public int MaxCacheCount { get; set; } = 1_000_000;
+
         public ulong MinFreeMemory { get; set; } = 1_000_000_000;
 
         [JsonIgnore]
@@ -45,7 +47,9 @@ namespace Penguin.Analysis
         public Action<DataTable> PostTransform { get; set; }
 
         public int PreloadChunkSize { get; set; } = 15000;
+
         public int PreloadTimeoutMs { get; set; } = 5000;
+
         public ulong RangeFreeMemory { get; set; } = 500_000_000;
 
         #region Classes

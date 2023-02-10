@@ -8,6 +8,7 @@ namespace Penguin.Analysis.DataColumns
         #region Methods
 
         public abstract int OptionCount { get; }
+
         public virtual bool SeedMe => false;
 
         protected BaseColumn()

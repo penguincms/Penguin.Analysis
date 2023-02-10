@@ -54,12 +54,19 @@ namespace Penguin.Analysis
         internal MemoryNode parentNode;
 
         private readonly ushort value;
+
         public override sbyte Header => header;
+
         public ushort SkipChildren { get; set; }
+
         public bool LastNode { get; set; }
+
         public int Matched => this[MatchResult.Route] + this[MatchResult.Both];
+
         public override IEnumerable<INode> Next => next;
+
         public override INode ParentNode => parentNode;
+
         public override ushort Value => value;
         internal sbyte header;
         internal MemoryNode[] next;

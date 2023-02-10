@@ -5,6 +5,7 @@ namespace Penguin.Analysis
 {
     public partial class LockedNodeFileStream
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable", Justification = "<Pending>")]
         private struct StreamLock : IDisposable
         {
             public object LockObject;

@@ -7,6 +7,7 @@
         public sbyte ColumnIndex { get; set; }
 
         public long Key => (long)1 << ColumnIndex;
+
         public int Values { get; set; }
 
         #endregion Properties

@@ -6,6 +6,7 @@ namespace Penguin.Analysis.Interfaces
     public interface INode<TChild> : INode where TChild : INode
     {
         new IEnumerable<TChild> Next { get; }
+
         new TChild ParentNode { get; }
 
         TChild GetNextByValue(int Value);
@@ -14,12 +15,19 @@ namespace Penguin.Analysis.Interfaces
     public interface INode : IDisposable
     {
         Accuracy Accuracy { get; }
+
         int ChildCount { get; }
+
         sbyte ChildHeader { get; }
+
         byte Depth { get; }
+
         sbyte Header { get; }
+
         long Key { get; }
+
         IEnumerable<INode> Next { get; }
+
         INode ParentNode { get; }
 
         ushort[] Results { get; }

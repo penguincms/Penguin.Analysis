@@ -17,6 +17,7 @@ namespace Penguin.Analysis
         protected bool disposedValue;
 
         private byte? depth;
+
         public virtual Accuracy Accuracy => new(this[MatchResult.Route] + this[MatchResult.Both], this[MatchResult.Both]);
 
         public abstract int ChildCount { get; }

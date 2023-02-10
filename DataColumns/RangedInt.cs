@@ -10,6 +10,7 @@ namespace Penguin.Analysis.DataColumns
         #region Properties
 
         public override int OptionCount => RangeStarts.Length;
+
         public float[] RangeStarts { get; set; }
 
         #endregion Properties

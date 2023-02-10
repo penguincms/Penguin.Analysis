@@ -29,7 +29,9 @@ namespace Penguin.Analysis
         internal static readonly NodeSet[] NodeSetCache = new NodeSet[256];
 
         public int Count => Key.Count;
+
         public bool IsReadOnly => false;
+
         public LongByte Key { get; private set; }
 
         internal NodeSetCollection(IEnumerable<NodeSet> set) : this(new LongByte(set.Select(s => s.ColumnIndex)).Value)

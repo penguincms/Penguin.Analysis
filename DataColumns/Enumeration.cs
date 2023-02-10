@@ -12,7 +12,9 @@ namespace Penguin.Analysis.DataColumns
         protected Dictionary<string, EnumOption> valuesDict = new();
 
         public override int OptionCount => Values.Length;
+
         public override bool SeedMe => true;
+
         public string[] Values { get; set; }
 
         public Enumeration() : base()
@@ -42,8 +44,11 @@ namespace Penguin.Analysis.DataColumns
             #region Properties
 
             public string Display { get; set; }
+
             public int Index { get; set; }
+
             public int Indicators { get; set; }
+
             public int Instances { get; set; }
 
             public override string ToString()

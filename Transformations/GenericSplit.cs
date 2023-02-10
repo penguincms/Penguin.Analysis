@@ -11,6 +11,7 @@ namespace Penguin.Analysis.Transformations
         #region Properties
 
         private Func<string, IEnumerable<string>> Process;
+
         public List<string> ResultColumns { get; internal set; }
 
         public string TargetColumn { get; internal set; }

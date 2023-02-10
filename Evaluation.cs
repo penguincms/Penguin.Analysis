@@ -11,8 +11,11 @@ namespace Penguin.Analysis
         #region Properties
 
         public Dictionary<string, string> CalculatedData { get; } = new Dictionary<string, string>();
+
         public TypelessDataRow DataRow { get; set; }
+
         public Dictionary<string, string> InputData { get; set; } = new Dictionary<string, string>();
+
         public ConcurrentDictionary<long, INode> MatchedRoutes { get; } = new ConcurrentDictionary<long, INode>();
 
         public int MatchingRoutes { get; set; }
@@ -62,13 +65,17 @@ namespace Penguin.Analysis
         }
 
         public ConcurrentDictionary<long, AnalysisScore> Scores { get; }
+
         protected AnalysisResults AnalysisResults { get; set; }
 
         public class AnalysisScore
         {
             public double ColumnInstances { get; set; }
+
             public double OldCount { get; set; }
+
             public double OldValue { get; set; }
+
             public double Value { get; set; }
         }
 

@@ -12,7 +12,9 @@ namespace Penguin.Analysis
         private readonly bool PoolStreams;
         private FileStream _backingStream;
         private StreamLock[] StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
+
         public string FilePath => _backingStream.Name;
+
         public long Offset => _backingStream.Position;
 
         public LockedNodeFileStream(FileStream backingStream, bool poolStreams = true)

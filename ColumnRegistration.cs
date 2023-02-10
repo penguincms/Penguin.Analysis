@@ -9,6 +9,7 @@ namespace Penguin.Analysis
         #region Properties
 
         public IDataColumn Column { get; set; }
+
         public string Header { get; set; }
 
         #endregion Properties

@@ -9,6 +9,7 @@ namespace Penguin.Analysis
         private MemoryStream stream = new();
 
         public long Offset => stream.Position + SourceOffset;
+
         public bool Ready { get; set; }
 
         public MemoryNodeFileStream(long sourceOffset)

@@ -45,10 +45,15 @@ namespace Penguin.Analysis
     {
         private readonly DataSourceBuilder Builder;
         private Stream ValidationCache;
+
         public long Index { get; private set; } = -1;
+
         public long MaxCount { get; private set; }
+
         public int RealCount { get; private set; }
+
         public int RealIndex { get; private set; }
+
         public Action<NodeSetGraphProgress> ReportProgress { get; set; }
 
         private IEnumerable<(sbyte ColumnIndex, int Values)> ColumnsToProcess => Builder.Registrations

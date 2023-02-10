@@ -18,6 +18,7 @@ namespace Penguin.Analysis
         }
 
         public byte[] Data { get; set; }
+
         public ushort LastUse { get; set; }
 
         public override bool Equals(object obj)

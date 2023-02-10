@@ -10,25 +10,25 @@
             </summary>
         </member>
         <member name="P:Penguin.Analysis.Constraints.Exclusive.Key">
-            <inheritdoc/>
+            <inheritdoc />
         </member>
         <member name="M:Penguin.Analysis.Constraints.Exclusive.#ctor(System.String[])">
-            <inheritdoc/>
+            <inheritdoc />
         </member>
         <member name="M:Penguin.Analysis.Constraints.Exclusive.ToString">
-            <inheritdoc/>
+            <inheritdoc />
         </member>
         <member name="M:Penguin.Analysis.Constraints.Exclusive.Evaluate(Penguin.Analysis.LongByte)">
-            <inheritdoc/>
+            <inheritdoc />
         </member>
         <member name="M:Penguin.Analysis.Constraints.Exclusive.SetKey(Penguin.Analysis.ColumnRegistration[])">
-            <inheritdoc/>
+            <inheritdoc />
         </member>
         <member name="M:Penguin.Analysis.Constraints.Exclusive.Dispose">
-            <inheritdoc/>
+            <inheritdoc />
         </member>
         <member name="M:Penguin.Analysis.Constraints.Exclusive.Dispose(System.Boolean)">
-            <inheritdoc/>
+            <inheritdoc />
         </member>
         <member name="T:Penguin.Analysis.Constraints.ExclusiveAny">
             <summary>

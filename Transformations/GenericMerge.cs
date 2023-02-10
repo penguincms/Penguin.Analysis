@@ -10,6 +10,7 @@ namespace Penguin.Analysis.Transformations
         public class ColumnDefinition
         {
             public string Name { get; set; }
+
             public string Value { get; set; }
         }
 
@@ -21,7 +22,9 @@ namespace Penguin.Analysis.Transformations
         #region Properties
 
         private Func<IEnumerable<ColumnDefinition>, string> Process;
+
         public string ResultColumn { get; internal set; }
+
         public List<string> SourceColumns { get; internal set; }
 
         #endregion Properties

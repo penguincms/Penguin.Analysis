@@ -10,6 +10,7 @@ namespace Penguin.Analysis.Transformations
         #region Properties
 
         private Func<string, object> Process;
+
         public List<string> ResultColumns => throw new NotImplementedException();
 
         public string TargetColumn { get; internal set; }

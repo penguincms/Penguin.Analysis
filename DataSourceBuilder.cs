@@ -25,6 +25,7 @@ namespace Penguin.Analysis
 
         public List<ColumnRegistration> Registrations = new();
         private readonly List<ITransform> Transformations = new();
+
         public ColumnRegistration TableKey { get; set; }
 
         #endregion Fields
@@ -33,6 +34,7 @@ namespace Penguin.Analysis
 
         private readonly List<IRouteConstraint> routeConstraint = new();
         private DataTable TempTable;
+
         public AnalysisResults Result { get; set; } = new AnalysisResults();
 
         [JsonIgnore]
