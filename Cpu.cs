@@ -33,7 +33,7 @@ namespace Penguin.Analysis
                 }
             }
 
-            Parallel.ForEach(threads.ToList() as IEnumerable<(int Cpu, List<int> Indexes)>, body);
+            _ = Parallel.ForEach(threads.ToList(), body);
         }
 
         public static void ForEach<TSource>(IEnumerable<TSource> source, Action<(int Cpu, List<TSource> Bag)> body)
@@ -63,7 +63,7 @@ namespace Penguin.Analysis
                 }
             }
 
-            Parallel.ForEach(threads.ToList() as IEnumerable<(int Index, List<TSource> Bag)>, body);
+            _ = Parallel.ForEach(threads.ToList() as IEnumerable<(int Index, List<TSource> Bag)>, body);
         }
 
         #endregion Methods

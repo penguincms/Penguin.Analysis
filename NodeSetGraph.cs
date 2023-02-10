@@ -1,46 +1,61 @@
-﻿using System;
+﻿using Penguin.Extensions.String.Security;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Penguin.Extensions.String.Security;
-using Penguin.Extensions.String;
-using System.Threading;
-using Penguin.Analysis.Constraints;
 
 namespace Penguin.Analysis
 {
-    public struct NodeSetGraphProgress
+    public struct NodeSetGraphProgress : IEquatable<NodeSetGraphProgress>
     {
         public long Index;
         public long MaxCount;
         public float Progress;
         public int RealCount;
+
+        public override bool Equals(object obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override int GetHashCode()
+        {
+            throw new NotImplementedException();
+        }
+
+        public static bool operator ==(NodeSetGraphProgress left, NodeSetGraphProgress right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(NodeSetGraphProgress left, NodeSetGraphProgress right)
+        {
+            return !(left == right);
+        }
+
+        public bool Equals(NodeSetGraphProgress other)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class NodeSetGraph : IEnumerable<NodeSetCollection>, IDisposable
     {
         private readonly DataSourceBuilder Builder;
-        private readonly object collectionLock = new object();
         private Stream ValidationCache;
         public long Index { get; private set; } = -1;
         public long MaxCount { get; private set; }
-        public int RealCount { get; private set; } = 0;
+        public int RealCount { get; private set; }
         public int RealIndex { get; private set; }
         public Action<NodeSetGraphProgress> ReportProgress { get; set; }
 
-        private IEnumerable<(sbyte ColumnIndex, int Values)> ColumnsToProcess
-        {
-            get
-            {
-                return Builder.Registrations
+        private IEnumerable<(sbyte ColumnIndex, int Values)> ColumnsToProcess => Builder.Registrations
                               .Select(r => (
                                 ColumnIndex: (sbyte)Builder.Registrations.IndexOf(r),
                                 Values: r.Column.OptionCount
                               ));
-            }
-        }
 
         private string ValidationCacheFileName
         {
@@ -70,7 +85,7 @@ namespace Penguin.Analysis
                 ValidationCache = new FileStream(ValidationCacheFileName, FileMode.Open, FileAccess.Read, FileShare.Read);
 
                 byte[] bytes = new byte[8];
-                ValidationCache.Read(bytes, 0, 8);
+                _ = ValidationCache.Read(bytes, 0, 8);
 
                 RealCount = BitConverter.ToInt32(bytes, 0);
 
@@ -116,7 +131,7 @@ namespace Penguin.Analysis
 
             foreach ((sbyte ColumnIndex, int Values) cv in ColumnsToProcess)
             {
-                NodeSet ns = new NodeSet(cv);
+                NodeSet ns = new(cv);
 
                 NodeSetCollection.NodeSetCache[cv.ColumnIndex] = ns;
             }
@@ -137,7 +152,7 @@ namespace Penguin.Analysis
 
         public IEnumerator<NodeSetCollection> GetEnumerator()
         {
-            HashSet<long> AlteredNodes = new HashSet<long>();
+            HashSet<long> AlteredNodes = new();
 
             IEnumerator<long> cEnum = BuildNodeDefinitions().GetEnumerator();
 
@@ -147,7 +162,10 @@ namespace Penguin.Analysis
             }
         }
 
-        IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
 
         private static long ValidateNode(LongByte key, HashSet<long> AlteredNodes, DataSourceBuilder Builder, Action<ValidationResult> OnFailure = null, Action<LongByte> OnSuccess = null)
         {
@@ -169,7 +187,7 @@ namespace Penguin.Analysis
                     //We're only counting modified ones to save memory. Unmodified sets wont show up twice,
                     //but modified sets could show up in the pre-post form depending on what order they show up in.
                     //it should be short first so it shouldn't be needed, but you never know
-                    AlteredNodes.Add(key);
+                    _ = AlteredNodes.Add(key);
 
                     //Make sure we havent counted this valid subset yet as part of another group
                     if (AlteredNodes.Add(ckey))
@@ -202,9 +220,9 @@ namespace Penguin.Analysis
             Index = 0;
             RealIndex = 0;
             IEnumerable<(sbyte ColumnIndex, int Values)> columnsToProcess = ColumnsToProcess;
-            HashSet<long> AlteredNodes = new HashSet<long>();
+            HashSet<long> AlteredNodes = new();
             bool LastValid = true;
-            bool ExistingStream = !(ValidationCache is null);
+            bool ExistingStream = ValidationCache is not null;
             long NextFlip = 0;
             long NextKey = 0;
 
@@ -213,9 +231,9 @@ namespace Penguin.Analysis
             void ReadNextFlip()
             {
                 byte[] bytes = new byte[8];
-                ValidationCache.Read(bytes, 0, 8);
+                _ = ValidationCache.Read(bytes, 0, 8);
                 NextFlip = BitConverter.ToInt64(bytes, 0);
-                ValidationCache.Read(bytes, 0, 8);
+                _ = ValidationCache.Read(bytes, 0, 8);
                 NextKey = BitConverter.ToInt64(bytes, 0);
             }
 
@@ -237,13 +255,13 @@ namespace Penguin.Analysis
                     {
                         Index = Index,
                         MaxCount = MaxCount,
-                        Progress = ((int)((Index * 10000) / MaxCount) / 10000f),
+                        Progress = (int)(Index * 10000 / MaxCount) / 10000f,
                         RealCount = RealCount
                     });
                 }
             }
 
-            ComplexTree complexTree = new ComplexTree(columnsToProcess);
+            ComplexTree complexTree = new(columnsToProcess);
 
             IEnumerator<List<(sbyte ColumnIndex, int Values)>> TreeEnumerator = complexTree.Build().GetEnumerator();
 
@@ -255,11 +273,11 @@ namespace Penguin.Analysis
 
                 if (!ExistingStream)
                 {
-                    LongByte thisKey = new LongByte(TreeEnumerator.Current.Select(c => c.ColumnIndex));
+                    LongByte thisKey = new(TreeEnumerator.Current.Select(c => c.ColumnIndex));
 
                     long newKey = ValidateNode(thisKey, AlteredNodes, Builder, OnFailure, OnSuccess);
 
-                    bool stateChange = (newKey != 0) != LastValid;
+                    bool stateChange = newKey != 0 != LastValid;
                     bool keyChange = newKey != thisKey.Value && newKey != 0;
                     bool write = stateChange || keyChange;
 
@@ -270,7 +288,7 @@ namespace Penguin.Analysis
 
                         if (stateChange)
                         {
-                            LastValid = (newKey != 0);
+                            LastValid = newKey != 0;
                         }
                     }
 
@@ -352,15 +370,15 @@ namespace Penguin.Analysis
             {
                 if (!ExistingStream)
                 {
-                    ValidationCache.Seek(0, SeekOrigin.Begin);
+                    _ = ValidationCache.Seek(0, SeekOrigin.Begin);
                     ValidationCache.Write(BitConverter.GetBytes(RealCount), 0, 8);
                 }
                 else
                 {
-                    ValidationCache.Seek(8, SeekOrigin.Begin);
+                    _ = ValidationCache.Seek(8, SeekOrigin.Begin);
                 }
             }
-            catch (Exception ex) when(Debugger.IsAttached)
+            catch (Exception ex) when (Debugger.IsAttached)
             {
                 Debug.WriteLine(ex);
                 Debugger.Break();

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Penguin.Analysis.Extensions
@@ -13,7 +12,7 @@ namespace Penguin.Analysis.Extensions
             for (int i = 0; i < 4; i++)
             {
                 result <<= 8;
-                result |= (source[3 - i + offset] & 0xFF);
+                result |= source[3 - i + offset] & 0xFF;
             }
             return result;
         }
@@ -25,7 +24,7 @@ namespace Penguin.Analysis.Extensions
             for (int i = 0; i < 4; i++)
             {
                 result <<= 8;
-                result |= (source[3 - i + offset] & 0xFF);
+                result |= source[3 - i + offset] & 0xFF;
             }
             return result;
         }
@@ -37,7 +36,7 @@ namespace Penguin.Analysis.Extensions
             fixed (byte* pbyte = &value[startIndex])
             {
                 int i1 = (*pbyte) | (*(pbyte + 1) << 8) | (*(pbyte + 2) << 16) | (*(pbyte + 3) << 24);
-                int i2 = (*(pbyte + 4));
+                int i2 = *(pbyte + 4);
                 return (uint)i1 | ((long)i2 << 32);
             }
         }
@@ -88,7 +87,7 @@ namespace Penguin.Analysis.Extensions
             {
                 if (startIndex % 8 == 0)
                 { // data is aligned
-                    return *((long*)pbyte);
+                    return *(long*)pbyte;
                 }
                 else
                 {

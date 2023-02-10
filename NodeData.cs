@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Penguin.Analysis
 {
@@ -34,7 +33,7 @@ namespace Penguin.Analysis
             Node = node ?? throw new ArgumentNullException(nameof(node));
             Score = Node.GetScore(builder.Result.BaseRate);
             Weight = builder.Result.GraphInstances / ColumnInstances;
-            LongByte Key = new LongByte(Node.Key);
+            LongByte Key = new(Node.Key);
 
             Data = new Dictionary<string, object>()
             {

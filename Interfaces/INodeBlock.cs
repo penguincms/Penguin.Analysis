@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Penguin.Analysis.Interfaces
+﻿namespace Penguin.Analysis.Interfaces
 {
     public interface INodeBlock
     {

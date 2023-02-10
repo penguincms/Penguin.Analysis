@@ -13,30 +13,31 @@ namespace Penguin.Analysis.Constraints
     {
         #region Fields
 
-        private readonly List<string> Headers = new List<string>();
+        private readonly List<string> Headers = new();
+        /// <inheritdoc/>
 
         #endregion Fields
 
         #region Constructors
 
         public LongByte Key { get; set; }
+        /// <inheritdoc/>
 
         public Exclusive(params string[] headers)
         {
-            if (headers != null && headers.Length > 0)
-            {
-                this.Headers = headers.ToList();
-            }
-            else
-            {
-                throw new ArgumentException("At least one header must be specified");
-            }
+            Headers = headers != null && headers.Length > 0
+                ? headers.ToList()
+                : throw new ArgumentException("At least one header must be specified");
         }
+
+        /// <inheritdoc/>
 
         public override string ToString()
         {
-            return $"{nameof(Exclusive)}: " + this.Headers.Join();
+            return $"{nameof(Exclusive)}: " + Headers.Join();
         }
+
+        /// <inheritdoc/>
 
         #endregion Constructors
 
@@ -44,54 +45,59 @@ namespace Penguin.Analysis.Constraints
 
         public bool Evaluate(LongByte key)
         {
-            LongByte tlb = this.Key;
+            LongByte tlb = Key;
 
             return (tlb & key) == 0 || key.Count < 2 || (tlb.Count > 1 && tlb.Count < key.Count);
         }
 
-        public void SetKey(ColumnRegistration[] registrations)
+        /// <inheritdoc/>
+
+        public void SetKey(ColumnRegistration[] columns)
         {
-            if (registrations is null)
+            if (columns is null)
             {
-                throw new ArgumentNullException(nameof(registrations));
+                throw new ArgumentNullException(nameof(columns));
             }
 
             LongByte lb = 0;
 
-            for (int x = 0; x < registrations.Length; x++)
+            for (int x = 0; x < columns.Length; x++)
             {
-                lb.SetBit(x, this.Headers.Contains(registrations[x].Header));
+                lb.SetBit(x, Headers.Contains(columns[x].Header));
             }
 
-            this.Key = lb;
+            Key = lb;
         }
 
         #region IDisposable Support
 
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
+        /// <inheritdoc/>
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
+            Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
 
+        /// <inheritdoc/>
+
         protected virtual void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
-                    this.Headers.Clear();
+                    Headers.Clear();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 

@@ -33,7 +33,7 @@ namespace Penguin.Analysis
         [JsonIgnore]
         public Action<NodeSetGraphProgress> NodeEnumProgress { get; set; }
 
-        public int NodeFlushDepth { get; set; } = 0;
+        public int NodeFlushDepth { get; set; }
 
         /// <summary>
         /// Executed after the graph is generated and the node count is enumerated
@@ -50,7 +50,7 @@ namespace Penguin.Analysis
 
         #region Classes
 
-        public ResultSettings Results = new ResultSettings();
+        public ResultSettings Results = new();
 
         public class ResultSettings
         {
@@ -59,7 +59,7 @@ namespace Penguin.Analysis
             /// <summary>
             /// Only build trees that contain positive output matches
             /// </summary>
-            public bool MatchOnly { get; set; } = false;
+            public bool MatchOnly { get; set; }
 
             /// <summary>
             /// The minimum total times a route must be matched to be considered

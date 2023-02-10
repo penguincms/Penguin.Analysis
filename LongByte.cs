@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace Penguin.Analysis
 {
-    public struct LongByte : IEnumerable<int>
+    public struct LongByte : IEnumerable<int>, IEquatable<LongByte>
     {
         public long Value;
 
@@ -22,10 +22,7 @@ namespace Penguin.Analysis
 
                 return count;
             }
-            private set
-            {
-                count = value;
-            }
+            private set => count = value;
         }
 
         public LongByte(IEnumerable<int> indexes)
@@ -40,7 +37,7 @@ namespace Penguin.Analysis
             foreach (int index in indexes)
             {
                 count++;
-                this.Value |= 1 << index;
+                Value |= 1 << index;
             }
         }
 
@@ -56,7 +53,7 @@ namespace Penguin.Analysis
             foreach (LongByte index in indexes)
             {
                 count++;
-                this.Value |= index.Value;
+                Value |= index.Value;
             }
         }
 
@@ -72,7 +69,7 @@ namespace Penguin.Analysis
             foreach (int index in indexes)
             {
                 count++;
-                this.Value |= 1 << index;
+                Value |= 1 << index;
             }
         }
 
@@ -149,11 +146,20 @@ namespace Penguin.Analysis
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasBitAt(long value, int Index) => (value & ((long)1 << Index)) != 0;
+        public static bool HasBitAt(long value, int Index)
+        {
+            return (value & ((long)1 << Index)) != 0;
+        }
 
-        public static implicit operator long(LongByte d) => d.Value;
+        public static implicit operator long(LongByte d)
+        {
+            return d.Value;
+        }
 
-        public static implicit operator LongByte(long b) => new LongByte(b);
+        public static implicit operator LongByte(long b)
+        {
+            return new LongByte(b);
+        }
 
         public static bool operator !=(LongByte lhs, LongByte rhs)
         {
@@ -175,14 +181,7 @@ namespace Penguin.Analysis
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static long SetBit(long value, int Index, bool state)
         {
-            if (state)
-            {
-                return AddBitAt(value, Index);
-            }
-            else
-            {
-                return RemoveBitAt(value, Index);
-            }
+            return state ? AddBitAt(value, Index) : RemoveBitAt(value, Index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -203,11 +202,14 @@ namespace Penguin.Analysis
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int CountBits(bool state) => CountBits(Value, state);
+        public int CountBits(bool state)
+        {
+            return CountBits(Value, state);
+        }
 
         public override bool Equals(object obj)
         {
-            return this.Equals((LongByte)obj);
+            return Equals((LongByte)obj);
         }
 
         public bool Equals(LongByte p)
@@ -218,9 +220,15 @@ namespace Penguin.Analysis
             return Value == p.Value;
         }
 
-        public IEnumerator<int> GetEnumerator() => GetSetBits(Value, true).GetEnumerator();
+        public IEnumerator<int> GetEnumerator()
+        {
+            return GetSetBits(Value, true).GetEnumerator();
+        }
 
-        IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
 
         public override int GetHashCode()
         {
@@ -228,7 +236,10 @@ namespace Penguin.Analysis
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasBitAt(int Index) => HasBitAt(Value, Index);
+        public bool HasBitAt(int Index)
+        {
+            return HasBitAt(Value, Index);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool RemoveBitAt(int Index)
@@ -256,7 +267,10 @@ namespace Penguin.Analysis
             }
         }
 
-        public override string ToString() => $"{Convert.ToString(Value, 2).PadLeft(64, '0')} ({Value.ToString()})";
+        public override string ToString()
+        {
+            return $"{Convert.ToString(Value, 2).PadLeft(64, '0')} ({Value})";
+        }
 
         public bool TrimLeft()
         {
@@ -300,6 +314,16 @@ namespace Penguin.Analysis
             }
 
             return altered;
+        }
+
+        public long ToInt64()
+        {
+            throw new NotImplementedException();
+        }
+
+        public LongByte ToLongByte()
+        {
+            throw new NotImplementedException();
         }
     }
 }

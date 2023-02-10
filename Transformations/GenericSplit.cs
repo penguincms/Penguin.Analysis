@@ -24,6 +24,7 @@ namespace Penguin.Analysis.Transformations
         /// does NOT keep original column so original must be returned if required
         /// </summary>
         /// <param name="ColumnName"></param>
+        /// <param name="NewColumnNames"></param>
         /// <param name="transformer"></param>
         public GenericSplit(string ColumnName, List<string> NewColumnNames, Func<string, IEnumerable<string>> transformer)
         {
@@ -32,9 +33,9 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentException("message", nameof(ColumnName));
             }
 
-            this.TargetColumn = ColumnName;
-            this.Process = transformer ?? throw new ArgumentNullException(nameof(transformer));
-            this.ResultColumns = NewColumnNames ?? throw new ArgumentNullException(nameof(NewColumnNames));
+            TargetColumn = ColumnName;
+            Process = transformer ?? throw new ArgumentNullException(nameof(transformer));
+            ResultColumns = NewColumnNames ?? throw new ArgumentNullException(nameof(NewColumnNames));
         }
 
         #endregion Constructors
@@ -48,9 +49,9 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(table));
             }
 
-            if (!this.ResultColumns.Contains(this.TargetColumn))
+            if (!ResultColumns.Contains(TargetColumn))
             {
-                table.Columns.Remove(this.TargetColumn);
+                table.Columns.Remove(TargetColumn);
             }
         }
 
@@ -61,17 +62,17 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(source));
             }
 
-            string Value = source[this.TargetColumn]?.ToString();
+            string Value = source[TargetColumn]?.ToString();
 
-            List<string> postTransform = this.Process.Invoke(Value).ToList();
+            List<string> postTransform = Process.Invoke(Value).ToList();
 
-            if (postTransform.Count != this.ResultColumns.Count)
+            if (postTransform.Count != ResultColumns.Count)
             {
                 throw new Exception("Result count returned from transform does not match target column count");
             }
 
             int i = 0;
-            foreach (string column in this.ResultColumns)
+            foreach (string column in ResultColumns)
             {
                 source[column] = postTransform[i++];
             }
@@ -89,12 +90,12 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(table));
             }
 
-            foreach (string newColumn in this.ResultColumns)
+            foreach (string newColumn in ResultColumns)
             {
                 //Dont add target column again if one target is ALSO source
                 if (!table.Columns.Cast<DataColumn>().Any(c => c.ColumnName == newColumn))
                 {
-                    table.Columns.Add(newColumn);
+                    _ = table.Columns.Add(newColumn);
                 }
             }
 
@@ -103,37 +104,37 @@ namespace Penguin.Analysis.Transformations
 
         #region IDisposable Support
 
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
+            Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
 
         public override string ToString()
         {
-            return $"{this.TargetColumn} => ({string.Join(", ", this.ResultColumns)})";
+            return $"{TargetColumn} => ({string.Join(", ", ResultColumns)})";
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
-                    this.ResultColumns.Clear();
+                    ResultColumns.Clear();
 
-                    this.Process = null;
+                    Process = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 

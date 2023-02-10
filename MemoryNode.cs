@@ -3,7 +3,6 @@ using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace Penguin.Analysis
@@ -41,11 +40,8 @@ namespace Penguin.Analysis
         {
             get
             {
-                if (this.key is null)
-                {
-                    this.key = this.GetKey();
-                }
-                return this.key.Value;
+                key ??= GetKey();
+                return key.Value;
             }
         }
 
@@ -57,7 +53,7 @@ namespace Penguin.Analysis
 
         internal MemoryNode parentNode;
 
-        private ushort value;
+        private readonly ushort value;
         public override sbyte Header => header;
         public ushort SkipChildren { get; set; }
         public bool LastNode { get; set; }
@@ -75,13 +71,14 @@ namespace Penguin.Analysis
         /// <summary>
         /// Deserialization only. Dont use this unless you're a deserializer
         /// </summary>
-        public MemoryNode() { }
+        public MemoryNode()
+        { }
 
         public MemoryNode(sbyte header, ushort value, int children, ushort backingRows)
         {
             this.header = header;
 
-            this.MatchingRows = new List<TypelessDataRow>(backingRows);
+            MatchingRows = new List<TypelessDataRow>(backingRows);
 
             this[MatchResult.None] = backingRows;
 
@@ -89,12 +86,12 @@ namespace Penguin.Analysis
 
             if (children != 0)
             {
-                this.next = new MemoryNode[children];
-                this.LastNode = false;
+                next = new MemoryNode[children];
+                LastNode = false;
             }
             else
             {
-                this.LastNode = true;
+                LastNode = true;
             }
         }
 
@@ -141,15 +138,15 @@ namespace Penguin.Analysis
 
             if (!HasValidChild)
             {
-                if (this.next != null && this.ChildCount > 0)
+                if (next != null && ChildCount > 0)
                 {
-                    this.next = new MemoryNode[0];
+                    next = Array.Empty<MemoryNode>();
                     trimmed = true;
                 }
             }
             else
             {
-                foreach (MemoryNode mn in this.next)
+                foreach (MemoryNode mn in next)
                 {
                     if (mn != null)
                     {
@@ -197,7 +194,7 @@ namespace Penguin.Analysis
         {
             long length = DiskNode.NODE_SIZE + childListSize;
 
-            if (!(next is null))
+            if (next is not null)
             {
                 foreach (MemoryNode cnode in next)
                 {
@@ -211,11 +208,11 @@ namespace Penguin.Analysis
 
         public void RemoveNode(MemoryNode n)
         {
-            for (int i = 0; i < this.next.Length; i++)
+            for (int i = 0; i < next.Length; i++)
             {
-                if (this.next[i] == n)
+                if (next[i] == n)
                 {
-                    this.next[i] = null;
+                    next[i] = null;
                     break;
                 }
             }
@@ -228,7 +225,7 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(sourceBuilder));
             }
 
-            if (this.ChildHeader < 0)
+            if (ChildHeader < 0)
             {
                 throw new Exception();
             }
@@ -246,14 +243,14 @@ namespace Penguin.Analysis
                 {
                     sourceBuilder.Settings.TrimmedNode?.Invoke(next[i]);
 
-                    this.next[i] = null;
+                    next[i] = null;
                 }
             }
         }
 
         internal SerializationResults Serialize(INodeFileStream lockedNodeFileStream, long ParentOffset = 0)
         {
-            SerializationResults results = new SerializationResults(lockedNodeFileStream, this, ParentOffset);
+            SerializationResults results = new(lockedNodeFileStream, this, ParentOffset);
             long thisOffset = results.Single().Offset;
             //parent 0 - 8
 
@@ -265,7 +262,7 @@ namespace Penguin.Analysis
 
             for (int i = 0; i < 2; i++)
             {
-                BitConverter.GetBytes(Results[i]).CopyTo(toWrite, 5 + i * 2);
+                BitConverter.GetBytes(Results[i]).CopyTo(toWrite, 5 + (i * 2));
             }
 
             unchecked
@@ -306,7 +303,7 @@ namespace Penguin.Analysis
 
             if (nCount > 0)
             {
-                int skip = (nCount * DiskNode.NEXT_SIZE);
+                int skip = nCount * DiskNode.NEXT_SIZE;
 
                 long ChildListOffset = lockedNodeFileStream.Offset;
 
@@ -320,19 +317,9 @@ namespace Penguin.Analysis
 
                 for (i = 0; i < nCount; i++)
                 {
-                    MemoryNode nextn = this.next[i];
+                    MemoryNode nextn = next[i];
 
-                    byte[] offsetBytes;
-
-                    if (nextn != null)
-                    {
-                        offsetBytes = lockedNodeFileStream.Offset.ToInt40Array();
-                    }
-                    else
-                    {
-                        offsetBytes = new byte[] { 0, 0, 0, 0, 0 };
-                    }
-
+                    byte[] offsetBytes = nextn != null ? lockedNodeFileStream.Offset.ToInt40Array() : (new byte[] { 0, 0, 0, 0, 0 });
                     offsetBytes.CopyTo(nextOffsets, i * DiskNode.NEXT_SIZE);
 
                     if (nextn != null)
@@ -343,15 +330,15 @@ namespace Penguin.Analysis
 
                 long lastOffset = lockedNodeFileStream.Offset;
 
-                lockedNodeFileStream.Seek(ChildListOffset - childBytes.Length - 5);
+                _ = lockedNodeFileStream.Seek(ChildListOffset - childBytes.Length - 5);
 
                 lockedNodeFileStream.Write(lastOffset.ToInt40Array());
 
-                lockedNodeFileStream.Seek(ChildListOffset);
+                _ = lockedNodeFileStream.Seek(ChildListOffset);
 
                 lockedNodeFileStream.Write(nextOffsets);
 
-                lockedNodeFileStream.Seek(lastOffset);
+                _ = lockedNodeFileStream.Seek(lastOffset);
             }
 
             return results;
@@ -404,15 +391,15 @@ namespace Penguin.Analysis
 
         #region Methods
 
-        public override int ChildCount => this.next?.Length ?? 0;
+        public override int ChildCount => next?.Length ?? 0;
 
         public override sbyte ChildHeader
         {
             get
             {
-                if (this.ChildCount != 0)
+                if (ChildCount != 0)
                 {
-                    foreach (MemoryNode mn in this.next)
+                    foreach (MemoryNode mn in next)
                     {
                         if (mn != null)
                         {
@@ -427,18 +414,7 @@ namespace Penguin.Analysis
 
         public override string ToString()
         {
-            if (this.Header == -1)
-            {
-                return "";
-            }
-            else if (this.ParentNode is null)
-            {
-                return $"{this.Header}: {this.Value}";
-            }
-            else
-            {
-                return $"{this.ParentNode} => {this.Header}: {this.Value}";
-            }
+            return Header == -1 ? "" : ParentNode is null ? $"{Header}: {Value}" : $"{ParentNode} => {Header}: {Value}";
         }
 
         #region IDisposable Support
@@ -465,16 +441,19 @@ namespace Penguin.Analysis
             this[pool]++;
         }
 
-        public override INode NextAt(int index) => next[index];
+        public override INode NextAt(int index)
+        {
+            return next[index];
+        }
 
         protected override void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
-                    this.MatchingRows.Clear();
-                    foreach (MemoryNode n in this.next)
+                    MatchingRows.Clear();
+                    foreach (MemoryNode n in next)
                     {
                         try
                         {
@@ -485,14 +464,14 @@ namespace Penguin.Analysis
                         }
                     }
 
-                    this.next = Array.Empty<MemoryNode>();
-                    this.parentNode = null;
+                    next = Array.Empty<MemoryNode>();
+                    parentNode = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 

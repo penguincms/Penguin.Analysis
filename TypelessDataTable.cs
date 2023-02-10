@@ -21,7 +21,7 @@ namespace Penguin.Analysis
 
         public TypelessDataRow(params int[] items)
         {
-            this._Items = items;
+            _Items = items;
         }
 
         #endregion Constructors
@@ -30,8 +30,8 @@ namespace Penguin.Analysis
 
         public int this[int i]
         {
-            get => this._Items[i];
-            set => this._Items[i] = value;
+            get => _Items[i];
+            set => _Items[i] = value;
         }
 
         #endregion Indexers
@@ -41,24 +41,24 @@ namespace Penguin.Analysis
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(int index, int Value)
         {
-            return this._Items[index] == Value;
+            return _Items[index] == Value;
         }
 
         #endregion Methods
 
         public IEnumerator<int> GetEnumerator()
         {
-            return ((IEnumerable<int>)this._Items).GetEnumerator();
+            return ((IEnumerable<int>)_Items).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return ((IEnumerable<int>)this._Items).GetEnumerator();
+            return ((IEnumerable<int>)_Items).GetEnumerator();
         }
 
         public override string ToString()
         {
-            return string.Join(", ", this._Items);
+            return string.Join(", ", _Items);
         }
     }
 
@@ -74,7 +74,7 @@ namespace Penguin.Analysis
         {
             get
             {
-                foreach (TypelessDataRow row in this._rows)
+                foreach (TypelessDataRow row in _rows)
                 {
                     yield return row;
                 }
@@ -87,19 +87,19 @@ namespace Penguin.Analysis
 
         public TypelessDataTable()
         {
-            this._rows = new List<TypelessDataRow>();
+            _rows = new List<TypelessDataRow>();
         }
 
         public TypelessDataTable(int rows)
         {
-            this._rows = new List<TypelessDataRow>(rows);
+            _rows = new List<TypelessDataRow>(rows);
         }
 
         #endregion Constructors
 
         #region Indexers
 
-        public TypelessDataRow this[int index] => this._rows[index];
+        public TypelessDataRow this[int index] => _rows[index];
 
         #endregion Indexers
 
@@ -113,18 +113,18 @@ namespace Penguin.Analysis
             }
 
             row.Table = this;
-            this._rows.Add(row);
-            this.RowCount++;
+            _rows.Add(row);
+            RowCount++;
         }
 
         public void AddRow(params int[] items)
         {
-            TypelessDataRow row = new TypelessDataRow(items)
+            TypelessDataRow row = new(items)
             {
                 Table = this
             };
-            this._rows.Add(row);
-            this.RowCount++;
+            _rows.Add(row);
+            RowCount++;
         }
 
         #endregion Methods

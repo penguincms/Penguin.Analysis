@@ -7,25 +7,24 @@ namespace Penguin.Analysis
 {
     public partial class LockedNodeFileStream : INodeFileStream, IDisposable
     {
-
-        private static readonly object NodeFileLock = new object();
+        private static readonly object NodeFileLock = new();
         private static int StreamPointer;
         private readonly bool PoolStreams;
         private FileStream _backingStream;
         private StreamLock[] StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
-        public string FilePath => this._backingStream.Name;
-        public long Offset => this._backingStream.Position;
+        public string FilePath => _backingStream.Name;
+        public long Offset => _backingStream.Position;
 
         public LockedNodeFileStream(FileStream backingStream, bool poolStreams = true)
         {
-            if (this._backingStream is null)
+            if (_backingStream is null)
             {
                 if (backingStream is null)
                 {
                     throw new ArgumentNullException(nameof(backingStream));
                 }
 
-                this._backingStream = backingStream;
+                _backingStream = backingStream;
 
                 if (poolStreams)
                 {
@@ -36,14 +35,14 @@ namespace Penguin.Analysis
                 }
             }
 
-            this.PoolStreams = poolStreams;
+            PoolStreams = poolStreams;
         }
 
         public LockedNodeFileStream(string FilePath) : this(new FileStream(FilePath, FileMode.CreateNew))
         {
         }
 
-        public void Lock()
+        public static void Lock()
         {
             Monitor.Enter(NodeFileLock);
         }
@@ -55,7 +54,7 @@ namespace Penguin.Analysis
             FileStream sourceStream;
             StreamLock sl = default;
 
-            if (this.PoolStreams)
+            if (PoolStreams)
             {
                 while (!Monitor.TryEnter((sl = StreamPool[StreamPointer++ % StreamPool.Length]).LockObject))
                 {
@@ -70,10 +69,10 @@ namespace Penguin.Analysis
             }
             else
             {
-                sourceStream = this._backingStream;
+                sourceStream = _backingStream;
             }
 
-            sourceStream.Seek(offset, SeekOrigin.Begin);
+            _ = sourceStream.Seek(offset, SeekOrigin.Begin);
 
             int childCount;
 
@@ -81,20 +80,20 @@ namespace Penguin.Analysis
             {
                 case DiskNode.HEADER_BYTES:
                     bByte = new byte[DiskNode.NODE_SIZE + 4];
-                    sourceStream.Read(bByte, 0, bByte.Length);
+                    _ = sourceStream.Read(bByte, 0, bByte.Length);
                     childCount = bByte.GetInt(DiskNode.NODE_SIZE);
                     break;
 
                 default:
                     bByte = new byte[DiskNode.NODE_SIZE + 2];
-                    sourceStream.Read(bByte, 0, bByte.Length);
+                    _ = sourceStream.Read(bByte, 0, bByte.Length);
                     childCount = bByte.GetShort(DiskNode.NODE_SIZE);
                     break;
             }
 
             if (childCount == 0)
             {
-                if (this.PoolStreams)
+                if (PoolStreams)
                 {
                     Monitor.Exit(sl.LockObject);
                 }
@@ -104,9 +103,9 @@ namespace Penguin.Analysis
 
             byte[] cByte = new byte[childCount * DiskNode.NEXT_SIZE];
 
-            sourceStream.Read(cByte, 0, cByte.Length);
+            _ = sourceStream.Read(cByte, 0, cByte.Length);
 
-            if (this.PoolStreams)
+            if (PoolStreams)
             {
                 Monitor.Exit(sl.LockObject);
             }
@@ -124,7 +123,7 @@ namespace Penguin.Analysis
         {
             byte[] intBytes = new byte[4];
 
-            this._backingStream.Read(intBytes, 0, intBytes.Length);
+            _ = _backingStream.Read(intBytes, 0, intBytes.Length);
 
             return BitConverter.ToInt32(intBytes, 0);
         }
@@ -133,61 +132,61 @@ namespace Penguin.Analysis
         {
             byte[] intBytes = new byte[8];
 
-            this._backingStream.Read(intBytes, 0, intBytes.Length);
+            _ = _backingStream.Read(intBytes, 0, intBytes.Length);
 
             return BitConverter.ToInt32(intBytes, 0);
         }
 
         public sbyte ReadSbyte()
         {
-            return unchecked((sbyte)this._backingStream.ReadByte());
+            return unchecked((sbyte)_backingStream.ReadByte());
         }
 
-        public long Seek(long offset)
+        public long Seek(long lastOffset)
         {
-            return this._backingStream.Seek(offset, SeekOrigin.Begin);
+            return _backingStream.Seek(lastOffset, SeekOrigin.Begin);
         }
 
-        public void Unlock()
+        public static void Unlock()
         {
             Monitor.Exit(NodeFileLock);
         }
 
         public void Write(string v)
         {
-            this.Write(System.Text.Encoding.UTF8.GetBytes(v));
+            Write(System.Text.Encoding.UTF8.GetBytes(v));
         }
 
         public void Write(char v)
         {
-            this._backingStream.WriteByte((byte)v);
+            _backingStream.WriteByte((byte)v);
         }
 
         public void Write(long v)
         {
-            this._backingStream.Write(BitConverter.GetBytes(v), 0, 8);
+            _backingStream.Write(BitConverter.GetBytes(v), 0, 8);
         }
 
         public void Write(int v)
         {
-            this._backingStream.Write(BitConverter.GetBytes(v), 0, 4);
+            _backingStream.Write(BitConverter.GetBytes(v), 0, 4);
         }
 
         public void Write(ushort v)
         {
-            this._backingStream.Write(BitConverter.GetBytes(v), 0, 2);
+            _backingStream.Write(BitConverter.GetBytes(v), 0, 2);
         }
 
         public void Write(byte v)
         {
-            this._backingStream.WriteByte(v);
+            _backingStream.WriteByte(v);
         }
 
         public void Write(sbyte v)
         {
             unchecked
             {
-                this._backingStream.WriteByte((byte)v);
+                _backingStream.WriteByte((byte)v);
             }
         }
 
@@ -198,30 +197,30 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(v));
             }
 
-            this._backingStream.Write(v, 0, v.Length);
+            _backingStream.Write(v, 0, v.Length);
         }
 
         internal void Flush()
         {
-            this._backingStream.Flush();
+            _backingStream.Flush();
         }
 
         #region IDisposable Support
 
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
+            Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
@@ -235,17 +234,17 @@ namespace Penguin.Analysis
                         {
                         }
                     }
-                    this._backingStream.Dispose();
+                    _backingStream.Dispose();
 
                     StreamPool = new StreamLock[System.Environment.ProcessorCount * 2];
 
-                    this._backingStream = null;
+                    _backingStream = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 

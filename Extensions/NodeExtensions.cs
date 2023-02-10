@@ -2,7 +2,6 @@ using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace Penguin.Analysis.Extensions
 {
@@ -15,7 +14,7 @@ namespace Penguin.Analysis.Extensions
             int Depth = 0;
 
             MemoryNode n = tnode;
-            List<MemoryNode> tree = new List<MemoryNode>();
+            List<MemoryNode> tree = new();
 
             while (n != null)
             {
@@ -38,7 +37,7 @@ namespace Penguin.Analysis.Extensions
                 throw new ArgumentNullException(nameof(tn));
             }
 
-            Queue<T> Nodes = new Queue<T>();
+            Queue<T> Nodes = new();
 
             Nodes.Enqueue(tn);
 

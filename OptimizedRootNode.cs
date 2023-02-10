@@ -12,14 +12,14 @@ namespace Penguin.Analysis
 {
     public class OptimizedRootNode : Node
     {
-        public static int ExecutingEvaluations = 0;
-        private static ConcurrentQueue<byte[]> ArrayPool = new ConcurrentQueue<byte[]>();
+        public static int ExecutingEvaluations;
+        private static ConcurrentQueue<byte[]> ArrayPool = new();
         private static ByteCache[] CachedBytes;
 
-        private static int LastMatchAmount = 0;
+        private static int LastMatchAmount;
         private List<INodeBlock>[][] next;
 
-        private HashSet<long> NoCache = new HashSet<long>();
+        private readonly HashSet<long> NoCache = new();
         public static Task FlushTask { get; set; } = Task.CompletedTask;
         public override int ChildCount { get; }
 
@@ -35,7 +35,7 @@ namespace Penguin.Analysis
 
         public override ushort[] Results { get; } = new ushort[4];
 
-        public override ushort Value { get; } = 0;
+        public override ushort Value { get; }
 
         private DataSourceSettings Settings { get; set; }
 
@@ -50,8 +50,8 @@ namespace Penguin.Analysis
 
             int MaxHeader = 0;
 
-            IEnumerable<DiskNode> Parents = source.Next.Cast<DiskNode>().Where(n => !(n is null));
-            IEnumerable<DiskNode> Children = Parents.SelectMany(n => n.Next.Cast<DiskNode>()).Where(n => !(n is null));
+            IEnumerable<DiskNode> Parents = source.Next.Cast<DiskNode>().Where(n => n is not null);
+            IEnumerable<DiskNode> Children = Parents.SelectMany(n => n.Next.Cast<DiskNode>()).Where(n => n is not null);
 
             foreach (DiskNode n in Parents)
             {
@@ -82,7 +82,7 @@ namespace Penguin.Analysis
                 if (c.NextOffset == 0)
                 {
                     next[c.Header][c.Value].Add(c);
-                    NoCache.Add(c.Offset);
+                    _ = NoCache.Add(c.Offset);
                 }
                 else
                 {
@@ -107,7 +107,10 @@ namespace Penguin.Analysis
             LastMatchAmount = 0;
         }
 
-        public void Evaluate(Evaluation e, bool MultiThread = true) => this.Evaluate(e, 0, MultiThread);
+        public void Evaluate(Evaluation e, bool MultiThread = true)
+        {
+            Evaluate(e, 0, MultiThread);
+        }
 
         public override void Evaluate(Evaluation e, long routeKey, bool MultiThread = true)
         {
@@ -122,78 +125,76 @@ namespace Penguin.Analysis
 
                 string FilePath = DiskNode._backingStream.FilePath;
 
-                object streamLock = new object();
+                object streamLock = new();
 
-                using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+                using FileStream fs = new(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess);
+                List<INodeBlock> matchingNodes = new(LastMatchAmount);
+
+                for (int header = 0; header < next.Length; header++)
                 {
-                    List<INodeBlock> matchingNodes = new List<INodeBlock>(LastMatchAmount);
+                    int value = e.DataRow[header];
 
-                    for (int header = 0; header < next.Length; header++)
+                    if (next[header].Length > value)
                     {
-                        int value = e.DataRow[header];
-
-                        if (next[header].Length > value)
-                        {
-                            matchingNodes.AddRange(next[header][value]);
-                        }
+                        matchingNodes.AddRange(next[header][value]);
                     }
+                }
 
-                    LastMatchAmount = Math.Max(LastMatchAmount, matchingNodes.Count);
+                LastMatchAmount = Math.Max(LastMatchAmount, matchingNodes.Count);
 
-                    void Evaluate(INodeBlock n)
+                void Evaluate(INodeBlock n)
+                {
+                    if (n is DiskNode dn)
                     {
-                        if (n is DiskNode dn)
-                        {
-                            dn.Evaluate(e, 0, MultiThread);
-                        }
-                        else if (n is NodeBlock nb)
-                        {
-                            long bLength = n.NextOffset - n.Offset;
+                        dn.Evaluate(e, 0, MultiThread);
+                    }
+                    else if (n is NodeBlock nb)
+                    {
+                        long bLength = n.NextOffset - n.Offset;
 
-                            if (!ArrayPool.TryDequeue(out byte[] backingData) || backingData.Length < bLength)
+                        if (!ArrayPool.TryDequeue(out byte[] backingData) || backingData.Length < bLength)
+                        {
+                            backingData = new byte[bLength];
+                        }
+
+                        ByteCache cachedBytes = CachedBytes[nb.Index];
+
+                        if (cachedBytes.Data is null)
+                        {
+                            cachedBytes = new ByteCache()
                             {
-                                backingData = new byte[bLength];
+                                Data = new byte[bLength]
+                            };
+
+                            lock (streamLock)
+                            {
+                                _ = fs.Seek(n.Offset, SeekOrigin.Begin);
+
+                                _ = fs.Read(cachedBytes.Data, 0, (int)bLength);
                             }
 
-                            ByteCache cachedBytes = CachedBytes[nb.Index];
-
-                            if (cachedBytes.Data is null)
-                            {
-                                cachedBytes = new ByteCache()
-                                {
-                                    Data = new byte[bLength]
-                                };
-
-                                lock (streamLock)
-                                {
-                                    fs.Seek(n.Offset, SeekOrigin.Begin);
-
-                                    fs.Read(cachedBytes.Data, 0, (int)bLength);
-                                }
-
-                                CachedBytes[nb.Index] = cachedBytes;
-                            }
-
-                            cachedBytes.SetLast();
-
-                            cachedBytes.Data.CopyTo(backingData, 0);
-
-                            DiskNode nn = new DiskNode(backingData, n.Offset, n.Offset);
-
-                            nn.Evaluate(e, 0, MultiThread);
+                            CachedBytes[nb.Index] = cachedBytes;
                         }
-                    }
 
-                    if (MultiThread)
-                    {
-                        Parallel.ForEach(matchingNodes, Evaluate);
+                        cachedBytes.SetLast();
+
+                        cachedBytes.Data.CopyTo(backingData, 0);
+
+                        DiskNode nn = new(backingData, n.Offset, n.Offset);
+
+                        nn.Evaluate(e, 0, MultiThread);
                     }
-                    else
+                }
+
+                if (MultiThread)
+                {
+                    _ = Parallel.ForEach(matchingNodes, Evaluate);
+                }
+                else
+                {
+                    foreach (INodeBlock nb in matchingNodes)
                     {
-                        foreach (INodeBlock nb in matchingNodes)
-                        {
-                            Evaluate(nb);
-                        }
+                        Evaluate(nb);
                     }
                 }
             }
@@ -206,12 +207,11 @@ namespace Penguin.Analysis
 
         public async Task Preload(string FilePath)
         {
-
             await Task.Run(() =>
             {
                 try
                 {
-                    Dictionary<long, NodeBlock> nodeblocks = new Dictionary<long, NodeBlock>();
+                    Dictionary<long, NodeBlock> nodeblocks = new();
 
                     for (int header = 0; header < next.Length; header++)
                     {
@@ -226,76 +226,70 @@ namespace Penguin.Analysis
                             }
                         }
                     }
-                    using (LockedNodeFileStream ns = new LockedNodeFileStream(new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess)))
+                    using LockedNodeFileStream ns = new(new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess));
+                    using FileStream fs = new(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess);
+                    using FileStream fsn = new(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess);
+                    byte[] offsetBytes = new byte[DiskNode.HEADER_BYTES];
+
+                    _ = fs.Read(offsetBytes, 0, offsetBytes.Length);
+
+                    long JsonOffset = offsetBytes.GetLong(0);
+                    long SortOffset = offsetBytes.GetLong(8);
+
+                    _ = fs.Seek(SortOffset, SeekOrigin.Begin);
+
+                    ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+
+                    while (freeMem > Settings.MinFreeMemory + Settings.RangeFreeMemory)
                     {
-                        using (FileStream fs = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+                        for (int i = 0; i < Settings.PreloadChunkSize / 2; i++)
                         {
-                            using (FileStream fsn = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess))
+                            if (fs.Position >= JsonOffset)
                             {
-                                byte[] offsetBytes = new byte[DiskNode.HEADER_BYTES];
+                                return;
+                            }
 
-                                fs.Read(offsetBytes, 0, offsetBytes.Length);
+                            byte[] thisNodeBytes = new byte[5];
 
-                                long JsonOffset = offsetBytes.GetLong(0);
-                                long SortOffset = offsetBytes.GetLong(8);
+                            _ = fs.Read(thisNodeBytes, 0, thisNodeBytes.Length);
 
-                                fs.Seek(SortOffset, SeekOrigin.Begin);
+                            long offset = thisNodeBytes.GetInt40();
 
-                                ulong freeMem = SystemInterop.Memory.Status.ullAvailPhys;
-
-                                while (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                            if (!NoCache.Contains(offset))
+                            {
+                                if (!nodeblocks.TryGetValue(offset, out NodeBlock nb))
                                 {
-                                    for (int i = 0; i < this.Settings.PreloadChunkSize / 2; i++)
+                                    continue;
+                                }
+
+                                DiskNode dn = new(ns, offset);
+
+                                if (dn.NextOffset != 0)
+                                {
+                                    long bLength = dn.NextOffset - dn.Offset;
+
+                                    ByteCache cachedBytes = new()
                                     {
-                                        if (fs.Position >= JsonOffset)
-                                        {
-                                            return;
-                                        }
+                                        Data = new byte[bLength]
+                                    };
 
-                                        byte[] thisNodeBytes = new byte[5];
+                                    _ = fsn.Seek(dn.Offset, SeekOrigin.Begin);
 
-                                        fs.Read(thisNodeBytes, 0, thisNodeBytes.Length);
+                                    _ = fsn.Read(cachedBytes.Data, 0, (int)bLength);
 
-                                        long offset = thisNodeBytes.GetInt40();
+                                    CachedBytes[nb.Index] = cachedBytes;
 
-                                        if (!NoCache.Contains(offset))
-                                        {
-                                            if (!nodeblocks.TryGetValue(offset, out NodeBlock nb))
-                                            {
-                                                continue;
-                                            }
-
-                                            DiskNode dn = new DiskNode(ns, offset);
-
-                                            if (dn.NextOffset != 0)
-                                            {
-                                                long bLength = dn.NextOffset - dn.Offset;
-
-                                                ByteCache cachedBytes = new ByteCache()
-                                                {
-                                                    Data = new byte[bLength]
-                                                };
-
-                                                fsn.Seek(dn.Offset, SeekOrigin.Begin);
-
-                                                fsn.Read(cachedBytes.Data, 0, (int)bLength);
-
-                                                CachedBytes[nb.Index] = cachedBytes;
-
-                                                freeMem -= (ulong)cachedBytes.Data.Length;
-                                            }
-                                        }
-
-                                        if (freeMem < this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
-                                        {
-                                            return;
-                                        }
-                                    }
-
-                                    freeMem = SystemInterop.Memory.Status.ullAvailPhys;
+                                    freeMem -= (ulong)cachedBytes.Data.Length;
                                 }
                             }
+
+                            if (freeMem < Settings.MinFreeMemory + Settings.RangeFreeMemory)
+                            {
+                                return;
+                            }
                         }
+
+                        freeMem = SystemInterop.Memory.Status.ullAvailPhys;
                     }
                 }
                 catch (Exception ex)
@@ -312,15 +306,15 @@ namespace Penguin.Analysis
 
         private void FlushMemory()
         {
-            IEnumerable<(int Index, ByteCache byteCache)> CheckCache()
+            static IEnumerable<(int Index, ByteCache byteCache)> CheckCache()
             {
-                HashSet<ushort> Times = new HashSet<ushort>();
+                HashSet<ushort> Times = new();
 
                 for (int i = 0; i < CachedBytes.Length; i++)
                 {
                     if (CachedBytes[i].Data != null)
                     {
-                        Times.Add(CachedBytes[i].LastUse);
+                        _ = Times.Add(CachedBytes[i].LastUse);
                     }
                 }
 
@@ -352,7 +346,7 @@ namespace Penguin.Analysis
                                 freeMem += (ulong)CachedBytes[Index].Data.Length;
 
                                 CachedBytes[Index].Data = null;
-                                if (freeMem > this.Settings.MinFreeMemory + this.Settings.RangeFreeMemory)
+                                if (freeMem > Settings.MinFreeMemory + Settings.RangeFreeMemory)
                                 {
                                     break;
                                 }
@@ -365,7 +359,7 @@ namespace Penguin.Analysis
                     });
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 if (Debugger.IsAttached)
                 {
@@ -380,15 +374,18 @@ namespace Penguin.Analysis
 
         #region IDisposable Support
 
-        public override INode NextAt(int index) => throw new NotImplementedException();
+        public override INode NextAt(int index)
+        {
+            throw new NotImplementedException();
+        }
 
         protected override void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
-                    foreach (INode n in this.Next)
+                    foreach (INode n in Next)
                     {
                         try
                         {
@@ -399,13 +396,13 @@ namespace Penguin.Analysis
                         }
                     }
 
-                    this.next = null;
+                    next = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 

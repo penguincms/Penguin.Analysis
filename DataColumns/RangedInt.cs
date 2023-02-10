@@ -30,7 +30,7 @@ namespace Penguin.Analysis.DataColumns
 
         public RangedFloat(int Max, int Step = 1) : base()
         {
-            List<float> rangeStarts = new List<float>();
+            List<float> rangeStarts = new();
 
             for (int i = 0; i <= Max; i += Step)
             {

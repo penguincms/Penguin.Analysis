@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace Penguin.Analysis
@@ -24,7 +23,7 @@ namespace Penguin.Analysis
         {
             get
             {
-                if (!this.MatchedRoutes.Any())
+                if (!MatchedRoutes.Any())
                 {
                     return new AnalysisScore()
                     {
@@ -33,20 +32,20 @@ namespace Penguin.Analysis
                     };
                 }
 
-                AnalysisScore toReturn = new AnalysisScore();
+                AnalysisScore toReturn = new();
 
                 double oldScore = 0;
                 double oldCounts = 0;
                 double score = 0;
                 double counts = 0;
 
-                foreach (AnalysisScore Escore in this.Scores.Select(k => k.Value))
+                foreach (AnalysisScore Escore in Scores.Select(k => k.Value))
                 {
                     oldCounts += Escore.OldCount;
 
                     oldScore += Escore.OldCount * Escore.OldValue;
 
-                    double count = this.Result.GraphInstances / Escore.ColumnInstances;
+                    double count = Result.GraphInstances / Escore.ColumnInstances;
 
                     counts += count;
 
@@ -79,9 +78,9 @@ namespace Penguin.Analysis
 
         public Evaluation(TypelessDataRow dataRow, AnalysisResults BuilderResults)
         {
-            this.AnalysisResults = BuilderResults;
-            this.Scores = new ConcurrentDictionary<long, AnalysisScore>();
-            this.DataRow = dataRow;
+            AnalysisResults = BuilderResults;
+            Scores = new ConcurrentDictionary<long, AnalysisScore>();
+            DataRow = dataRow;
         }
 
         #endregion Constructors
@@ -100,36 +99,36 @@ namespace Penguin.Analysis
                 throw new ArgumentException("Can not match node with key = 0", nameof(n));
             }
 
-            if (!this.MatchedRoutes.ContainsKey(Key))
+            if (!MatchedRoutes.ContainsKey(Key))
             {
-                this.MatchedRoutes.TryAdd(Key, n);
+                _ = MatchedRoutes.TryAdd(Key, n);
 
-                if (this.AnalysisResults.ColumnInstances.ContainsKey(Key))
+                if (AnalysisResults.ColumnInstances.TryGetValue(Key, out int value))
                 {
-                    if (!this.Scores.TryGetValue(Key, out AnalysisScore score))
+                    if (!Scores.TryGetValue(Key, out AnalysisScore score))
                     {
                         score = new AnalysisScore();
-                        this.Scores.TryAdd(Key, score);
+                        _ = Scores.TryAdd(Key, score);
                     }
 
-                    score.Value = n.GetScore(this.Result.BaseRate);
-                    score.OldCount = (double)this.AnalysisResults.GraphInstances / this.AnalysisResults.ColumnInstances[Key];
-                    score.OldValue = n.GetScore(this.Result.BaseRate);
+                    score.Value = n.GetScore(Result.BaseRate);
+                    score.OldCount = (double)AnalysisResults.GraphInstances / value;
+                    score.OldValue = n.GetScore(Result.BaseRate);
                     score.ColumnInstances++;
 
-                    LongByte lb = new LongByte(Key);
+                    LongByte lb = new(Key);
 
                     while (lb > 0)
                     {
-                        if (!this.Scores.TryGetValue(lb, out AnalysisScore s))
+                        if (!Scores.TryGetValue(lb, out AnalysisScore s))
                         {
                             s = new AnalysisScore();
-                            this.Scores.TryAdd(lb, s);
+                            _ = Scores.TryAdd(lb, s);
                         }
 
                         s.ColumnInstances++;
 
-                        lb.TrimLeft();
+                        _ = lb.TrimLeft();
                     }
                 }
             }

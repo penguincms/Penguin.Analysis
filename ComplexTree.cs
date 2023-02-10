@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Penguin.Analysis
 {
     internal class ComplexTree
     {
-        private (sbyte ColumnIndex, int Values)[] ColumnData;
+        private readonly (sbyte ColumnIndex, int Values)[] ColumnData;
 
-        private long Hc;
+        private readonly long Hc;
         private long Hi;
 
         public ComplexTree(IEnumerable<(sbyte ColumnIndex, int Values)> columnData)
@@ -38,7 +37,7 @@ namespace Penguin.Analysis
                     Hb >>= 1;
                 }
 
-                List<(sbyte ColumnIndex, int Values)> thisGraph = new List<(sbyte ColumnIndex, int Values)>(sbits);
+                List<(sbyte ColumnIndex, int Values)> thisGraph = new(sbits);
 
                 for (sbyte Wi = (sbyte)(ColumnData.Length - 1); Wi >= 0; Wi--)
                 {

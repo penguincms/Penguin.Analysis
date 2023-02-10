@@ -26,8 +26,8 @@ namespace Penguin.Analysis.Transformations
         /// <param name="transformer"></param>
         public Replace(string ColumnName, Func<string, object> transformer)
         {
-            this.TargetColumn = ColumnName;
-            this.Process = transformer;
+            TargetColumn = ColumnName;
+            Process = transformer;
         }
 
         #endregion Constructors
@@ -45,13 +45,13 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(source));
             }
 
-            if (source.Table.Columns.Contains(this.TargetColumn))
+            if (source.Table.Columns.Contains(TargetColumn))
             {
-                string Value = source[this.TargetColumn]?.ToString();
+                string Value = source[TargetColumn]?.ToString();
 
-                string postTransform = $"{this.Process.Invoke(Value)}";
+                string postTransform = $"{Process.Invoke(Value)}";
 
-                source[this.TargetColumn] = postTransform;
+                source[TargetColumn] = postTransform;
             }
         }
 
@@ -67,13 +67,13 @@ namespace Penguin.Analysis.Transformations
 
         #region IDisposable Support
 
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
+            Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
@@ -85,17 +85,17 @@ namespace Penguin.Analysis.Transformations
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
-                    this.Process = null;
+                    Process = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 

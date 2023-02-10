@@ -12,7 +12,7 @@ namespace Penguin.Analysis.Transformations
 
         public List<string> ColumnNames { get; internal set; }
 
-        public string TargetColumn => string.Join("|", this.ColumnNames);
+        public string TargetColumn => string.Join("|", ColumnNames);
 
         #endregion Properties
 
@@ -22,11 +22,10 @@ namespace Penguin.Analysis.Transformations
         /// Generic column transformation for converting/adding additional data columns
         /// does NOT keep original column so original must be returned if required
         /// </summary>
-        /// <param name="ColumnName"></param>
-        /// <param name="transformer"></param>
+        /// <param name="columnNames"></param>
         public ConcatBits(List<string> columnNames)
         {
-            this.ColumnNames = columnNames;
+            ColumnNames = columnNames;
         }
 
         #endregion Constructors
@@ -40,7 +39,7 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(table));
             }
 
-            foreach (string ColumnName in this.ColumnNames)
+            foreach (string ColumnName in ColumnNames)
             {
                 table.Columns.Remove(ColumnName);
             }
@@ -55,12 +54,12 @@ namespace Penguin.Analysis.Transformations
 
             int v = 0;
 
-            for (int i = 0; i < this.ColumnNames.Count; i++)
+            for (int i = 0; i < ColumnNames.Count; i++)
             {
-                v |= (Bool.GetValue(source[this.ColumnNames[i]].ToString()) >> i);
+                v |= Bool.GetValue(source[ColumnNames[i]].ToString()) >> i;
             }
 
-            source[this.TargetColumn] = v;
+            source[TargetColumn] = v;
         }
 
         /// <summary>
@@ -75,7 +74,7 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(table));
             }
 
-            table.Columns.Add(this.TargetColumn);
+            _ = table.Columns.Add(TargetColumn);
 
             return table;
         }

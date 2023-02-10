@@ -9,21 +9,16 @@ namespace Penguin.Analysis.SystemInterop
         {
             get
             {
-                MEMORYSTATUSEX memoryStatus = new MEMORYSTATUSEX
+                MEMORYSTATUSEX memoryStatus = new()
                 {
                     dwLength = Marshal.SizeOf(typeof(MEMORYSTATUSEX))
                 };
-                if (!GlobalMemoryStatusEx(ref memoryStatus))
-                {
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
-                }
-
-                return memoryStatus;
+                return !GlobalMemoryStatusEx(ref memoryStatus) ? throw new Win32Exception(Marshal.GetLastWin32Error()) : memoryStatus;
             }
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct MEMORYSTATUSEX
+        public struct MEMORYSTATUSEX : System.IEquatable<MEMORYSTATUSEX>
         {
             public int dwLength;
             public int dwMemoryLoad;
@@ -34,6 +29,31 @@ namespace Penguin.Analysis.SystemInterop
             public ulong ullTotalVirtual;
             public ulong ullAvailVirtual;
             public ulong ullAvailExtendedVirtual;
+
+            public override bool Equals(object obj)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            public override int GetHashCode()
+            {
+                throw new System.NotImplementedException();
+            }
+
+            public static bool operator ==(MEMORYSTATUSEX left, MEMORYSTATUSEX right)
+            {
+                return left.Equals(right);
+            }
+
+            public static bool operator !=(MEMORYSTATUSEX left, MEMORYSTATUSEX right)
+            {
+                return !(left == right);
+            }
+
+            public bool Equals(MEMORYSTATUSEX other)
+            {
+                throw new System.NotImplementedException();
+            }
         }
 
         [DllImport("Kernel32.dll", SetLastError = true)]

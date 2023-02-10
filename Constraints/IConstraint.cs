@@ -11,7 +11,6 @@ namespace Penguin.Analysis.Constraints
         /// <summary>
         /// Checks to make sure the headers pass this constraint
         /// </summary>
-        /// <param name="headers"></param>
         /// <returns></returns>
         bool Evaluate(LongByte key);
 

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace Penguin.Analysis.DataColumns
 {
@@ -16,19 +15,9 @@ namespace Penguin.Analysis.DataColumns
 
         public static int GetValue(string input)
         {
-            if (input is null)
-            {
-                throw new ArgumentNullException(nameof(input));
-            }
-
-            if (input.StartsWith("t", StringComparison.OrdinalIgnoreCase) || input.StartsWith("1", StringComparison.OrdinalIgnoreCase))
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
+            return input is null
+                ? throw new ArgumentNullException(nameof(input))
+                : input.StartsWith("t", StringComparison.OrdinalIgnoreCase) || input.StartsWith("1", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
         }
 
         public override string Display(int Value)
@@ -40,7 +29,10 @@ namespace Penguin.Analysis.DataColumns
         {
         }
 
-        public override void Seed(string input, bool PositiveIndicator) => throw new NotImplementedException();
+        public override void Seed(string input, bool PositiveIndicator)
+        {
+            throw new NotImplementedException();
+        }
 
         public override int Transform(string input)
         {

@@ -15,7 +15,7 @@ namespace Penguin.Analysis.Transformations
 
         public override string ToString()
         {
-            return $"({string.Join(", ", this.SourceColumns)}) => {this.ResultColumn}";
+            return $"({string.Join(", ", SourceColumns)}) => {ResultColumn}";
         }
 
         #region Properties
@@ -34,11 +34,12 @@ namespace Penguin.Analysis.Transformations
         /// </summary>
         /// <param name="SourceColumnNames"></param>
         /// <param name="NewColumn"></param>
+        /// <param name="transformer"></param>
         public GenericMerge(List<string> SourceColumnNames, string NewColumn, Func<IEnumerable<ColumnDefinition>, string> transformer)
         {
-            this.SourceColumns = SourceColumnNames;
-            this.Process = transformer;
-            this.ResultColumn = NewColumn;
+            SourceColumns = SourceColumnNames;
+            Process = transformer;
+            ResultColumn = NewColumn;
         }
 
         #endregion Constructors
@@ -52,9 +53,9 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(table));
             }
 
-            foreach (string columnName in this.SourceColumns)
+            foreach (string columnName in SourceColumns)
             {
-                if (table.Columns.Contains(columnName) && this.ResultColumn != columnName)
+                if (table.Columns.Contains(columnName) && ResultColumn != columnName)
                 {
                     table.Columns.Remove(columnName);
                 }
@@ -68,11 +69,11 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(source));
             }
 
-            List<ColumnDefinition> toTransform = new List<ColumnDefinition>();
+            List<ColumnDefinition> toTransform = new();
 
-            foreach (string sourceC in this.SourceColumns)
+            foreach (string sourceC in SourceColumns)
             {
-                ColumnDefinition cd = new ColumnDefinition
+                ColumnDefinition cd = new()
                 {
                     Name = sourceC,
                     Value = source[sourceC]?.ToString()
@@ -81,9 +82,9 @@ namespace Penguin.Analysis.Transformations
                 toTransform.Add(cd);
             }
 
-            string postTransform = this.Process.Invoke(toTransform);
+            string postTransform = Process.Invoke(toTransform);
 
-            source[this.ResultColumn] = postTransform;
+            source[ResultColumn] = postTransform;
         }
 
         /// <summary>
@@ -98,9 +99,9 @@ namespace Penguin.Analysis.Transformations
                 throw new ArgumentNullException(nameof(table));
             }
 
-            if (!table.Columns.Contains(this.ResultColumn))
+            if (!table.Columns.Contains(ResultColumn))
             {
-                table.Columns.Add(this.ResultColumn);
+                _ = table.Columns.Add(ResultColumn);
             }
 
             return table;
@@ -108,32 +109,32 @@ namespace Penguin.Analysis.Transformations
 
         #region IDisposable Support
 
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
+            Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
-                    this.SourceColumns.Clear();
+                    SourceColumns.Clear();
 
-                    this.Process = null;
+                    Process = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 

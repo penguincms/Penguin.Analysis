@@ -9,6 +9,27 @@
             Do not allow this exact combination to appear as a route. Useful if one property is derivative of another. Also, if only one parameter then force the property to be evaluated alone
             </summary>
         </member>
+        <member name="P:Penguin.Analysis.Constraints.Exclusive.Key">
+            <inheritdoc/>
+        </member>
+        <member name="M:Penguin.Analysis.Constraints.Exclusive.#ctor(System.String[])">
+            <inheritdoc/>
+        </member>
+        <member name="M:Penguin.Analysis.Constraints.Exclusive.ToString">
+            <inheritdoc/>
+        </member>
+        <member name="M:Penguin.Analysis.Constraints.Exclusive.Evaluate(Penguin.Analysis.LongByte)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Penguin.Analysis.Constraints.Exclusive.SetKey(Penguin.Analysis.ColumnRegistration[])">
+            <inheritdoc/>
+        </member>
+        <member name="M:Penguin.Analysis.Constraints.Exclusive.Dispose">
+            <inheritdoc/>
+        </member>
+        <member name="M:Penguin.Analysis.Constraints.Exclusive.Dispose(System.Boolean)">
+            <inheritdoc/>
+        </member>
         <member name="T:Penguin.Analysis.Constraints.ExclusiveAny">
             <summary>
             Do not allow any possible combination to appear as a route. Useful if one property is derivative of another
@@ -18,7 +39,6 @@
             <summary>
             Checks to make sure the headers pass this constraint
             </summary>
-            <param name="headers"></param>
             <returns></returns>
         </member>
         <member name="M:Penguin.Analysis.Constraints.IRouteConstraint.SetKey(Penguin.Analysis.ColumnRegistration[])">
@@ -59,6 +79,7 @@
             Accepts each option one at a time
             </summary>
             <param name="input">The option</param>
+            <param name="PositiveIndicator"></param>
         </member>
         <member name="M:Penguin.Analysis.DataColumns.IDataColumn.Transform(System.String)">
             <summary>
@@ -137,8 +158,7 @@
             Generic column transformation for converting/adding additional data columns
             does NOT keep original column so original must be returned if required
             </summary>
-            <param name="ColumnName"></param>
-            <param name="transformer"></param>
+            <param name="columnNames"></param>
         </member>
         <member name="M:Penguin.Analysis.Transformations.ConcatBits.TransformTable(System.Data.DataTable)">
             <summary>
@@ -154,6 +174,7 @@
             </summary>
             <param name="SourceColumnNames"></param>
             <param name="NewColumn"></param>
+            <param name="transformer"></param>
         </member>
         <member name="M:Penguin.Analysis.Transformations.GenericMerge.TransformTable(System.Data.DataTable)">
             <summary>
@@ -168,6 +189,7 @@
             does NOT keep original column so original must be returned if required
             </summary>
             <param name="ColumnName"></param>
+            <param name="NewColumnNames"></param>
             <param name="transformer"></param>
         </member>
         <member name="M:Penguin.Analysis.Transformations.GenericSplit.TransformTable(System.Data.DataTable)">

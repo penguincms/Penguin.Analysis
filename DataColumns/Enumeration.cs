@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -10,7 +9,7 @@ namespace Penguin.Analysis.DataColumns
     {
         #region Fields
 
-        protected Dictionary<string, EnumOption> valuesDict = new Dictionary<string, EnumOption>();
+        protected Dictionary<string, EnumOption> valuesDict = new();
 
         public override int OptionCount => Values.Length;
         public override bool SeedMe => true;
@@ -47,7 +46,10 @@ namespace Penguin.Analysis.DataColumns
             public int Indicators { get; set; }
             public int Instances { get; set; }
 
-            public override string ToString() => $"{Display} ({Instances})";
+            public override string ToString()
+            {
+                return $"{Display} ({Instances})";
+            }
 
             #endregion Properties
         }
@@ -56,28 +58,31 @@ namespace Penguin.Analysis.DataColumns
 
         #region Methods
 
-        public override string Display(int Value) => this.Values[Value];
+        public override string Display(int Value)
+        {
+            return Values[Value];
+        }
 
         public override void Seed(string input, bool PositiveIndicator)
         {
-            if (!this.valuesDict.ContainsKey(input))
+            if (!valuesDict.ContainsKey(input))
             {
-                EnumOption option = new EnumOption()
+                EnumOption option = new()
                 {
                     Display = input,
                     Instances = 1,
                     Indicators = PositiveIndicator ? 1 : 0,
-                    Index = this.valuesDict.Count + 1
+                    Index = valuesDict.Count + 1
                 };
 
-                lock (this.valuesDict)
+                lock (valuesDict)
                 {
-                    this.valuesDict.Add(input, option);
+                    valuesDict.Add(input, option);
                 }
             }
             else
             {
-                EnumOption option = this.valuesDict[input];
+                EnumOption option = valuesDict[input];
 
                 if (PositiveIndicator)
                 {
@@ -92,7 +97,7 @@ namespace Penguin.Analysis.DataColumns
         {
             for (int i = 1; i < Values.Length; i++)
             {
-                if (string.Equals(Values[i], input))
+                if (string.Equals(Values[i], input, StringComparison.Ordinal))
                 {
                     return i;
                 }
@@ -103,13 +108,13 @@ namespace Penguin.Analysis.DataColumns
 
         protected override void OnDispose()
         {
-            this.valuesDict.Clear();
+            valuesDict.Clear();
         }
 
         public override void EndSeed()
         {
-            List<EnumOption> options = new List<EnumOption>();
-            EnumOption Other = new EnumOption()
+            List<EnumOption> options = new();
+            EnumOption Other = new()
             {
                 Display = "@OTHER"
             };
@@ -128,7 +133,7 @@ namespace Penguin.Analysis.DataColumns
                 }
             }
 
-            List<EnumOption> ParsedOptions = new List<EnumOption>
+            List<EnumOption> ParsedOptions = new()
             {
                 Other.Instances > GlobalSettings.MinimumInstances ? Other : null
             };

@@ -12,27 +12,19 @@ namespace Penguin.Analysis
     {
         #region Properties
 
-        public float BaseRate => this.PositiveIndicators / this.TotalRows;
+        public float BaseRate => PositiveIndicators / TotalRows;
 
         [JsonIgnore]
         public MemoryNode BuilderRootNote
         {
-            get
-            {
-                if (this.RootNode is MemoryNode n)
-                {
-                    return n;
-                }
-                else
-                {
-                    throw new Exception($"Attempt has been made to access root node that is not of type {nameof(MemoryNode)}. The node type is {this.RootNode.GetType().ToString()}");
-                }
-            }
-            set => this.RootNode = value;
+            get => RootNode is MemoryNode n
+                    ? n
+                    : throw new Exception($"Attempt has been made to access root node that is not of type {nameof(MemoryNode)}. The node type is {RootNode.GetType()}");
+            set => RootNode = value;
         }
 
         public Dictionary<long, int> ColumnInstances { get; set; } = new Dictionary<long, int>();
-        public int GraphInstances { get; set; } = 0;
+        public int GraphInstances { get; set; }
         public float PositiveIndicators { get; set; }
 
         [JsonIgnore]
@@ -45,15 +37,15 @@ namespace Penguin.Analysis
 
         #region IDisposable Support
 
-        private static readonly object RegistrationLock = new object();
-        private readonly HashSet<long> RegisteredKeys = new HashSet<long>();
-        private bool disposedValue = false; // To detect redundant calls
+        private static readonly object RegistrationLock = new();
+        private readonly HashSet<long> RegisteredKeys = new();
+        private bool disposedValue; // To detect redundant calls
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
+            Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
@@ -74,24 +66,24 @@ namespace Penguin.Analysis
                 {
                     long Key = n.GetKey();
 
-                    if (this.RegisteredKeys.Add(Key))
+                    if (RegisteredKeys.Add(Key))
                     {
-                        this.GraphInstances++;
+                        GraphInstances++;
 
-                        LongByte lb = new LongByte(Key);
+                        LongByte lb = new(Key);
 
                         while (lb > 0)
                         {
-                            if (!this.ColumnInstances.ContainsKey(lb.Value))
+                            if (!ColumnInstances.ContainsKey(lb.Value))
                             {
-                                this.ColumnInstances.Add(lb.Value, 1);
+                                ColumnInstances.Add(lb.Value, 1);
                             }
                             else
                             {
-                                this.ColumnInstances[lb.Value]++;
+                                ColumnInstances[lb.Value]++;
                             }
 
-                            lb.TrimLeft();
+                            _ = lb.TrimLeft();
                         }
                     }
                 }
@@ -100,20 +92,20 @@ namespace Penguin.Analysis
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
-                    this.RawData = null;
+                    RawData = null;
 
                     DiskNode.DisposeAll();
-                    this.RootNode.Dispose();
+                    RootNode.Dispose();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 

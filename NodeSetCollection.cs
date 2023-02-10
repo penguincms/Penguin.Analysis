@@ -54,7 +54,7 @@ namespace Penguin.Analysis
 
         internal NodeSetCollection(IEnumerable<(sbyte columnIndex, int values)> set)
         {
-            List<NodeSet> localSets = new List<NodeSet>();
+            List<NodeSet> localSets = new();
 
             foreach ((sbyte columnIndex, int values) x in set)
             {
@@ -73,18 +73,19 @@ namespace Penguin.Analysis
         {
         }
 
-        public static implicit operator NodeSetCollection(LongByte b) => new NodeSetCollection(b.Value);
+        public static implicit operator NodeSetCollection(LongByte b)
+        {
+            return new NodeSetCollection(b.Value);
+        }
 
-        public static implicit operator NodeSetCollection(long b) => new NodeSetCollection(b);
+        public static implicit operator NodeSetCollection(long b)
+        {
+            return new NodeSetCollection(b);
+        }
 
         public static implicit operator NodeSetCollection(List<NodeSet> n)
         {
-            if (n is null)
-            {
-                throw new ArgumentNullException(nameof(n));
-            }
-
-            return new NodeSetCollection(n);
+            return n is null ? throw new ArgumentNullException(nameof(n)) : new NodeSetCollection(n);
         }
 
         // this is second one '!='
@@ -95,17 +96,7 @@ namespace Penguin.Analysis
 
         public static bool operator ==(NodeSetCollection obj1, NodeSetCollection obj2)
         {
-            if (ReferenceEquals(obj1, obj2))
-            {
-                return true;
-            }
-
-            if (obj1 is null || obj2 is null)
-            {
-                return false;
-            }
-
-            return obj1.Key == obj2.Key;
+            return ReferenceEquals(obj1, obj2) || obj1 is not null && obj2 is not null && obj1.Key == obj2.Key;
         }
 
         public void Add(NodeSet item)
@@ -115,7 +106,7 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.Key |= item.Key;
+            Key |= item.Key;
         }
 
         public void Clear()
@@ -125,12 +116,7 @@ namespace Penguin.Analysis
 
         public bool Contains(NodeSet item)
         {
-            if (item is null)
-            {
-                throw new ArgumentNullException(nameof(item));
-            }
-
-            return (this.Key & item.Key) != 0;
+            return item is null ? throw new ArgumentNullException(nameof(item)) : (Key & item.Key) != 0;
         }
 
         public void CopyTo(NodeSet[] array, int arrayIndex)
@@ -142,46 +128,32 @@ namespace Penguin.Analysis
 
         public bool Equals(NodeSetCollection other)
         {
-            if (other is null)
-            {
-                return false;
-            }
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this == other;
+            return other is not null && (ReferenceEquals(this, other) || this == other);
         }
 
         public override bool Equals(object obj)
         {
-            if (obj is null)
-            {
-                return false;
-            }
-            if (ReferenceEquals(this, obj))
-            {
-                return true;
-            }
-
-            return obj is NodeSetCollection n && this.Equals(n);
+            return obj is not null && (ReferenceEquals(this, obj) || (obj is NodeSetCollection n && Equals(n)));
         }
 
-        public IEnumerator<NodeSet> GetEnumerator() => this.GetSets().GetEnumerator();
+        public IEnumerator<NodeSet> GetEnumerator()
+        {
+            return GetSets().GetEnumerator();
+        }
 
-        IEnumerator IEnumerable.GetEnumerator() => this.GetSets().GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetSets().GetEnumerator();
+        }
 
-        public override int GetHashCode() => unchecked((int)Key);
+        public override int GetHashCode()
+        {
+            return unchecked((int)Key);
+        }
 
         public int IndexOf(NodeSet item)
         {
-            if (item is null)
-            {
-                throw new ArgumentNullException(nameof(item));
-            }
-
-            return (this.Key & item.Key) != 0 ? item.ColumnIndex : -1;
+            return item is null ? throw new ArgumentNullException(nameof(item)) : (Key & item.Key) != 0 ? item.ColumnIndex : -1;
         }
 
         public void Insert(int index, NodeSet item)
@@ -191,37 +163,54 @@ namespace Penguin.Analysis
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.Key &= item.Key;
+            Key &= item.Key;
         }
 
         public bool Remove(long key)
         {
-            bool v = (this.Key & key) != 0;
+            bool v = (Key & key) != 0;
 
             if (v)
             {
-                this.Key ^= key;
+                Key ^= key;
             }
 
             return v;
         }
 
-        public bool Remove(sbyte header) => Remove((long)1 << header);
+        public bool Remove(sbyte header)
+        {
+            return Remove((long)1 << header);
+        }
 
-        public bool Remove(NodeSet item) => Remove(item?.Key ?? throw new ArgumentNullException(nameof(item)));
+        public bool Remove(NodeSet item)
+        {
+            return Remove(item?.Key ?? throw new ArgumentNullException(nameof(item)));
+        }
 
-        public void RemoveAt(int index) => Remove((sbyte)index);
+        public void RemoveAt(int index)
+        {
+            _ = Remove((sbyte)index);
+        }
 
-        private IEnumerable<NodeSet> GetSets() => Key.Select(i => NodeSetCache[i]);
+        private IEnumerable<NodeSet> GetSets()
+        {
+            return Key.Select(i => NodeSetCache[i]);
+        }
 
         private void SetKey(IEnumerable<NodeSet> set)
         {
-            this.Key = 0;
+            Key = 0;
 
             foreach (NodeSet n in set)
             {
-                this.Key |= n.Key;
+                Key |= n.Key;
             }
+        }
+
+        public NodeSetCollection ToNodeSetCollection()
+        {
+            throw new NotImplementedException();
         }
     }
 }

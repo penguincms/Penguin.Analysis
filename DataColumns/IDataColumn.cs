@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace Penguin.Analysis.DataColumns
 {
@@ -33,6 +32,7 @@ namespace Penguin.Analysis.DataColumns
         /// Accepts each option one at a time
         /// </summary>
         /// <param name="input">The option</param>
+        /// <param name="PositiveIndicator"></param>
         void Seed(string input, bool PositiveIndicator);
 
         /// <summary>

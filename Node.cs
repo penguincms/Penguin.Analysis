@@ -1,10 +1,8 @@
 ﻿using Penguin.Analysis.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace Penguin.Analysis
 {
@@ -12,14 +10,14 @@ namespace Penguin.Analysis
     {
         public virtual ushort this[MatchResult result]
         {
-            get => this.Results[(int)result];
-            set => this.Results[(int)result] = value;
+            get => Results[(int)result];
+            set => Results[(int)result] = value;
         }
 
-        protected bool disposedValue = false;
+        protected bool disposedValue;
 
         private byte? depth;
-        public virtual Accuracy Accuracy => new Accuracy(this[MatchResult.Route] + this[MatchResult.Both], this[MatchResult.Both]);
+        public virtual Accuracy Accuracy => new(this[MatchResult.Route] + this[MatchResult.Both], this[MatchResult.Both]);
 
         public abstract int ChildCount { get; }
 
@@ -29,11 +27,8 @@ namespace Penguin.Analysis
         {
             get
             {
-                if (this.depth is null)
-                {
-                    this.depth = GetDepth();
-                }
-                return this.depth.Value;
+                depth ??= GetDepth();
+                return depth.Value;
             }
         }
 
@@ -53,7 +48,7 @@ namespace Penguin.Analysis
         public virtual void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
+            Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
@@ -77,7 +72,7 @@ namespace Penguin.Analysis
             }
             else
             {
-                routeKey |= (1 << this.Header);
+                routeKey |= 1 << Header;
 
                 e.MatchRoute(this, routeKey);
 
@@ -85,22 +80,14 @@ namespace Penguin.Analysis
                 {
                     INode Next = NextAt(e.DataRow[ChildHeader]);
 
-                    if (Next != null)
-                    {
-                        Next.Evaluate(e, routeKey);
-                    }
+                    Next?.Evaluate(e, routeKey);
                 }
             }
         }
 
         public virtual bool Evaluate(TypelessDataRow row)
         {
-            if (row is null)
-            {
-                throw new ArgumentNullException(nameof(row));
-            }
-
-            return row.Equals(Header, Value);
+            return row is null ? throw new ArgumentNullException(nameof(row)) : row.Equals(Header, Value);
         }
 
         public virtual void Flush(int depth)
@@ -131,7 +118,7 @@ namespace Penguin.Analysis
 
             foreach (INode tn in GetTree(n).Where(tnn => tnn.Header != -1))
             {
-                Key |= ((long)1 << tn.Header);
+                Key |= (long)1 << tn.Header;
             }
 
             return Key;

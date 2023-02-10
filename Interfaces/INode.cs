@@ -8,7 +8,7 @@ namespace Penguin.Analysis.Interfaces
         new IEnumerable<TChild> Next { get; }
         new TChild ParentNode { get; }
 
-        new TChild GetNextByValue(int Value);
+        TChild GetNextByValue(int Value);
     }
 
     public interface INode : IDisposable

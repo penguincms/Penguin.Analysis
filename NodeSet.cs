@@ -1,6 +1,4 @@
-﻿using System.Linq;
-
-namespace Penguin.Analysis
+﻿namespace Penguin.Analysis
 {
     public class NodeSet
     {
@@ -21,8 +19,8 @@ namespace Penguin.Analysis
 
         internal NodeSet(sbyte columnIndex, int values)
         {
-            this.ColumnIndex = columnIndex;
-            this.Values = values;
+            ColumnIndex = columnIndex;
+            Values = values;
         }
 
         // this is second one '!='
@@ -33,50 +31,22 @@ namespace Penguin.Analysis
 
         public static bool operator ==(NodeSet obj1, NodeSet obj2)
         {
-            if (ReferenceEquals(obj1, obj2))
-            {
-                return true;
-            }
-
-            if (obj1 is null || obj2 is null)
-            {
-                return false;
-            }
-
-            return obj1.ColumnIndex == obj2.ColumnIndex;
+            return ReferenceEquals(obj1, obj2) || obj1 is not null && obj2 is not null && obj1.ColumnIndex == obj2.ColumnIndex;
         }
 
         public bool Equals(NodeSet other)
         {
-            if (other is null)
-            {
-                return false;
-            }
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            return this.ColumnIndex == other.ColumnIndex;
+            return other is not null && (ReferenceEquals(this, other) || ColumnIndex == other.ColumnIndex);
         }
 
         public override bool Equals(object obj)
         {
-            if (obj is null)
-            {
-                return false;
-            }
-            if (ReferenceEquals(this, obj))
-            {
-                return true;
-            }
-
-            return obj is NodeSet n && this.Equals(n);
+            return obj is not null && (ReferenceEquals(this, obj) || (obj is NodeSet n && Equals(n)));
         }
 
         public override int GetHashCode()
         {
-            return this.ColumnIndex;
+            return ColumnIndex;
         }
 
         #endregion Constructors

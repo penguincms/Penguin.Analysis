@@ -13,7 +13,7 @@ namespace Penguin.Analysis.Constraints
     {
         #region Fields
 
-        private readonly HashSet<string> Headers = new HashSet<string>();
+        private readonly HashSet<string> Headers = new();
 
         #endregion Fields
 
@@ -28,7 +28,7 @@ namespace Penguin.Analysis.Constraints
 
             foreach (string h in headers)
             {
-                Headers.Add(h);
+                _ = Headers.Add(h);
             }
         }
 
@@ -55,56 +55,56 @@ namespace Penguin.Analysis.Constraints
             return true;
         }
 
-        public void SetKey(ColumnRegistration[] registrations)
+        public void SetKey(ColumnRegistration[] columns)
         {
-            if (registrations is null)
+            if (columns is null)
             {
-                throw new ArgumentNullException(nameof(registrations));
+                throw new ArgumentNullException(nameof(columns));
             }
 
             LongByte lb = 0;
 
-            MaxBit = registrations.Length;
+            MaxBit = columns.Length;
 
-            for (int x = 0; x < registrations.Length; x++)
+            for (int x = 0; x < columns.Length; x++)
             {
-                lb.SetBit(x, this.Headers.Contains(registrations[x].Header));
+                lb.SetBit(x, Headers.Contains(columns[x].Header));
             }
 
-            this.Key = lb;
+            Key = lb;
         }
 
         public override string ToString()
         {
-            return $"{nameof(ExclusiveAny)}: " + this.Headers.Join();
+            return $"{nameof(ExclusiveAny)}: " + Headers.Join();
         }
 
         #region IDisposable Support
 
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
 
         // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            this.Dispose(true);
+            Dispose(true);
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!this.disposedValue)
+            if (!disposedValue)
             {
                 if (disposing)
                 {
-                    this.Headers.Clear();
+                    Headers.Clear();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                this.disposedValue = true;
+                disposedValue = true;
             }
         }
 
