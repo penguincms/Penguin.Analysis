@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using Loxifi.CsvTable;
+using Loxifi.CsvTable.Extensions;
+using Newtonsoft.Json;
 using Penguin.Analysis.Constraints;
 using Penguin.Analysis.DataColumns;
 using Penguin.Analysis.Extensions;
@@ -77,7 +79,7 @@ namespace Penguin.Analysis
 
         #region Constructors
 
-        public DataSourceBuilder(string FileName) : this(new FileInfo(FileName).ToDataTable())
+        public DataSourceBuilder(string FileName) : this(new CsvTable<object>(FileName).ToDataTable())
         {
         }
 
