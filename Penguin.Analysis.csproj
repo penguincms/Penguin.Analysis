@@ -25,8 +25,8 @@
     <None Remove=".metaOne" />
     <None Remove="README.md" />
     <PackageReference Include="Loxifi.CsvTable" Version="0.1.1" />
-    <PackageReference Include="Penguin.IO" Version="5.2.0" />
-    <PackageReference Include="Penguin.Debugging" Version="5.2.0" />
+    <PackageReference Include="Penguin.IO" Version="5.4.0" />
+    <PackageReference Include="Penguin.Debugging" Version="5.4.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

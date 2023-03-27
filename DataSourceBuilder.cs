@@ -7,7 +7,6 @@ using Penguin.Analysis.Extensions;
 using Penguin.Analysis.Interfaces;
 using Penguin.Analysis.Transformations;
 using Penguin.Extensions.Collections;
-using Penguin.IO.Extensions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -34,13 +33,13 @@ namespace Penguin.Analysis
 
         #region Properties
 
-        private readonly List<IRouteConstraint> routeConstraint = new();
-        private DataTable TempTable;
+        private readonly List<IRouteConstraint> _routeConstraints = new();
+        private DataTable _tempTable;
 
         public AnalysisResults Result { get; set; } = new AnalysisResults();
 
         [JsonIgnore]
-        public IEnumerable<IRouteConstraint> RouteConstraints => routeConstraint;
+        public IEnumerable<IRouteConstraint> RouteConstraints => _routeConstraints;
 
         #endregion Properties
 
@@ -90,7 +89,7 @@ namespace Penguin.Analysis
 
         public DataSourceBuilder(DataTable dt) : this()
         {
-            TempTable = dt;
+            _tempTable = dt;
         }
 
         #endregion Constructors
@@ -168,7 +167,7 @@ namespace Penguin.Analysis
 
         public void AddRouteConstraint(IRouteConstraint constraint)
         {
-            routeConstraint.Add(constraint);
+            _routeConstraints.Add(constraint);
         }
 
         public void Build(string outputFilePath)
@@ -770,9 +769,9 @@ namespace Penguin.Analysis
         {
             Penguin.Debugging.StaticLogger.Log("Applying transformations");
 
-            Result.RawData = Transform(TempTable, true);
+            Result.RawData = Transform(_tempTable, true);
 
-            TempTable = null;
+            _tempTable = null;
         }
 
         public TypelessDataRow Transform(Dictionary<string, string> dataRow) //I really feel like transforms and column transforms should be sequential (interlaced) in order added
@@ -799,7 +798,7 @@ namespace Penguin.Analysis
 
         private IEnumerable<IRouteConstraint> RouteViolations(LongByte Key)
         {
-            foreach (IRouteConstraint constraint in routeConstraint) //Move this check to the interface (NOTEXC)
+            foreach (IRouteConstraint constraint in _routeConstraints) //Move this check to the interface (NOTEXC)
             {
                 if (constraint.Key == 0)
                 {
@@ -945,12 +944,12 @@ namespace Penguin.Analysis
 
                     Transformations.Clear();
 
-                    foreach (IRouteConstraint x in routeConstraint)
+                    foreach (IRouteConstraint x in _routeConstraints)
                     {
                         x.Dispose();
                     }
 
-                    routeConstraint.Clear();
+                    _routeConstraints.Clear();
 
                     try
                     {
