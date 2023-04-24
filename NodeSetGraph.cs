@@ -56,9 +56,9 @@ namespace Penguin.Analysis
 
         public Action<NodeSetGraphProgress> ReportProgress { get; set; }
 
-        private IEnumerable<(sbyte ColumnIndex, int Values)> ColumnsToProcess => Builder.Registrations
+        private IEnumerable<(sbyte ColumnIndex, int Values)> ColumnsToProcess => Builder._registrations
                               .Select(r => (
-                                ColumnIndex: (sbyte)Builder.Registrations.IndexOf(r),
+                                ColumnIndex: (sbyte)Builder._registrations.IndexOf(r),
                                 Values: r.Column.OptionCount
                               ));
 
@@ -70,7 +70,7 @@ namespace Penguin.Analysis
 
                 unchecked
                 {
-                    foreach (ColumnRegistration r in Builder.Registrations)
+                    foreach (ColumnRegistration r in Builder._registrations)
                     {
                         ch += r.Header + "|";
                     }
@@ -110,7 +110,7 @@ namespace Penguin.Analysis
             {
                 badRoute = (v) =>
                 {
-                    IEnumerable<string> headers = v.Checked == 0 ? new List<string>() : v.Checked.Select(k => Builder.Registrations[k].Header);
+                    IEnumerable<string> headers = v.Checked == 0 ? new List<string>() : v.Checked.Select(k => Builder._registrations[k].Header);
                     Builder.Settings.CheckedConstraint.Invoke(headers, v);
                 };
             }
@@ -121,7 +121,7 @@ namespace Penguin.Analysis
             {
                 goodRoute = (v) =>
                 {
-                    IEnumerable<string> headers = v == 0 ? new List<string>() : v.Select(k => Builder.Registrations[k].Header);
+                    IEnumerable<string> headers = v == 0 ? new List<string>() : v.Select(k => Builder._registrations[k].Header);
                     Builder.Settings.NoCheckedConstraint.Invoke(headers, v);
                 };
             }

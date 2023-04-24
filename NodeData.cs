@@ -62,7 +62,7 @@ namespace Penguin.Analysis
             }
 
             int i = 0;
-            foreach (string s in builder.Registrations.Select(r => r.Header))
+            foreach (string s in builder._registrations.Select(r => r.Header))
             {
                 Data.Add($"{s}_Bit", Key.HasBitAt(i++) ? 1 : 0);
             }

@@ -24,8 +24,8 @@ namespace Penguin.Analysis
     {
         #region Fields
 
-        public List<ColumnRegistration> Registrations = new();
-        private readonly List<ITransform> Transformations = new();
+        public List<ColumnRegistration> _registrations = new();
+        private readonly List<ITransform> _transformations = new();
 
         public ColumnRegistration TableKey { get; set; }
 
@@ -84,7 +84,7 @@ namespace Penguin.Analysis
 
         public DataSourceBuilder()
         {
-            JsonSerializer = JsonSerializer.Create(JsonSerializerSettings);
+            this.JsonSerializer = JsonSerializer.Create(this.JsonSerializerSettings);
         }
 
         public DataSourceBuilder(DataTable dt) : this()
@@ -96,9 +96,9 @@ namespace Penguin.Analysis
 
         #region Methods
 
-        private static readonly string MemLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
+        private static readonly string _memLog = DateTime.Now.ToString("yyyyMMddHHmmss") + ".log";
 
-        private FileStream ManagedMemoryStream;
+        private FileStream _managedMemoryStream;
 
         [JsonIgnore]
         public bool IsPreloaded { get; private set; }
@@ -233,8 +233,8 @@ namespace Penguin.Analysis
 
             for (int index = 0; index < vints.Length - 1; index++)
             {
-                string k = Registrations[index].Header;
-                string v = Registrations[index].Column.Display(vints[index]);
+                string k = _registrations[index].Header;
+                string v = _registrations[index].Column.Display(vints[index]);
 
                 evaluation.CalculatedData.Add(k, v);
             }
@@ -464,7 +464,7 @@ namespace Penguin.Analysis
 
             while (toCheck != null && toCheck.Header != -1)
             {
-                string next = $"{Registrations[toCheck.Header].Header}:{Registrations[toCheck.Header].Column.Display(toCheck.Value)}";
+                string next = $"{_registrations[toCheck.Header].Header}:{_registrations[toCheck.Header].Column.Display(toCheck.Value)}";
 
                 toReturn = !string.IsNullOrEmpty(toReturn) ? $"{next} => {toReturn}" : next;
 
@@ -529,20 +529,20 @@ namespace Penguin.Analysis
 
         public async void Preload(string Engine, MemoryManagementStyle memoryManagementStyle)
         {
-            ManagedMemoryStream = new FileStream(Engine, FileMode.Open, FileAccess.Read, FileShare.Read);
+            _managedMemoryStream = new FileStream(Engine, FileMode.Open, FileAccess.Read, FileShare.Read);
 
             byte[] offsetBytes = new byte[DiskNode.HEADER_BYTES];
 
-            _ = ManagedMemoryStream.Read(offsetBytes, 0, offsetBytes.Length);
+            _ = _managedMemoryStream.Read(offsetBytes, 0, offsetBytes.Length);
 
             long jsonOffset = offsetBytes.GetLong(0);
             long SortOffset = offsetBytes.GetLong(8);
 
-            _ = ManagedMemoryStream.Seek(SortOffset, SeekOrigin.Begin);
+            _ = _managedMemoryStream.Seek(SortOffset, SeekOrigin.Begin);
 
             if (memoryManagementStyle.HasFlag(MemoryManagementStyle.Preload))
             {
-                PreloadTask ??= Task.Run(() => PreloadFunc(ManagedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle));
+                PreloadTask ??= Task.Run(() => PreloadFunc(_managedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle));
 
                 await PreloadTask.ConfigureAwait(false);
             }
@@ -559,7 +559,7 @@ namespace Penguin.Analysis
                         }
                         try
                         {
-                            PreloadFunc(ManagedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle);
+                            PreloadFunc(_managedMemoryStream, SortOffset, jsonOffset, memoryManagementStyle);
                         }
                         catch (Exception ex)
                         {
@@ -593,7 +593,7 @@ namespace Penguin.Analysis
                 string toWrite = $"[{DateTime.Now:yyyy MM dd HH:mm:ss}]: {toLog}";
                 Debug.WriteLine(toWrite);
                 Penguin.Debugging.StaticLogger.Log(toWrite);
-                File.AppendAllLines(MemLog, new List<string>() { toWrite });
+                File.AppendAllLines(_memLog, new List<string>() { toWrite });
             }
 
             try
@@ -740,7 +740,7 @@ namespace Penguin.Analysis
             }
             else
             {
-                Registrations.Add(r);
+                _registrations.Add(r);
             }
         }
 
@@ -759,7 +759,7 @@ namespace Penguin.Analysis
 
         public void RegisterTransformation(ITransform transform)
         {
-            Transformations.Add(transform);
+            _transformations.Add(transform);
         }
 
         /// <summary>
@@ -802,7 +802,7 @@ namespace Penguin.Analysis
             {
                 if (constraint.Key == 0)
                 {
-                    constraint.SetKey(Registrations.ToArray());
+                    constraint.SetKey(_registrations.ToArray());
                 }
 
                 if (!constraint.Evaluate(Key))
@@ -816,7 +816,7 @@ namespace Penguin.Analysis
         {
             TypelessDataTable toReturn;
 
-            foreach (ITransform transform in Transformations)
+            foreach (ITransform transform in _transformations)
             {
                 dt = transform.TransformTable(dt);
 
@@ -826,7 +826,7 @@ namespace Penguin.Analysis
                 }
             }
 
-            foreach (ITransform transform in Transformations)
+            foreach (ITransform transform in _transformations)
             {
                 transform.Cleanup(dt);
             }
@@ -839,7 +839,7 @@ namespace Penguin.Analysis
             {                      // Seeding on an individual transform would blow away
                                    // the values since all instances would have a count of 1
 
-                foreach (ColumnRegistration registration in Registrations)
+                foreach (ColumnRegistration registration in _registrations)
                 {
                     if (registration.Column.SeedMe)
                     {
@@ -857,7 +857,7 @@ namespace Penguin.Analysis
             {
                 List<int> values = new();
 
-                foreach (ColumnRegistration registration in Registrations)
+                foreach (ColumnRegistration registration in _registrations)
                 {
                     values.Add(registration.Column.Transform(dr[registration.Header].ToString()));
                 }
@@ -922,27 +922,27 @@ namespace Penguin.Analysis
 
                     try
                     {
-                        ManagedMemoryStream?.Dispose();
+                        _managedMemoryStream?.Dispose();
                     }
                     catch (Exception)
                     {
                     }
 
-                    ManagedMemoryStream = null;
+                    _managedMemoryStream = null;
 
-                    foreach (ColumnRegistration x in Registrations)
+                    foreach (ColumnRegistration x in _registrations)
                     {
                         x.Dispose();
                     }
 
-                    Registrations.Clear();
+                    _registrations.Clear();
 
-                    foreach (ITransform x in Transformations)
+                    foreach (ITransform x in _transformations)
                     {
                         x.Dispose();
                     }
 
-                    Transformations.Clear();
+                    _transformations.Clear();
 
                     foreach (IRouteConstraint x in _routeConstraints)
                     {
